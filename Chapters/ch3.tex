@@ -1,0 +1,112 @@
+\section{Development Methodology}
+
+\subsection{Overall methodology}
+hybrid start with robot partially designed,
+Robot modelling and help with hardware selection for non pure-mechanical part
+URDF export
+Robot workspace Validation and calibration
+Robot dnymical validation against innertia matrix and URDF
+Simulation and fidelity implementation
+Toy problem for RL complete loop with one actuator, one linux on BBB, CAN bus, ... to gain experience,
+RL training and validatation  (different approach tried)
+deployment consideration (linux and RT/semi RT kernel), CAN bus bandwidth and refresh speed, motor control mode, hardware validation, back driving and play back,
+
+\subsection{Hardware selection}
+
+\subsubsection{Motor}
+
+\subsubsection{Battery pack}
+having select the motor, we knew the current that would be needed to drive them. (
+
+We need to optimise for power density as the robot run are quite short (after all, it took usain bolt less than 10 second to run 100m, I hope our robot can do it in less than 30) Its not a marathon running robot but a pure speed sprinter one. 
+
+maybe highlight mismatch between commercial offering and theoretical performance by doing a map like for the motors.
+
+
+Thus I went one to review cell and chemistry for power density. And while LFP and LTO along with Lipo should be more power dense, some challenge in sourcing theses cell made them an unviable option. Commercial LTO cell where fround on ALiexpress but decided as not worth the risk. I could not find any reputable / specialized suppliers that would ship cells. Nkon is the the supplier I have used in the past for battery need and from there I looked at the most power dense battery cell.
+
+The EVE INR21700-50PL 5000mAh - 125A (nieuwe versie) where selected
+
+
+\subsubsection{Compute}
+Most of the lab exosquelleton run on beaglebone black
+While theses support CAN natively, and run linux, the SSH connection was VERY slow and thus was rejected. The main selling point was the real time coprossor (understand a beefy MCU that run alongsinde the main CPU for time critcal application) but this require custom code and the performance benefit are still to demosntrate.
+
+A raspberry pi 2 b+ that was laying around was used instead as the author had much more experience with theses. It did require to buy a CAN hat over SPI. another hat with an accelerometer was bought (raspberry pi sense hat) for the ease of integration. 
+
+mention here or later the need to check the mapping when stacking the two hats.
+
+Need to documen the test for loop frequency and jitter but main result is that we can have a can loop at 200 Hz but and that the raspberry pi is MUCH more powerful than the bleagle bone. which is very convenient for development (we host a wifi hostpoint so we can connect to the robot, we host a web interface to control the robot to simplify the manipulation)
+
+\subsubsection{Sensors}
+sense hat for base IMU, contact sens but never tried.
+literrature suggested that impact timing and direction can improve RL convergence.
+\subsection{Robot modelling}
+Re assembled the robot in autodesk inventor ( for fluency reason) and exported as STEP each limb with the origin centered at the joints.
+
+Assembled the robot in fusion and used plugin to export URDF
+
+Manually exported innertia matrix from solidworks, provided by mechanical enginner but matrixes appear in wrong orientation and after multiple attempt, the URDF export did not yielded a usable URDF.
+
+CAD matrix, validate accuraccy and orietnation with reference frame.
+Made tool to discover plausible innertia matrix from robot and validate against known one (since safe workspace is known, we get the robot to move with fixed base, leg in the air)
+
+\subsection{Simulation}
+mujuco, URDF limitation with loop, GPU vs CPU, ...
+
+\subsection{Toy problem / RL Warmup}
+
+\subsection{RL and validation}
+what I tried (torque, position, pattern generator, ...)
+does it work ? sim2sim ? sim2real ? ...
+
+need to rework software to streamline theses experiements.
+
+should work for anything between the pendulum and the running robot (and explain how to adapt to new case)
+
+we want to be able to test :
+-> spring + damper + friction
+-> PID control
+-> torque control
+-> Position control
+-> pattern generator tuning (number of weight) 
+and this independently for each joint
+
+for each segment we want to be able to arbitrarily restrict DOF (the pendulum base is fully restricted while for the running robot we can try to restrict or not DOF.
+
+we want a training script that allow to configure each training with the number of epoch (given that there is anything to train)
+and output a plot of the training epoch + csv
+
+we want a reward policy definition script where we can easily test things -> need to be defined per experiment
+
+we want a visualisation script to test the performance
+of our policy / system, it should give us mp4 video of a run but also allow to give command if the policy should need it ( like if I want to manually steer my robot)
+
+-> how do we confiurethe network architecture  for RL ? with the user input too ? -> need to be defined per experiment
+
+-> how do we define curriculum learning ? -> need to be defined per experiment
+
+-> how do I batch experiment and monitor progress ?
+
+-> how do we support both CPU and GPU  and optimise parameters for maximum training speed (number of env, ...)
+
+-> how do we integrate the robot workspace safety approach ? and use that as a kind of sim2sim ?
+
+what stratergy for the running robot ? like it might be better to train versatile simple policy than specific one (teach it to run only instead of run for 100m then stop) 
+
+
+
+
+\subsection{deployment}
+
+\subsubsection{linux and RT}
+
+\subsubsection{CAN}
+
+\subsubsection{motor controller}
+
+\subsubsection{hardware validation}
+webUI with simple path, safe limits, ...
+
+\subsection{Hardware experiments}
+

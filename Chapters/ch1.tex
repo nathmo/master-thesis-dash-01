@@ -1,0 +1,46 @@
+\section{Introduction}
+
+This thesis investigates the practical challenges of applying existing RL methods to a custom high-speed biped robot and provides a reproducible development methodology covering robot modelling, simulation, control integration, and experimental validation.
+
+
+\subsection{Problem statement}
+
+\subsection{Objectives of the Project}
+
+\subsection{Methodology Overview}
+What tool / technic, ... did I use / applied
+my strategy to solve the problem
+\subsection{Contributions}
+What I did, recap of my original work.
+
+What I did :
+actuator mapping database with metric for figure of merit
+URDF modelling from scratch
+linux, CAN, cubemars setup
+Battery pack design and performance
+RL toy problem -> Spinoff as TP ?
+RL for running robot, incremental approach and test
+-> torque control -> no convergence, too slow with RT linux
+-> Position control -> converged before update mass and innertia, not converging anymore...
+-> gait generator approach, fourrier coefficient, simplified problem with reduced DOF, hypothesis that the abduction alone can stay oin position control and be enough to act as reflex system to keep robot stable. running with the based attach on a threadmill.
+-> attempt to train for fully unthethered operation (not done yet)
+
+
+
+
+
+things to develop
+
+map motor power density
+how to URDF from CAD correctly. (manual process)
+
+state of the art running robot mechanical (model (SLIP, oscillator, ) , timming estimation, ...
+state of the art RL and bipedal + sim2real
+sensor choice
+BOM development
+electrical system (and control issue + timming and jitter)
+toy problem to test the system and setup manual for student TP
+real implementation and training
+real deployment and challenge
+
+
