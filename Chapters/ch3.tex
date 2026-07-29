@@ -25,8 +25,14 @@ maybe highlight mismatch between commercial offering and theoretical performance
 
 Thus I went one to review cell and chemistry for power density. And while LFP and LTO along with Lipo should be more power dense, some challenge in sourcing theses cell made them an unviable option. Commercial LTO cell where fround on ALiexpress but decided as not worth the risk. I could not find any reputable / specialized suppliers that would ship cells. Nkon is the the supplier I have used in the past for battery need and from there I looked at the most power dense battery cell.
 
-The EVE INR21700-50PL 5000mAh - 125A (nieuwe versie) where selected
+Lipo in commercial package could not be found at 48V...
 
+Cost was also a factor of choice
+
+The EVE INR21700-50PL 5000mAh - 125A (nieuwe versie) where selected
+as they where the most power dense cell we could find.
+
+current pack 13S2P, 200 A BMS (limited thermally, peak limited to 250A in software)
 
 \subsubsection{Compute}
 Most of the lab exosquelleton run on beaglebone black
@@ -50,6 +56,8 @@ Manually exported innertia matrix from solidworks, provided by mechanical enginn
 
 CAD matrix, validate accuraccy and orietnation with reference frame.
 Made tool to discover plausible innertia matrix from robot and validate against known one (since safe workspace is known, we get the robot to move with fixed base, leg in the air)
+
+the full URDF procedure with screenshot should be done in appendix
 
 \subsection{Simulation}
 mujuco, URDF limitation with loop, GPU vs CPU, ...
