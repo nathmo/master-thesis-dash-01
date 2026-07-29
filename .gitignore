@@ -1,0 +1,14 @@
+# LaTeX build artefacts. The compiled main.pdf is deliberately NOT ignored:
+# it is committed to the repository by .github/workflows/latex.yml.
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.synctex.gz
+*.toc
+*.xdv

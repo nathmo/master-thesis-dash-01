@@ -4,9 +4,21 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'main.pdf'
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+
+# Needed so the job can push the freshly built PDF back to the repository.
+permissions:
+  contents: write
+
+# Never let two builds race to commit main.pdf.
+concurrency:
+  group: latex-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -14,22 +26,34 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Set up TeX Live
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y texlive-full
-
-    - name: Compile LaTeX to PDF
-      run: |
-        pdflatex main.tex
-        bibtex main
-        pdflatex main.tex
-        pdflatex main.tex
+    # Runs latexmk inside a TeX Live full image: a couple of minutes instead of
+    # the ~20 min `apt-get install texlive-full` takes, and latexmk figures out
+    # by itself how many pdflatex/bibtex passes the document needs.
+    - name: Compile main.tex
+      uses: xu-cheng/latex-action@v3
+      with:
+        root_file: main.tex
+        args: -pdf -file-line-error -interaction=nonstopmode -halt-on-error
 
     - name: Upload PDF as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: pdf
+        name: main-pdf
         path: main.pdf
+        if-no-files-found: error
+
+    # Only on main: pull requests may come from forks, which have no write access.
+    - name: Commit PDF back to the repository
+      if: github.event_name != 'pull_request'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        if [ -z "$(git status --porcelain -- main.pdf)" ]; then
+          echo "main.pdf is unchanged, nothing to commit."
+          exit 0
+        fi
+        git add main.pdf
+        git commit -m "ci: rebuild main.pdf from ${GITHUB_SHA::7} [skip ci]"
+        git push origin HEAD:"${GITHUB_REF_NAME}"
