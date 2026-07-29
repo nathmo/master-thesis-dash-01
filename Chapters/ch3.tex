@@ -54,48 +54,600 @@ Made tool to discover plausible innertia matrix from robot and validate against 
 \subsection{Simulation}
 mujuco, URDF limitation with loop, GPU vs CPU, ...
 
+\subsection{Achievable gait: actuator and mass-distribution limits}
+\label{sec:speed-ceiling}
+
+The maximum running speed achievable by the robot was estimated independently of reinforcement learning using a first-principles analysis of the mechanical system. While RL demonstrates a lower bound on performance, this analysis provides an upper bound imposed by the robot's kinematics, dynamics, and actuator capabilities.
+
+\subsubsection{Method}
+
+The analysis was performed directly on the MuJoCo model (\texttt{training/model/dash01.xml}), ensuring consistency with the model used for policy training. Candidate gaits were parameterized by duty factor $D$, contact length $L_c$, ride height $h$, and cadence.
+
+For each candidate gait, the corresponding stride length, flight time, swing duration, and ground reaction forces were computed using a simplified running model. Joint torques and velocities were then obtained through the leg Jacobian throughout the gait cycle.
+
+A gait was considered feasible only if all joints remained within the admissible 4-bar linkage assembly region while respecting actuator torque, speed, and power limits. The parameter space was exhaustively explored to determine the maximum feasible running speed.
+
+The implementation was validated against MuJoCo. Static equilibrium predictions agreed within 1\%, while the analytical Jacobian matched \texttt{mj\_jacGeom} with an error below $10^{-10}$.
+
+\subsubsection{Results}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcl}
+\toprule
+\textbf{Regime} & \textbf{Top speed} & \textbf{Limiting constraint} \\
+\midrule
+Continuous operation & 1.8\,m/s & Continuous actuator torque (55\,N$\cdot$m) \\
+Cadence $\leq$ 6 steps/s & 3.7\,m/s & Cam actuator peak power \\
+Cadence $\leq$ 8 steps/s & 4.4\,m/s & Cam actuator peak power \\
+Unconstrained optimum & 6.9\,m/s & Cam actuator peak power \\
+\bottomrule
+\end{tabular}
+\caption{Maximum running speed predicted from the robot model assuming a 350\,N$\cdot$m/rad ankle stiffness. Only the first regime is thermally sustainable; higher speeds correspond to burst operation.}
+\label{tab:speed-ceiling}
+\end{table}
+
+At the practical optimum ($\leq6$ steps/s), the predicted gait has a duty factor of approximately 0.45, a stride length of 1.1--1.3\,m, a contact length of 0.25--0.30\,m, and peak vertical ground reaction forces of approximately 3.5 body weights (440\,N), with ground contact durations between 36 and 81\,ms.
+
+The predicted continuous-speed limit (1.8\,m/s) is lower than the 2.6\,m/s achieved by the RL policy, indicating that the learned controller relies on burst actuator capability. Consequently, motor temperature must be experimentally validated before sustained hardware operation.
+
+The unconstrained optimum occurs at 12.4 steps/s, corresponding to the same high-cadence solution repeatedly discovered by reinforcement learning. This agreement confirms that the high-cadence behavior originates from the system dynamics rather than from a simulator artifact.
+
+\subsubsection{Limiting factors}
+
+Maximum speed is primarily limited by swing-leg actuator power rather than by kinematic reach.
+
+The dominant constraint is the cam actuator during swing, which requires approximately 878\,W (64\,N$\cdot$m at 13.7\,rad/s), close to its theoretical maximum output of 935\,W. Consequently, increasing actuator no-load speed would improve achievable running speed more effectively than increasing peak torque.
+
+Stance loading represents the second limiting factor. Peak ground reaction forces require approximately 167\,N$\cdot$m of the available 170\,N$\cdot$m, leaving minimal torque margin.
+
+Kinematic reach is not the limiting factor. Although the leg can theoretically achieve a fore-aft workspace of 1.06\,m, only 0.20--0.35\,m is practically usable. Near the edge of the assembly region, the transmission ratio of the 4-bar mechanism deteriorates, causing joint velocities to increase rapidly and reducing achievable running speed.
+
+Introducing a flight phase substantially improves performance. Reducing the duty factor from 0.85 to 0.45 increases the predicted speed from 4.6 to 6.9\,m/s while requiring only a 1.2\,cm vertical center-of-mass excursion. Lower duty factors require ground reaction forces exceeding 4.5 body weights and are therefore infeasible.
+
+\subsubsection{Sensitivity to mass distribution}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lc}
+\toprule
+\textbf{Added mass location} & $\mathrm{d}v/\mathrm{d}m$ \\
+\midrule
+Uniform scaling & $-0.14$ (m/s)/kg \\
+Torso payload & $-0.11$ (m/s)/kg \\
+Entire leg & $-0.43$ (m/s)/kg \\
+Distal leg only & $-0.93$ (m/s)/kg \\
+\bottomrule
+\end{tabular}
+\caption{Sensitivity of predicted maximum speed to additional mass.}
+\label{tab:mass-sensitivity}
+\end{table}
+
+Running speed is considerably more sensitive to distal leg mass than to torso mass. Additional mass located in the feet, shank, or distal linkage reduces performance by nearly an order of magnitude more than an equivalent torso payload.
+
+For the current design, removing 0.22\,kg from each distal leg increases predicted top speed by approximately 0.5\,m/s, whereas adding 5\,kg to the torso produces a comparable reduction. This validate the heuristic used in the design of the leg that innertia should be minimized.
+
+\subsubsection{Ankle stiffness}
+
+A static load analysis independently reproduced the ankle stiffness threshold previously observed during reinforcement learning.
+
+The passive ankle spring ($28.65\,\mathrm{N\,m/rad}$) supports only approximately half body weight before collapsing due to positive mechanical feedback, despite the actuators operating well below their torque limits. Increasing stiffness progressively improves load capacity, with approximately $350\,\mathrm{N\,m/rad}$ required to support two body weights and maintain stable stance.
+
+The agreement between the analytical load model and the reinforcement learning experiments provides independent validation of this stiffness threshold.
+
+\subsubsection{Limitations}
+
+The analysis provides an optimistic upper bound on performance. It neglects torso attitude stabilization, lateral dynamics, impact losses, control bandwidth limitations, and the coupled actuator torque-speed envelope. In addition, CAD inertial properties remain approximate, although the sensitivity analysis indicates that distal link inertia strongly influences the predicted performance. The analysis should therefore be repeated once experimentally identified inertial parameters become available.
+UPDATE HERE ONCE I VALIDATED THE INNERTIA MATRIX OF EVERY SEGMENT !
+
 \subsection{Toy problem / RL Warmup}
 
-\subsection{RL and validation}
-what I tried (torque, position, pattern generator, ...)
-does it work ? sim2sim ? sim2real ? ...
+little inverted pendulum setup with one joint, one motor, one BBB running linux and sending command over CAN.
 
-need to rework software to streamline theses experiements.
+\subsection{RL policy design and validation}
+\label{sec:rl}
 
-should work for anything between the pendulum and the running robot (and explain how to adapt to new case)
+The control policy went through three distinct action-space designs over the project. This section documents all three, the reflex structure that ended up
+wrapped around the final one, and the results obtained so far. Throughout, the learning algorithm
+itself was held fixed : PPO from Stable-Baselines3, an actor--critic MLP, trained on CPU-parallel MuJoCo environments.
+So the comparisons are about the \emph{action representation}, not about the optimiser.
 
-we want to be able to test :
--> spring + damper + friction
--> PID control
--> torque control
--> Position control
--> pattern generator tuning (number of weight) 
-and this independently for each joint
+\subsubsection{Attempt 1: direct joint torque}
+\label{sec:rl-torque}
 
-for each segment we want to be able to arbitrarily restrict DOF (the pendulum base is fully restricted while for the running robot we can try to restrict or not DOF.
+The first framework commanded joint torque directly: the policy output was mapped to
+motor setpoints through a fixed torque scale on the actuators. This work was attemped with a simplifed bipedal robot as the one developed in this thesis was still in development.
+This is the textbook formulation and the one most legged-locomotion papers use in simulation.
 
-we want a training script that allow to configure each training with the number of epoch (given that there is anything to train)
-and output a plot of the training epoch + csv
+But, it was abandoned for two reasons:
 
-we want a reward policy definition script where we can easily test things -> need to be defined per experiment
+\textbf{It did not converge.} The training history from that period is an unbroken sequence of
+reward-shaping attempts : raising the fall penalty because the robot learned to belly-flop,
+adjusting the alive bonus because it learned to dawdle, re-tuning the feet-air-time thresholds
+because it learned to vibrate in place. After a few itteration of this whicked whack-a-mole exploit patching, It was realised that with a
+raw torque action space the policy has to synthesise, from scratch and at every control step, both
+the gravity compensation that keeps the robot standing \emph{and} the periodic structure that makes
+it walk; the reward landscape in between is dominated by ways of falling over that tricked the reward into thinking it was doing well.
 
-we want a visualisation script to test the performance
-of our policy / system, it should give us mp4 video of a run but also allow to give command if the policy should need it ( like if I want to manually steer my robot)
+\textbf{More decisively, it was not deployable.} The CubeMars drives expose a servo mode with an
+internal position/velocity loop running on the drive itself; commanding torque means bypassing that
+loop and streaming current setpoints over CAN from Python on a Raspberry Pi. I managed to push the measured CAN loop
+rate on our hardware to 200\,Hz but with millisecond-scale jitter and occasional missed
+deadlines, which is one to two orders of magnitude short of what torque-level biped control
+normally assumes; Furthermore, the CAN bus bandwitdh would not have been sufficient, to stream data faster. 
+A missed deadline in torque mode means the drive holds the last commanded
+torque blindly, which lead to constant acceleration.
 
--> how do we confiurethe network architecture  for RL ? with the user input too ? -> need to be defined per experiment
+The two failures point the same way: the policy class that most needs high control bandwidth and an
+accurate actuator model is exactly the one for which we have neither. Torque control was therefore
+dropped.
 
--> how do we define curriculum learning ? -> need to be defined per experiment
+\subsubsection{Attempt 2: joint position targets (PD)}
+\label{sec:rl-position}
 
--> how do I batch experiment and monitor progress ?
+The second design made the action six \emph{position} targets, one per actuated joint, at
+50\,Hz, with the knee and ankle following passively through the parallel linkage and the
+ankle spring. In simulation these are MuJoCo \texttt{<position>} actuators with gains and force
+ranges taken from the datasheets of the cubemars actuator (\texttt{kp}~120, \texttt{kv}~4, 72\,N$\cdot$m at the
+hip-roll; \texttt{kp}~200, \texttt{kv}~5, 170\,N$\cdot$m at cam and thigh). On hardware
+this maps one-to-one onto what the drives actually accept.
 
--> how do we support both CPU and GPU  and optimise parameters for maximum training speed (number of env, ...)
+\paragraph{What worked.} Standing and balancing converged after a fair ammount of effort and reward shapping. After switching to a point-foot contact
+model only a 2.5\,cm sphere at each toe collides, so the policy cannot rest a
+shin on the ground and damage the real robot, the policy held full-length episodes on two toe
+points. This also surfaced a floor-penetration exploit: with only the toe sphere
+colliding, the non-colliding foot and shin meshes could pass \emph{through} the floor, and the
+first apparently-perfect balancing policy was largely exploiting that by slipping trough a stable equilibrium by lowering its CoM below the floor. It was fixed by terminating
+on both an upper-hemisphere toe contact (the sphere sank) and any foot/shin vertex below the floor
+plane.
 
--> how do we integrate the robot workspace safety approach ? and use that as a kind of sim2sim ?
+\paragraph{What failed: skating.} Walking did not. After 32~million steps the policy reached
+a perfectly healthy-looking reward curve and was \emph{sliding}, not stepping. Both feet grounded on 57--66\,\%
+of steps, duty factor 0.74--0.83, median ``swing'' duration of one control step (contact
+chatter at 5--10 touchdowns per second), in-contact toe slip of 0.11--0.24\,m/s
+accounting for essentially all of its translation and a mean forward velocity of
+$-0.09$\,m/s under a $+0.5$\,m/s command.
 
-what stratergy for the running robot ? like it might be better to train versatile simple policy than specific one (teach it to run only instead of run for 100m then stop) 
+Three separate causes were found and fixed: there was no price on foot motion while in contact (a
+slip penalty was added, with a grounded predicate that survives micro-hop and ghost-drag dodges);
+the air-time term could only ever punish stepping, since credit was paid at touchdown and never
+lifting scored zero (it was made one-sided and capped, and paired with a per-foot stance-time cap
+and a swing-clearance term to give PPO an immediate gradient toward lifting a foot); and the
+contact physics silently made skating free, because \texttt{condim=3} disables torsional and
+rolling friction, turning the toe spheres into ball casters. Two reward-plumbing bugs compounded
+it: observation normalisation was also normalising the \emph{reward}, dividing the carefully
+balanced raw scale by a return standard deviation of $\approx 110$ so that a 200-point fall
+penalty reached the optimiser as $-1.8$; and the entropy coefficient on a clipped Gaussian policy
+was effectively free entropy, so the action standard deviation ratcheted up until training
+behaviour and deterministic evaluation were different controllers.
 
+The lasting methodological lesson is the first one: \textbf{the system will happily exploit any loophole in the reward function}.
 
+\paragraph{Why we moved on.} Even after the fixes, the fundamental problem remained: a per-step
+position policy must rediscover the periodicity of a gait from scratch at every control step.
+Nothing in the representation says that locomotion is cyclic. Compounding this, I updated the the six motor masses (7.1\,kg, more than half
+the robot) and re-settling the stance keyframe under gravity moved the plant enough that the
+earlier standing policy no longer transferred, and the walking policy that had been slowly
+improving stopped improving at all. Rather than re-tune the same representation against a heavier
+plant, the representation was changed.
 
+\subsubsection{Attempt 3: a central pattern generator tuned by the policy}
+\label{sec:rl-cpg}
+
+The third design puts the periodicity into the action space itself. Instead of emitting joint
+targets, the policy emits the \emph{coefficients of a Fourier series} describing one gait cycle,
+and the environment reconstructs the joint targets from those coefficients at the current gait
+phase. This is a central pattern generator whose shape is learned rather than hand-authored: the
+network no longer has to invent periodicity, only to choose which periodic signal it wants.
+The work of the biorob was discovered after this idea emerged.
+
+\paragraph{Formulation.} For the two sagittal joints of the left leg (cam and thigh, the pair that
+drives the parallel 4-bar and therefore propulsion), the deviation from the nominal stance posture
+at gait phase $\varphi$ is
+\begin{equation}
+  \Delta q_j(\varphi) \;=\; A_j \left[ w_0 a_0 + \sum_{k=1}^{N} w_k \bigl( a_k \cos k\varphi + b_k \sin k\varphi \bigr) \right],
+  \qquad w_k \propto \tfrac{1}{\sqrt{k}},
+  \label{eq:fourier}
+\end{equation}
+with $N = 3$ harmonics, so seven coefficients per joint. The harmonic weights $w_k$ are normalised
+to sum to one, which bounds the waveform, and the $1/\sqrt{k}$ schedule was chosen deliberately
+over the more obvious $1/k$: a $1/k$ schedule biases the series so strongly toward its fundamental
+that every gait it can express is near-sinusoidal, i.e. walking, whereas the push-off of a running
+stride is impulsive and needs high-harmonic authority. The result is clipped to $\pm A_j$ of the
+nominal posture a \emph{relative} bound, because the nominal is always a validated, assemblable
+posture and the coupled 4-bar is only assemblable over a diagonal band of the joint box.
+
+The phase $\varphi$ advances at a frequency that is itself part of the action, so the policy
+chooses its own cadence. The right leg is not emitted at all: it is constructed as the mirror of
+the left, half a cycle out of phase, $\Delta q_{R,j}(\varphi) = -\Delta q_{L,j}(\varphi + \pi)$.
+This halves the action dimension, guarantees an alternating gait by construction, and matches the
+convention already used by the hand-authored gait demo. It has one consequence worth flagging,
+because it cost us time later: a mirror-symmetric gait can only travel in a straight line, so
+steering had to be added afterwards as two explicit asymmetry channels (differential stride
+amplitude and differential stance width) rather than emerging on its own.
+
+\paragraph{First version: per-cycle updates, and why it was not enough.} The initial implementation
+made one environment step equal one full gait cycle: the policy chose a gait, the environment ran
+it to completion (roughly 30 decisions per episode instead of 1000), and the macro
+reward was the mean of the per-step rewards. This was immediately better than the per-step PD
+policy --- a hand-crafted elliptical foot path pushed through the same reconstruction walked at
+0.357\,m/s open-loop, versus the PD policy's 0.01\,m/s, and
+the first trained policy walked properly at $\approx$ 0.5\,m/s with no skating
+signature at all. The structural prior worked exactly as intended.
+
+But it was slow, and it fell over as soon as the pitch degree of freedom was released. A literature
+review at that point returned an unambiguous verdict: \textbf{no published system achieves running
+with per-cycle-only parameter updates and no intra-cycle feedback.} Every successful periodic
+parameterisation keeps a per-step channel --- PMTG modulates the trajectory generator and adds
+per-step residual corrections; CPG-RL re-selects the oscillator parameters at 100\,Hz. The
+same review found a genuine semi-Markov bug in our formulation: taking the \emph{mean} of the
+per-step rewards over a macro-step, with a fixed discount per macro-step, makes the total return
+scale with cadence and makes the effective horizon vary between 4.8\,s and
+28\,s depending on the gait frequency the policy happened to choose. It also flagged two
+things the observation was missing --- base velocity (the quantity the reward maximises was not
+observable at all) and distance-to-the-line (so the value function was partially observed and
+braking was unplannable).
+
+\paragraph{Final version: per-step re-parameterisation plus residuals.} The current stack keeps the
+Fourier gait but re-emits the entire specification at \emph{every} control step, and adds a
+per-step correction channel on top. The 24-dimensional action is:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{clp{9.2cm}}
+\toprule
+\textbf{dims} & \textbf{channel} & \textbf{role} \\
+\midrule
+14 & Fourier coefficients & cam + thigh gait shape, \cref{eq:fourier}; mirrored to the right leg \\
+1  & gait frequency & cadence, 0.5--4.0\,Hz; the phase integrates it \\
+3  & abduction reflex gains & $k_p$, $k_d$, bias of the lateral balance reflex \\
+6  & per-step residuals & direct corrections on the six PD targets, $\pm$0.08\,rad \\
+\bottomrule
+\end{tabular}
+\caption{The per-step action. The first 18 dimensions are the gait \emph{specification}; the last
+six are the fast-feedback channel.}
+\label{tab:action}
+\end{table}
+
+Rewriting the gait specification mid-cycle is legal but priced: a penalty proportional to
+$\sin^2(\varphi/2)$ bills changes to the specification, so a rewrite is free exactly at the cycle
+boundary and most expensive mid-stride. The residuals are deliberately \emph{never} billed by it,
+because they exist to be per-step --- a one-off stumble correction should not have to pay for
+rewriting the whole gait. This gives a clean separation: the Fourier channel is the gait, the
+residual channel is the correction, and a separate magnitude penalty keeps the residual from
+quietly becoming the controller.
+
+The observation is 55 values stacked over 5 frames (275 total): motor position, velocity and
+torque; IMU gravity direction and gyro; base velocity; $\sin\varphi$ and $\cos\varphi$; a task
+channel carrying the run/stop flag and the distance remaining; and the previous action.
+
+\paragraph{Reward.} The sprint objective is a single dash --- stand at the line, run, stop. The
+core insight, worth stating because it is not obvious, is that \textbf{a per-step speed reward
+cannot price time}: integrating $w\,v_x$ over a fixed course gives $w \cdot \text{distance}$
+regardless of pace, identical for a fast run and a slow one. What prices time is a \emph{constant
+per-step clock cost}, which integrates to $-w_t T$; and correspondingly the alive bonus must be
+exactly zero, because paying per second of existence rewards dawdling. The break-even pace is the
+ratio of the two, 0.25\,m/s.
+
+Around that core sit the anti-skate terms inherited from the PD era, a Siekmann-style phase-gated
+contact schedule (each foot pays for ground contact during its expected swing window, using the
+action's own gait clock; as the stance ratio ramps from 0.65 down to 0.42 the two swing
+windows begin to overlap, so a flight phase is explicitly demanded --- this is the one term that
+asks for running rather than fast walking), and efficiency terms on torque, motor velocity and
+positive mechanical power, ramped in over 60~million steps so they cannot smother gait
+emergence early.
+
+Four reward exploits were found by adversarial review of the reward code and fixed before the
+long runs: a stop-phase income that was net-positive per step and therefore farmable forever by
+twitching the hold timer; a one-sided velocity clip that made shuttling back and forth in front of
+the finish line strictly better than crossing it; and a cold-start suicide, where the sum of
+always-on penalties for a standing robot ($\approx -2.2$ per step) made diving at $-100$
+value-optimal for any policy that could not yet locomote --- fixed by flooring the per-step total,
+not just the individual terms.
+
+\paragraph{Curriculum over base degrees of freedom.} Rather than ask a fresh policy to solve
+balance and locomotion simultaneously, the base is progressively released. The free joint was
+replaced in the model by six explicit scalar joints ($x$, $y$, $z$, roll, pitch, yaw) plus six
+equality constraints that can be activated individually, so any subset of the base degrees of
+freedom can be rigidly railed at reset. Milestone \texttt{m1} frees only forward translation (with
+height railed at a randomised ride height drawn from a measured lookup table), \texttt{m2} adds
+height, \texttt{m3} pitch, \texttt{m4} lateral translation, \texttt{m5} roll, \texttt{m6} is the
+real plant. Rigid equality constraints were chosen over clamping the state after each step
+precisely because they produce the correct reaction wrench \emph{during} the step, so the leg
+torques stay faithful. Critically, the observation and action dimensions do not change across
+milestones, so every stage warm-starts from the previous one's checkpoint.
+
+\subsubsection{Reflexes: what is learned and what is hard-wired}
+\label{sec:rl-reflex}
+
+Not everything in the controller is a Fourier series, and the split is deliberate. A Fourier series
+over gait phase is by construction \emph{feedforward}: it is a function of where we are in the
+cycle, not of what the robot is doing. Balance is not a periodic problem, it is a feedback problem,
+and encoding it as a phase-indexed trajectory would make it blind. Three feedback channels
+therefore sit outside the CPG.
+
+\paragraph{Lateral (abduction) reflex --- learned gains, fixed structure.} The hip-roll joints are
+not driven by the gait generator at all. They are driven by a linear reflex on base roll,
+\begin{equation}
+  u \;=\; k_p\,\phi_{\text{roll}} \;+\; k_d\,\dot{\phi}_{\text{roll}} \;+\; b,
+  \qquad q_{\text{hip roll},L} = q^{\text{nom}}_L + u, \quad q_{\text{hip roll},R} = q^{\text{nom}}_R - u,
+\end{equation}
+evaluated at every control step. Because the left and right roll axes are mirrored, opposite signs
+in joint space move both feet the same physical way, which is the lateral centre-of-mass shift we
+want. The three gains $(k_p, k_d, b)$ are \emph{emitted by the policy}, so the controller is
+learned --- but only three numbers of it are, rather than a free trajectory. This was the design
+decision that made the original per-cycle formulation tractable at all (a feedforward CPG for
+propulsion plus a feedback reflex for balance, instead of a per-step policy with free abduction),
+and it was kept in the per-step version because it works. Nothing assumes which sign stabilises;
+the policy discovers that. The reflex is necessarily inert while roll is railed (milestones
+\texttt{m1}--\texttt{m3}, where the gains are unidentifiable) and only becomes live at
+\texttt{m5} --- expected behaviour, not a bug, and worth knowing before reading those training
+curves.
+
+\paragraph{Sagittal (pitch) reflex --- hand-tuned, not learned.} A fixed PD on base pitch and pitch
+rate drives a \emph{symmetric} fore/aft thigh offset,
+\begin{equation}
+  u_p = -\operatorname{clip}\bigl(k_p^{\theta} g_x + k_d^{\theta} \dot{\theta} + b^{\theta},\; \pm u_{\max}\bigr),
+  \qquad q_{\text{thigh},L} \mathrel{+}= u_p, \quad q_{\text{thigh},R} \mathrel{-}= u_p,
+\end{equation}
+where $g_x \approx \sin\theta$ is the fore/aft component of the measured gravity direction. Again
+the thigh axes are mirrored, so the opposite signs move both feet the \emph{same} physical
+direction: when the robot pitches nose-down, both feet shift forward, under the falling centre of
+mass. This is capture-point control in its crudest form, and the gain scales follow that reading
+($k_p \approx h_{\text{CoM}}/\ell \approx 1$, $k_d \approx \sqrt{h/g} \approx 0.3$).
+
+The reason this one is \emph{not} learned is worth spelling out, because it is the opposite choice
+from the abduction reflex. It was introduced when the pitch-free milestone was collapsing in
+1.5\,s, and a learned gain has no useful gradient in that regime: the policy has to
+survive long enough to experience the correction before it can learn to tune it, and it was not
+surviving. A hand-tuned prior breaks that circularity. The gains were set by a grid search on the
+pitch-free plant: $k_d \geq 0.3$ oscillates through the one-step action delay and the target
+smoothing filter, and an authority clip above 0.35\,rad starts fighting the gait itself,
+which fixes $k_p = 2.0$, $k_d = 0.2$, clip 0.25\,rad. Measured on a pitch-kick arrest
+test, the reflex reduces the final pitch excursion by a factor of 2.6--6.7 in both
+directions, and lifts early-retraining survival from about 18 to about 80 control
+steps.
+
+That number is the point: the reflex is a \textbf{stabilising prior, not a controller}. The plant
+with height free cannot stand at zero action at all --- holding a ride height requires an active
+gait, so it collapses in $\approx$ 1.3\,s no matter what the pitch does. The reflex does
+not fix that; it buys the policy enough surviving episodes to find a pitch-neutral gait itself. An
+early acceptance gate of ``zero action stands for 20 seconds'' was simply wrong for this plant and
+was replaced by the kick-arrest test.
+
+\paragraph{Residuals --- the fast channel.} The six per-step residuals are the third feedback path,
+and the one the literature is most emphatic about: they are what lets the controller respond to
+something unmodelled within a single control step without rewriting the gait. They are kept small
+(0.08\,rad, raised to 0.20\,rad once the control rate moved to 200\,Hz)
+and are magnitude-penalised, so the Fourier prior stays dominant.
+
+All three are implemented in pure NumPy, in the same module that reconstructs the gait, with no
+dependency on the simulator. That is not incidental --- it is what allows the identical reflex code
+to run on the Raspberry Pi against a real IMU, rather than being re-implemented and re-tuned at
+deployment time.
+
+\paragraph{A negative result: the emulated ankle reflex.} One more reflex was built and rejected.
+Since the ankles are passive springs with no actuator, we implemented a fixed PD that applies a
+pitch-restoring \emph{torque} at the ankle joints, gated on that foot being grounded --- an
+emulated actuated ankle, and a shippable controller if a real ankle motor were ever added. At
+40\,N$\cdot$m of authority it \emph{destabilised} the running gait outright (episodes
+collapsed to 28 steps): a phase-blind torque fights the gait it is trying to stabilise. At a
+gentle 12\,N$\cdot$m it neither destabilised nor solved anything, giving a small,
+non-solving lift. The negative result was still informative --- it was evidence that ankle
+authority was the right lever, which is what motivated the passive-stiffness experiment described
+next.
+
+\subsubsection{The pitch-balance wall, and how it was broken}
+\label{sec:rl-m3-wall}
+
+Everything through milestone \texttt{m2} (forward translation and height free, attitude railed)
+trained well. Releasing pitch at \texttt{m3} produced the hardest failure of the project: episodes
+plateaued at roughly one second --- the passive fall time --- and stayed there. Two full sessions
+of work went into it, and it is worth recording what was ruled out, because the null results are
+the useful part.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{5.6cm}p{8.4cm}}
+\toprule
+\textbf{What was tried} & \textbf{Outcome} \\
+\midrule
+Reward/curriculum easing (7 variants: no flight demand, efficiency off, low speed cap, more
+authority, height shaping, competence-gated hardening) & All plateaued at the same episode length.
+The reward was not the bottleneck. \\
+\addlinespace
+Decaying external pitch assist (a spring--damper on the base pitch joint, faded to zero) &
+\emph{Crutch dependence.} In-training episode length looked excellent; with the assist forced to
+zero at evaluation the policy was \emph{worse} than the plateau, and drifting backwards. \\
+\addlinespace
+Anti-crutch penalty on the assist torque the policy provokes & No improvement at low weight, worse
+at high weight. \\
+\addlinespace
+Pitch ``slow motion'' via extra armature on the base pitch DOF, faded out & Marginal gains that did
+not survive the fade. \\
+\addlinespace
+Raising the control rate 50--200\,Hz and increasing residual authority
+(0.2--0.4) and filter bandwidth & All plateaued at $\approx$ 1\,s. Since the
+learned residual gives \emph{more} foot-placement authority than any fixed heuristic could, this
+implicated the plant rather than the control law. \\
+\addlinespace
+Emulated actuated ankle (fixed torque reflex) & Strong version destabilised; gentle version
+marginal. \\
+\addlinespace
+Lowering the centre of mass by 6--12\,cm & Slightly \emph{worse}. \\
+\bottomrule
+\end{tabular}
+\caption{The pitch-balance failure: everything that did not work.}
+\label{tab:m3-failures}
+\end{table}
+
+Two methodological lessons came out of this table. First, \textbf{any training aid that holds the
+robot up will be leaned on}, and the in-training curve will look wonderful while the unaided policy
+gets worse; only an evaluation with the aid forced to zero tells the truth. We were misled by this
+three times before adopting the assist-off evaluation as protocol. Second, when every software
+lever saturates at the same value, the constraint is not in the software.
+
+\paragraph{The diagnostic that cracked it.} Rather than try a ninth lever, we instrumented the
+failure: a tool that rolls out a policy and plots, per foot, the fore/aft offset between the toe at
+touchdown and the whole-robot centre of mass. The result was unambiguous. The base pitch ramps
+monotonically forward into a pure topple, and meanwhile the feet land 8--9\,cm
+\emph{behind} the centre of mass --- only 11\,\% of touchdowns landed ahead of it, and
+they fell progressively further behind as the body ran away forward. The policy had a perfectly
+serviceable forward-running gait and had never learned the \emph{capture step}: plant the foot
+ahead of the centre of mass to catch a forward fall. It was, quite literally, running out from
+under itself.
+
+\paragraph{The fix was a plant change.} The candidate lever this pointed to was the passive ankle.
+Stiffening the ankle spring by roughly a factor of twelve (28.65--350\,N$\cdot$m/rad)
+gives the passive foot the stance pitch-restoring authority the plant lacked. The threshold is
+clean: $k \leq 200$ barely helps, $k \geq 350$ breaks out of the plateau and climbs steeply.
+Post-fix, the same diagnostic reports 67\,\% of touchdowns landing ahead of the centre of
+mass and the base pitch pinned near zero.
+
+One implementation detail is essential and cost us a wasted run. The standing ankle sits at
+$\approx \pm 0.25$\,rad while the spring reference is at $\pm 0.7$\,rad, so the
+spring carries $\approx 12.8$\,N$\cdot$m of \emph{preload} at stance. Naively raising the
+stiffness balloons that preload, the foot slams to its spring reference and the robot flips over.
+The reference has to be shifted simultaneously so that $k(q_{\text{stand}} - q_{\text{ref}})$ is
+preserved: only the restoring \emph{gain} rises, the posture is unchanged.
+
+This result also \emph{overturned} our own earlier recommendation. After the emulated-ankle
+experiments we had concluded that the robot needed a policy-controlled actuated ankle --- a motor,
+two more action dimensions, and a full retrain of the milestone ladder. The stiffness experiment
+shows a passive spring is sufficient, which is dramatically cheaper. The open question is now
+mechanical rather than algorithmic: whether the real ankle and foot structure can be built that
+stiff. And, as noted in \cref{sec:speed-ceiling}, the static load analysis independently arrives at
+the same 350\,N$\cdot$m/rad threshold, which is reassuring.
+
+\subsubsection{The cadence problem and a cautionary bug}
+\label{sec:rl-cadence}
+
+With balance solved, the remaining pathology was cadence: the policies stepped far too fast, on the
+order of 11\,Hz, pattering rather than striding. Several external limits were tried ---
+hard velocity caps, acceleration caps, a cadence penalty --- and all of them collapsed the
+warm-started policy instead of slowing it.
+
+Instrumenting the trained policy's own action channels found why. When the control rate was raised
+to 200\,Hz, the learnable gait-frequency range had been widened to
+0.5--50\,Hz on the reasoning that it would then be ``non-binding''. But the map from
+the raw action to frequency is linear over that range, so a \emph{neutral} network output
+($\approx 0$) means 25\,Hz. The policy simply left that output near zero and inherited a
+24\,Hz gait clock --- the commanded thigh trajectory reversing sign 35 times a second at
+$\pm 0.45$\,rad, a signal that would destroy the real actuators. Every external limit had
+been fighting a broken internal default. Remapping the range to 0.5--4.0\,Hz, so that
+a neutral action means $\approx$ 2\,Hz, produced the best controller of the entire project
+(\cref{tab:rl-results}).
+
+The general lesson is worth carrying: \textbf{a parameter range widened to be ``non-binding'' can
+silently become the operating point}, because a network's default output is not a neutral gait ---
+it is whatever the middle of the range happens to decode to.
+
+A residual pathology survives the fix. After the remap, the gait clock slowed to $\approx$
+1\,Hz but the actual \emph{footfall} rate stayed near 6\,Hz: the policy steps
+through the fast residual channel rather than through the clock. A ring-down test showed the passive
+ankle mode sits at 1.0\,Hz, not 6.3\,Hz, so this is a forced oscillation, not a
+resonance --- the policy pumping its legs to balance a top-heavy robot at 200\,Hz. Neither
+a residual-rate penalty, a torque-budget curriculum, reducing the pitch-reflex derivative gain, low-pass
+filtering the reflex input, nor heavy ankle damping removed it, and warm-started runs are all
+trapped in the fast-stepping basin. The honest conclusion is that it needs a from-scratch retrain
+with cadence pressure present from step zero, or a plant change (a lower centre of mass); on
+hardware, the real mechanical damping of the ankle would absorb some of it.
+
+\subsubsection{Results}
+\label{sec:rl-results}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llrrl}
+\toprule
+\textbf{Milestone} & \textbf{Free base DOF} & \textbf{Steps} & \textbf{Survival} & \textbf{Outcome} \\
+\midrule
+\texttt{m2} & $x$, $z$ & 180\,M & 53\,s & runs; the reliable working regime \\
+\texttt{m3} & $+$ pitch & 600\,M & 39\,s & completes the dash and stops, 2.6\,m/s \\
+\texttt{m4} & $+$ $y$ & 600\,M & 38\,s & completes the dash and stops \\
+\texttt{m5} & $+$ roll & 600\,M & 26\,s & high variance --- the weak link \\
+\texttt{m6} & all six & 600\,M & 60\,s & never falls; runs through the line \\
+\midrule
+\texttt{m7} & $+$ pitch (cadence fix) & 163\,M & 37\,s & best controller: 2.71\,m/s, very low variance \\
+\bottomrule
+\end{tabular}
+\caption{Deterministic (greedy) evaluation of the milestone ladder, each stage warm-started from
+the previous. \texttt{m7} is not a new degree of freedom but the \texttt{m3} plant retrained after
+the gait-frequency fix of \cref{sec:rl-cadence}. Survival is capped at 60\,s by the
+episode limit, so \texttt{m6} is at the ceiling.}
+\label{tab:rl-results}
+\end{table}
+
+The headline result is that \textbf{the fully free 6-DOF plant runs and does not fall} --- 60
+seconds of simulated running, at the episode limit, with zero variance across evaluation episodes,
+at 2.6\,m/s. Two caveats belong next to it: \texttt{m6} balances but runs
+\emph{through} the finish line without executing the stop (a task-completion defect, not a balance
+one), and \texttt{m5} still topples on a fraction of episodes and needs more training. Against the
+capability bound of \cref{sec:speed-ceiling}, 2.6\,m/s is about
+70\,\% of the credible-cadence ceiling and already above the thermally sustainable
+figure.
+
+\paragraph{Cost.} Training ran on the EPFL Izar cluster. Throughput is $\approx 2900$
+environment-steps per second on a V100 node, which is $\approx 1.9\times$ the CPU-only rate on the
+same node --- and, worth recording, not because the network is large. Physics is always on the CPU
+(there is no GPU physics backend in this stack); putting the tiny policy network on the GPU simply
+stops PyTorch from stealing cores from the parallel MuJoCo workers. At that rate a 600\,M-step
+milestone is a multi-day job, which is why the warm-start chain across milestones matters as much
+as it does.
+
+\subsubsection{Validation status and known gaps}
+\label{sec:rl-validation}
+
+Stating this plainly matters more than the results above, because the gap between them is the work
+that remains.
+
+\textbf{Sim-to-sim} is exercised continuously by the milestone ladder: each stage is a different
+plant (different constrained dynamics) and every stage loads the previous stage's weights, so a
+policy that only worked by exploiting a particular rail fails visibly at the next rung. The
+ankle-stiffness and centre-of-mass experiments are the same mechanism used deliberately as a
+plant-sensitivity probe.
+
+\textbf{Sim-to-real has not been attempted}, and the sprint policies in
+\cref{tab:rl-results} are not deployable as they stand. They observe two privileged quantities that
+do not exist on the robot: the base linear velocity (which would require a state estimator we have
+not built) and the distance remaining to the finish line. A separate policy lineage was therefore
+started for a drivable demonstrator, which removes both --- velocity has to be inferred from a
+200\,ms strided observation history instead --- and adds per-episode plant
+randomisation (mass, inertia, friction, servo gains, joint damping, ankle spring stiffness, gravity
+tilt, actuation delay), a sensor-noise model including the accelerometer leakage that makes a real
+IMU's ``down'' swing by several degrees during push-off, and the steering channels the mirror-symmetric
+gait lacks. That lineage cannot warm-start from the sprint milestones --- the observation and action
+dimensions both changed --- so it is a separate training cost, currently in progress.
+
+The remaining known gaps, recorded deliberately rather than discovered later: there is no policy
+export path and no inference loop on the Pi, so nothing has run on hardware yet; the actuator model
+gives each motor an independent torque limit and speed limit rather than a coupled torque--speed
+envelope, which makes the simulation optimistic exactly in the high-speed regime the project cares
+about; and the CAD link inertials are still placeholders, which is why the domain-randomisation
+range on inertia is as wide as $\pm 25$\,\% and why the capability analysis of
+\cref{sec:speed-ceiling} should be re-run once measured values land. First hardware bring-up is
+planned with the base fixed and the legs in the air, which validates wiring, direction conventions,
+joint limits and gait shape --- but, with no ground contact, tells us nothing about balance or
+transfer.
+
+% --- remaining notes for this section (not yet written up) ---------------------------------
+% need to rework software to streamline theses experiements.
+% should work for anything between the pendulum and the running robot (and explain how to adapt to new case)
+% we want to be able to test : spring + damper + friction / PID control / torque control /
+%   Position control / pattern generator tuning (number of weight), independently for each joint
+% for each segment we want to be able to arbitrarily restrict DOF (the pendulum base is fully
+%   restricted while for the running robot we can try to restrict or not DOF)
+% training script configurable with number of epoch + plot of the training epoch + csv
+% reward policy definition script where we can easily test things -> defined per experiment
+% visualisation script -> mp4 video of a run + allow to give command (manual steering)
+% how do we configure the network architecture for RL ? with the user input too ?
+% how do we define curriculum learning ? -> per experiment
+% how do I batch experiment and monitor progress ?
+% how do we support both CPU and GPU and optimise parameters for max training speed (n envs, ...)
+% how do we integrate the robot workspace safety approach ? and use that as a kind of sim2sim ?
+% what strategy for the running robot ? might be better to train versatile simple policy than
+%   specific one (teach it to run only instead of run for 100m then stop)
+% -------------------------------------------------------------------------------------------
 
 \subsection{deployment}
 
