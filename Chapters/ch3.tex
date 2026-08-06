@@ -34,19 +34,57 @@ as they where the most power dense cell we could find.
 
 current pack 13S2P, 200 A BMS (limited thermally, peak limited to 250A in software)
 
+One consequence of the drive selection only became visible once the CAN traffic was sniffed (\cref{sec:deploy-can}): the motor controllers publish position, speed, current, temperature and an error flag, but \textbf{no bus voltage}. Pack sag under a sprint is therefore not observable from the drives at all, and would need external sensing on the Pi or the BMS. Until that exists, voltage droop is modelled in simulation as a randomised within-episode torque derating rather than as a measured quantity.
+
 \subsubsection{Compute}
+\label{sec:compute-choice}
 Most of the lab exosquelleton run on beaglebone black
 While theses support CAN natively, and run linux, the SSH connection was VERY slow and thus was rejected. The main selling point was the real time coprossor (understand a beefy MCU that run alongsinde the main CPU for time critcal application) but this require custom code and the performance benefit are still to demosntrate.
 
-A raspberry pi 2 b+ that was laying around was used instead as the author had much more experience with theses. It did require to buy a CAN hat over SPI. another hat with an accelerometer was bought (raspberry pi sense hat) for the ease of integration. 
+A Raspberry Pi that was laying around was used instead as the author had much more experience with theses. It did require to buy a CAN hat over SPI. another hat with an accelerometer was bought (Waveshare Sense HAT (B)) for the ease of integration.
 
 mention here or later the need to check the mapping when stacking the two hats.
 
-Need to documen the test for loop frequency and jitter but main result is that we can have a can loop at 200 Hz but and that the raspberry pi is MUCH more powerful than the bleagle bone. which is very convenient for development (we host a wifi hostpoint so we can connect to the robot, we host a web interface to control the robot to simplify the manipulation)
+The board is a \textbf{Raspberry Pi 3 Model B Rev 1.2} (4$\times$ Cortex-A53, aarch64, kernel 6.12), running a stock non-realtime Linux. CAN is provided by an \texttt{mcp251xfd} controller over SPI, configured as \textbf{two independent 1\,Mbit buses}: \texttt{can0} serves the right leg and \texttt{can1} the left, three motors each (CAN ids 104 abduction, 105 cam, 106 thigh). The arbitration id encodes both node and command as \texttt{id | (command << 8)}.
+
+The Pi also hosts a WiFi access point and a web interface used to drive the robot during bring-up, which removes the need for a tethered console. That web interface is not a convenience only: it is the instrument through which most of the measurements in \cref{sec:plant-id} were taken.
+
+The loop-rate and jitter question this section originally left open is settled by measurement in \cref{sec:plant-id-timing}: the Pi sustains a 200\,Hz closed control loop at half its time budget, and 200\,Hz is the correct deployment rate.
 
 \subsubsection{Sensors}
-sense hat for base IMU, contact sens but never tried.
-literrature suggested that impact timing and direction can improve RL convergence.
+
+The only proprioceptive sensors beyond the motor encoders are the base IMU and the motor current estimates. Contact sensors were considered, since the literature suggests that impact timing and direction improve RL convergence, but were never fitted.
+
+The IMU is an \textbf{ICM-20948} on a Waveshare Sense HAT (B), bolted underneath the base and read over I2C. It is configured at $\pm4$\,g and $\pm1000$\,dps with the internal low-pass at a 50\,Hz bandwidth, sampled at 200\,Hz. Its measured properties are summarised below; the full characterisation, with the provenance of every figure, is in the project repository.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccl}
+\toprule
+& \textbf{Accelerometer} & \textbf{Gyroscope} & \textbf{Source} \\
+\midrule
+Resolution (1 LSB) & 0.1221\,mg & 0.0305\,dps & measured \\
+Noise (RMS at rest) & 1.8\,mg & 0.08\,dps & measured at rest \\
+Noise density & 218\,$\mu$g/$\sqrt{\text{Hz}}$ & 0.0096\,dps/$\sqrt{\text{Hz}}$ & at or better than datasheet \\
+Turn-on bias & absorbed by mount cal. & $[1.03, 0.11, -0.53]$\,dps & measured, repeatable \\
+In-run bias stability & --- & 0.010--0.012\,dps & measured \\
+\bottomrule
+\end{tabular}
+\caption{Measured IMU noise characteristics. Quantisation sits roughly 15$\times$ below the noise floor on both channels, so widening the ranges to survive footfall impacts costs nothing in effective resolution.}
+\label{tab:imu}
+\end{table}
+
+Two properties matter more for control than the noise figures do.
+
+\textbf{Latency.} The path from a physical event to a published value is 10--20\,ms: DLPF group delay (5--10\,ms, datasheet, not verified on this part), output-rate quantisation (0--4.3\,ms), the I2C read (1.7\,ms) and the poll period (0--5\,ms). At a 5\,ms control period that is two to four whole control steps, which is a larger effect than the sensor noise and is modelled as such in simulation.
+
+\textbf{The attitude filter dominates, not the sensor.} A 6-axis Madgwick filter with $\beta = 0.06$\,rad/s runs at the poll rate. Its accelerometer correction is rate-limited to roughly $3.4^\circ$/s regardless of the size of the error, so the published attitude is overwhelmingly gyro-driven and the accelerometer acts as a slow trim. Roll and pitch are gravity-referenced and absolute; yaw is pure gyro integration and drifts, so the gyro zero must be captured on a stationary robot each session. If a policy consumes fused attitude rather than raw rates, the simulation has to model this filter and not merely the sensor.
+
+The magnetometer is deliberately not fused: it sits centimetres from two brushless motors and the battery, and its reading moves when they do.
+
+\paragraph{A methodological trap worth recording.} Noise figures taken while the robot swayed on its test rig measure the sway, and nothing in the resulting number says so. That mistake produced a yaw-axis noise figure roughly $8\times$ too high, and a filter sweep in which a \emph{narrower} low-pass appeared to measure \emph{more} noise. Both results looked like plausible sensor data. The benchmark tool now gates every noise figure on a peak-to-peak motion check, and every published figure carries a provenance label distinguishing measured-at-rest, motion-independent, datasheet-unverified and uncharacterised. The uncharacterised list is published rather than guessed at: temperature dependence of the gyro bias, vibration rectification under footfall impact, accelerometer cross-axis sensitivity, and clipping behaviour at $\pm4$\,g during real impacts.
+
+\paragraph{Getting the rate the sensor was configured for.} The IMU loop initially reached only 190--194\,Hz of a nominal 200. The missing ticks were not the IMU's: the air, pressure, light and ADC channels were being read inline on the same thread, and those drivers spend nearly all their time asleep waiting for a conversion. The humidity sensor alone sleeps 15\,ms, three whole control ticks. Moving the slow chips to a second thread, with a lock serialising only the bus transfers, brought the IMU to 199.5\,Hz and reduced the CAN daemon's late ticks from 11.5\,\% to 9.8\,\% as a side effect. The remaining slips are operating-system scheduling.
 \subsection{Robot modelling}
 Re assembled the robot in autodesk inventor ( for fluency reason) and exported as STEP each limb with the origin centered at the joints.
 
@@ -60,17 +98,204 @@ Made tool to discover plausible innertia matrix from robot and validate against 
 the full URDF procedure with screenshot should be done in appendix
 
 
-The robot base come in at 5764g
-the hip come in at 3271g
-the cam come in at 66g
-the thigh come in at 483g
-the push rod come in at 71g
-the angle spring come in at 249g
-the shin come in at 324g
-the foot come in at 222g
+Every segment was weighed rather than taken from CAD:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+\toprule
+\textbf{Segment} & \textbf{Mass} & \textbf{Count} \\
+\midrule
+Base (torso, electronics, battery) & 5764\,g & 1 \\
+Hip (incl.\ abduction and sagittal motors) & 3271\,g & 2 \\
+Cam & 66\,g & 2 \\
+Thigh & 483\,g & 2 \\
+Push rod & 71\,g & 2 \\
+Ankle spring assembly & 249\,g & 2 \\
+Shin & 324\,g & 2 \\
+Foot & 222\,g & 2 \\
+\midrule
+\textbf{Total} & \textbf{15\,136\,g} & \\
+\bottomrule
+\end{tabular}
+\caption{Weighed segment masses. These supersede the CAD placeholders, which totalled 12\,828\,g.}
+\label{tab:masses}
+\end{table}
+
+The correction is not small and it is not uniform. The robot is \textbf{18\,\% heavier} than the CAD model that every policy up to that point had been trained against, and the error is concentrated in exactly the worst place: the simulation's shin body (shin plus ankle spring assembly, 573\,g weighed) was carrying a 222\,g placeholder, a factor of 2.6. \cref{tab:mass-sensitivity} shows why that matters more than the total: distal leg mass is roughly nine times more costly to top speed than torso mass. The consequences of this correction are discussed in \cref{sec:plant-id}.
 
 \subsection{Simulation}
-mujuco, URDF limitation with loop, GPU vs CPU, ...
+\label{sec:simulation}
+
+Simulation is done in MuJoCo. The choice was forced more by the robot's topology than by preference.
+
+\subsubsection{URDF cannot describe this robot}
+
+The parallel knee closes a kinematic loop: the cam motor drives a pushrod whose distal end ties to the shin below the knee, so hip, cam, pushrod, shin and thigh form a planar 4-bar. URDF is a \emph{tree} format and has no way to express that closure. The exported URDF is therefore not a description of the robot but of a robot with a floating pushrod, and any simulator that consumes it directly will produce plausible and wrong dynamics.
+
+MuJoCo's MJCF closes the loop with an explicit \texttt{<equality><connect>} constraint. Both an open-tree URDF and a closed MJCF are exported and kept; only the MJCF is used for physics. The practical consequence for control is significant and is discussed further in \cref{sec:rl-cpg}: cam and thigh are \emph{not} independent, the loop is assemblable over only a diagonal band of the nominal joint box, and commanding a target outside that band is not merely hard to track but physically impossible.
+
+\subsubsection{Compute backend}
+
+Physics runs on CPU throughout; there is no GPU physics backend in this stack. Training nonetheless runs measurably faster with the policy network on a GPU: 2900 environment-steps per second against 1530 on the same cluster node, a factor of 1.9. The cause is not matrix throughput, since the network is a two-layer MLP whose forward pass costs 117\,$\mu$s even on the robot's Raspberry Pi. It is core contention: PyTorch on CPU steals cores from the parallel MuJoCo workers, and moving the network off the CPU returns those cores to physics.
+
+\subsubsection{How do you know a simulation result is real?}
+\label{sec:sim-hygiene}
+
+The same discipline that the reward function required (see \cref{sec:rl-position}, where the policy exploited every loophole it was offered) turns out to be necessary for the \emph{physics} as well. A simulation bug does not usually announce itself: it produces a clean, converged, entirely plausible learning curve for a robot that does not exist. Four examples, all found while setting up a single ankle study, each of which would have silently produced a wrong answer:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Joint limits are not rigid by default.} MuJoCo's default limit softness let body weight push $3.4^\circ$ past the stop of a supposedly rigid strut. That is a rubber bar, not a rigid one, and it would have quietly given the rigid arm of the study a compliant ankle. Stiffening the constraint reduced the penetration to $0.08^\circ$.
+  \item \textbf{A constraint that ships inactive is inactive.} The rigid arm re-settled its stance with a \emph{free} ankle, because the locking equalities are only switched on at episode reset. It was being initialised in a pose its episodes never visit, 268\,mm lower than intended.
+  \item \textbf{A safety criterion measured in the wrong frame.} The workspace termination measures the toe in the \emph{base} frame, so it cannot distinguish a collapsed ankle from a folded 4-bar. One arm stood outside the threshold from its own reset pose, and every episode was terminated 0.1\,s in. The criterion had to be re-referenced per arm to its own settled stance.
+  \item \textbf{A stale keyframe.} The shipped stance is an equilibrium of one particular ankle law. Arms with a softer ankle start off equilibrium and lurch at every reset.
+\end{itemize}
+
+A fifth class is environmental rather than physical: the local development machine ran MuJoCo 3.7.0 and the cluster 3.3.7, and a weld constraint that held on the newer solver \emph{gave way} on the older one, drifting 0.86\,rad over a 60-step rollout. The ``rigid'' arm was silently compliant on the cluster only. Anything solver-marginal has to be tuned against the older version.
+
+The countermeasures are structural rather than heroic: a smoke-test suite that builds and briefly runs all 123 training presets before any long launch, self-tests inside the analysis tools that check analytic Jacobians against finite differences and loop closure against the model's own keyframe, and assertions that fail loudly when a plant does not match what a preset claims it is.
+
+\subsection{Plant identification: replacing assumptions with measurements}
+\label{sec:plant-id}
+
+Everything described so far, and every training result in \cref{sec:rl}, was obtained against a model whose parameters came from CAD and datasheets. Between 2026-08-04 and 2026-08-06 those parameters were measured on the assembled robot. This section reports what changed.
+
+The summary is \cref{tab:plant-id}. It is the most important table in this chapter, and the reason is not any individual row: \textbf{every correction points the same way.} The real robot is heavier, weaker, slower and softer than the model it was trained against. That is a finding about how simulation-first development fails, not an apology for it.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{2.9cm}p{3.2cm}p{3.6cm}p{4.4cm}}
+\toprule
+\textbf{Quantity} & \textbf{Assumed} & \textbf{Measured} & \textbf{Consequence} \\
+\midrule
+Total mass & 12.83\,kg (CAD) & 15.136\,kg weighed; shin body $2.6\times$ & every policy to date trained on a robot that does not exist \\
+\addlinespace
+Peak joint torque & 170\,N$\cdot$m (datasheet) & 144.5\,N$\cdot$m ($K_t \approx 85\,\%$) & simulation $\approx 18\,\%$ stronger than hardware \\
+\addlinespace
+Drive position loop & $\approx13$\,Hz servo & 0.8\,Hz $+$ 25\,ms delay & 30\,\% of commanded amplitude, $94^\circ$ late, at 2.5\,Hz \\
+\addlinespace
+Ankle spring & $k = 28.65$, 12.8\,N$\cdot$m preload & $k = 41.4$, no preload & 145\,mm of sag; fails statics at 0.5\,BW \\
+\addlinespace
+Control loop & 200\,Hz, ms-scale jitter & 200.0\,Hz, 0.14\,ms sd, 50\,\% of budget & 200\,Hz confirmed; 50\,Hz is measurably worse \\
+\addlinespace
+CAN load & assumed near the limit & 26\,\% of one 1\,Mbit bus & the bus was never the constraint \\
+\addlinespace
+Ground friction & $\mu \approx 1$ & $40^\circ$ slip angle, $\mu = 0.84$ & train deliberately at 0.35--0.60 \\
+\bottomrule
+\end{tabular}
+\caption{Assumed versus measured plant parameters. Every row moved in the pessimistic direction.}
+\label{tab:plant-id}
+\end{table}
+
+\subsubsection{Mass}
+
+The weighed masses of \cref{tab:masses} were baked into the simulation model, replacing the CAD placeholders, with the inertia tensors scaled by the per-body mass ratio and the stance keyframe re-settled under the new load.
+
+The decision worth recording is that this was \emph{not} made an experimental variable. An earlier arrangement kept both a CAD plant and a measured plant as selectable model files, and the effect was that every preset which had not explicitly opted in was still training on the 12.83\,kg robot, which was all of them but two. Splitting the plant in two had made the wrong one the default. There is one robot; it weighs 15.14\,kg; the model file says so.
+
+The accepted cost is that warm-starting any new run from a pre-correction checkpoint is now a cross-plant transfer: those weights and their observation normalisation statistics were fitted to a robot 18\,\% lighter with a shin 2.6 times too light.
+
+\subsubsection{Peak torque is what the gearbox delivers, not what the datasheet quotes}
+
+The actuator force ranges in the model carried the datasheet peak torque, which is the torque at an ideal torque constant. The gearbox does not deliver it.
+
+$K_t$ was measured by clamping a known 1.552\,kg mass to the shin and repeating a quasi-static sweep with and without it. The method matters: fitting the two runs \emph{together} with an indicator column makes the mass term's coefficient exactly $1/K_t$, because a known mass on a known kinematic lever arm involves no link centre of mass anywhere. That breaks a degeneracy which had defeated the identification until then, since $K_t$ and the gravity-model gain are otherwise perfectly confounded and only their product is observable.
+
+The effective joint $K_t$ came out at 82--89\,\% of datasheet, consistent with a gearbox at roughly 85\,\% efficiency. Peak torque scales with $K_t$ at the same peak current, so the model was updated: 170\,$\rightarrow$\,144.5\,N$\cdot$m for the cam and thigh actuators (measured), and 72\,$\rightarrow$\,61.2\,N$\cdot$m for the hip-roll actuator. The second figure is the same efficiency \emph{transferred}, not measured, because no datasheet $K_t$ is published for that part to fit against; it is probably optimistic, since a 39:1 reduction needs more gear stages than an 8:1.
+
+The remaining uncertainty is geometric rather than physical. The mass was clamped by hand, $K_t$ trades against its position at about 1.9\,\%/cm, and the perpendicular standoff of the clamp is known only to 5--10\,cm. Across that box $K_t$ spans 82--98\,\% of datasheet. Settling it needs the mass on the shin centreline at a measured distance, not more analysis of the existing data.
+
+\subsubsection{The drive's position loop is 0.8\,Hz}
+\label{sec:plant-id-drive}
+
+This is the single largest modelling error found, and it was invisible until a swept-sine excitation was run on the assembled robot.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccccc}
+\toprule
+Frequency (Hz) & 0.8 & 1.1 & 1.4 & 2.0 & 2.5 & 2.9 \\
+\midrule
+Gain & 0.71 & 0.60 & 0.53 & 0.38 & 0.30 & 0.28 \\
+Phase (deg) & $-48$ & $-61$ & $-71$ & $-86$ & $-94$ & $-104$ \\
+\bottomrule
+\end{tabular}
+\caption{Measured closed-loop response of the drive's internal position loop, identical on both legs to two decimals. A gain of 0.71 at $-48^\circ$ is a first-order corner, so a single pole fits it: 0.8\,Hz, plus about 25\,ms of transport delay.}
+\label{tab:drive-bode}
+\end{table}
+
+The simulation models these actuators as position servos with $k_p = 200$, $k_v = 5$, which is critically damped at roughly 13\,Hz. The real drive rolls off at 0.8\,Hz. That is a bandwidth mismatch of more than an order of magnitude, against a learnable gait frequency range whose top is 4\,Hz. At 2.5\,Hz the hardware executes 30\,\% of the commanded amplitude, $94^\circ$ late. \textbf{Every policy in \cref{tab:rl-results} assumes authority the hardware cannot deliver.}
+
+Three consequences follow.
+
+First, the un-executed part of a command \emph{is} the tracking error, and it tends to the full commanded amplitude as frequency rises. Any high-frequency content therefore caps the usable excitation amplitude at around $15^\circ$ whatever the workspace allows, which is why an early identification sweep tripped the safety limit six seconds in on the joint with the most room. Excitation amplitude now solves against travel, no-load speed and tracking error together.
+
+Second, \textbf{inertia cannot be excited in position mode at all}. Obtaining real joint accelerations needs either negligible amplitude at high frequency or current-mode excitation. The quasi-static runs are the valuable data and always were.
+
+Third, and most consequential for the project, the fix is architectural rather than a gain change: the board's cascaded position loop is proportional-only and nothing in the runtime can write its gains. The route the measurement points to is current-mode commands with the position PD closed on the Pi at 200\,Hz, and a torque-source actuator with a proper torque--speed envelope in simulation instead of a fictional stiff servo. \cref{sec:rl-torque} discusses why this partially reverses a decision taken at the start of the project.
+
+Adapting an existing policy to the measured drive cannot be done by switching it on. Applying 0.8\,Hz in one step to a converged walking policy collapsed it from an episode length of 1448 and a return of $+511$ to 251 and $-78$, with nothing else changed. It is now ramped in as a curriculum, logarithmically in frequency, because the equivalent filter coefficient is strongly nonlinear in bandwidth and a linear-in-Hz ramp would do almost nothing for most of its length and then fall off a cliff.
+
+\subsubsection{The ankle spring}
+\label{sec:plant-id-ankle}
+
+The fabricated spring is $k = 41.4$\,N$\cdot$m/rad with \textbf{no preload}, against a model that assumed $k = 28.65$ with 12.8\,N$\cdot$m of preload at stance. Its consequences are treated in \cref{sec:rl-ankle-overturned}, because they overturn a conclusion drawn from the reinforcement-learning experiments.
+
+\subsubsection{System identification: including what it could not resolve}
+\label{sec:plant-id-sysid}
+
+Beyond the individual parameters above, a full dynamic-parameter identification was attempted, and its limits are as informative as its results.
+
+\paragraph{Method.} Inverse dynamics through the closed loop was rejected: the 4-bar is near-singular over part of the operating region and the resulting inverse blows up. Identification is instead a per-joint linear regression of measured current against a gravity-torque model, viscous and Coulomb friction, an inertia term and an intercept, with the loop closure differentiated out through a constrained Jacobian.
+
+\paragraph{Four estimator bugs, each of which produced a confident wrong answer.} A missing sign convention on the current column made every $K_t$ come out negative. The joint mapping never mirrored the right leg, which put the reconstructed configuration outside the assemblable band and left a loop residual of 0.78\,m rather than $10^{-8}$; this reproduced identically on three separate recordings, so it was clearly not a bad capture. Pooling rows from joints that a given excitation run did not move, together with a missing intercept, each independently flipped the sign of $K_t$, because the drive's DC current offset landed in the gravity column. And the loop Jacobian was over-regularised: the problem is well conditioned in this pose region, and the damping alone inflated the fitted gravity gain by 20\,\%. With the first two fixed, the two legs agree to 5--6\,\% instead of disagreeing in sign, which is the cross-validation that says the fixes are right.
+
+\paragraph{The rejected result.} With $K_t$ pinned by the known-mass test, the model still under-predicts gravity torque by a factor of 1.3 to 1.75. The obvious explanation is that the CAD centre-of-mass offsets are wrong. That hypothesis was tested and \textbf{rejected}: gravity torque is linear in each body's centre of mass, so it is a single linear solve, and with all 18 parameters free, no regularisation and no plausibility constraint, moving mass explains at most 11--19\,\% of the residual. Ten of the eighteen directions are pure null space, which is where physically absurd fitted offsets come from. The CAD centres of mass therefore stand. Per-body mass, load-dependent stiction and base tilt were tested and rejected on the same grounds. Friction of any origin was ruled out by a decisive test: friction opposes motion and therefore reverses sign with direction of travel, whereas fitting the gravity gain separately on up-strokes and down-strokes puts both on the same side of unity for all six joints. The residual is conservative, and no friction model can produce it.
+
+What is left lies outside the span of every rigid-body inertial parameter, which points at the kinematic model rather than the mass distribution. That has not been resolved.
+
+\paragraph{Why this is worth reporting.} An identification that returns a number is easy to over-trust. This one returns a measured, repeatable, per-joint gravity gain that can be applied as a correction or a randomisation range without being understood, and an explicit statement that the mass distribution is not the explanation. Knowing which parameters the experiment \emph{could not} resolve, and why, is what stops the next person fitting the same null space again.
+
+\subsubsection{Loop timing and CAN}
+\label{sec:plant-id-timing}
+
+The whole control loop was benchmarked on the robot: drain both CAN buses, run the policy forward, write six commands. Measurements were taken with the web interface running, which is the realistic case, since it consumes roughly 70\,\% of a core.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Rate} & \textbf{Mean period} & \textbf{Jitter (sd)} & \textbf{p99} & \textbf{Max} & \textbf{Budget used} \\
+\midrule
+50\,Hz  & 20.148\,ms & 2.151\,ms & 22.41\,ms & 49.29\,ms & 23\,\% \\
+100\,Hz & 10.000\,ms & 0.251\,ms & 10.40\,ms & 12.28\,ms & 37\,\% \\
+\textbf{200\,Hz} & \textbf{5.000\,ms} & \textbf{0.141\,ms} & \textbf{5.21\,ms} & 7.46\,ms & \textbf{50\,\%} \\
+400\,Hz & 2.504\,ms & 0.193\,ms & 3.24\,ms & 5.13\,ms & 73\,\% \\
+\bottomrule
+\end{tabular}
+\caption{Measured closed-loop timing on the robot's Raspberry Pi 3B, with the web interface competing for CPU.}
+\label{tab:loop-timing}
+\end{table}
+
+Three results, all of which contradict assumptions made earlier in the project.
+
+\textbf{The drives broadcast their state at exactly 200.0\,Hz, unprompted.} All six motors on both buses, period 5.00\,ms, p99 5.03\,ms. It is free-running and continues with the control software stopped, so it is not poll-triggered. The sensing ceiling is therefore exactly 200\,Hz and matches the control stack. A 50\,Hz loop would discard three of every four sensor frames.
+
+\textbf{200\,Hz is clean and 50\,Hz is reproducibly worse.} The 50\,Hz row above is not frame loss, since the interface counters show nothing dropped; it is a scheduling artefact of the longer sleep combined with a drain three times more expensive because four times as many frames have accumulated. The case for dropping to 50\,Hz had been compute headroom, and compute is not the constraint: policy inference is 117\,$\mu$s mean and 144\,$\mu$s at the 99th percentile, 2.3\,\% of a 5\,ms budget.
+
+\textbf{The CAN bus was never near its limit.} Six motors at command plus reply is about 26\,\% of one 1\,Mbit bus at 200\,Hz, across two buses.
+
+The conclusion is to deploy at 200\,Hz, and there is no 50\,Hz fallback worth having. Note carefully that none of this helps with the real bottleneck: running the outer loop at 200\,Hz cannot compensate for an actuator that executes a quarter of the command $94^\circ$ late (\cref{sec:plant-id-drive}). What the measurement does establish is that the Pi has ample budget to close the position loop itself, which is the proposed fix.
+
+\subsubsection{The CAN protocol, as measured}
+\label{sec:deploy-can}
+
+The protocol was sniffed on both live buses rather than read from documentation, and the difference mattered. Exactly two frame types exist per motor. Outbound is the command frame. Inbound is a single feedback frame at command byte \texttt{0x29}, at exactly 200\,Hz, using all eight bytes: position, speed, current, temperature and an error flag.
+
+Absent are the VESC-style extended status frames that would report input voltage and duty cycle. The hypothesis that these drives are a VESC derivative with the extra status packets available is measurably false: the command byte is \texttt{0x29} rather than VESC's 9, so the vendor renumbered rather than inheriting. This closes the electrical route to $K_t$, which is why the known-mass test of \cref{sec:plant-id} was necessary, and it means pack sag cannot be observed from the drives.
+
+Worth recording as a process note: nothing in the codebase decoded the command byte, because every consumer masked it off and keyed on the node id. A comment asserting the wrong command number sat in the repository unnoticed for months, in dead code. Assumptions that are never exercised are never falsified.
 
 \subsection{Achievable gait: actuator and mass-distribution limits}
 \label{sec:speed-ceiling}
@@ -101,13 +326,13 @@ Cadence $\leq$ 8 steps/s & 4.4\,m/s & Cam actuator peak power \\
 Unconstrained optimum & 6.9\,m/s & Cam actuator peak power \\
 \bottomrule
 \end{tabular}
-\caption{Maximum running speed predicted from the robot model assuming a 350\,N$\cdot$m/rad ankle stiffness. Only the first regime is thermally sustainable; higher speeds correspond to burst operation.}
+\caption{Maximum running speed predicted from the robot model assuming a 350\,N$\cdot$m/rad ankle stiffness. Only the first regime is thermally sustainable; higher speeds correspond to burst operation. \textbf{Plant epoch: CAD masses (12.83\,kg), datasheet peak torque (170\,N$\cdot$m).} Both are now known to be wrong; see \cref{sec:speed-ceiling-corrected}.}
 \label{tab:speed-ceiling}
 \end{table}
 
 At the practical optimum ($\leq6$ steps/s), the predicted gait has a duty factor of approximately 0.45, a stride length of 1.1--1.3\,m, a contact length of 0.25--0.30\,m, and peak vertical ground reaction forces of approximately 3.5 body weights (440\,N), with ground contact durations between 36 and 81\,ms.
 
-The predicted continuous-speed limit (1.8\,m/s) is lower than the 2.6\,m/s achieved by the RL policy, indicating that the learned controller relies on burst actuator capability. Consequently, motor temperature must be experimentally validated before sustained hardware operation.
+The predicted continuous-speed limit (1.8\,m/s) is already lower than the 2.6\,m/s achieved by the RL policy, indicating that the learned controller relies on burst actuator capability. Consequently, motor temperature must be experimentally validated before sustained hardware operation. On the corrected plant of \cref{sec:speed-ceiling-corrected} the margin disappears entirely.
 
 The unconstrained optimum occurs at 12.4 steps/s, corresponding to the same high-cadence solution repeatedly discovered by reinforcement learning. This agreement confirms that the high-cadence behavior originates from the system dynamics rather than from a simulator artifact.
 
@@ -151,12 +376,29 @@ A static load analysis independently reproduced the ankle stiffness threshold pr
 
 The passive ankle spring ($28.65\,\mathrm{N\,m/rad}$) supports only approximately half body weight before collapsing due to positive mechanical feedback, despite the actuators operating well below their torque limits. Increasing stiffness progressively improves load capacity, with approximately $350\,\mathrm{N\,m/rad}$ required to support two body weights and maintain stable stance.
 
-The agreement between the analytical load model and the reinforcement learning experiments provides independent validation of this stiffness threshold.
+The agreement between the analytical load model and the reinforcement learning experiments provides independent validation of this stiffness threshold. A separate static end-effector force map (\cref{sec:hw-force-map}) reproduces the same conclusion from a third direction.
+
+\subsubsection{The corrected ceiling}
+\label{sec:speed-ceiling-corrected}
+
+The figures above were computed at 12.83\,kg with a 170\,N$\cdot$m peak torque. \cref{sec:plant-id} shows both to be wrong, and wrong in the direction that hurts most:
+
+\begin{itemize}[leftmargin=*]
+  \item Peak torque falls from 170 to 144.5\,N$\cdot$m. Since 87\,\% of feasible gaits are limited at the cam actuator's peak-power corner, this is a direct hit on the binding constraint.
+  \item Distal leg mass rises by roughly 0.70\,kg across both legs (the shin body from 222 to 573\,g), at a sensitivity of $-0.93$\,(m/s)/kg from \cref{tab:mass-sensitivity}.
+\end{itemize}
+
+Propagating both through the sensitivity figures gives approximately \textbf{2.7\,m/s credible burst and 1.3\,m/s thermally sustained}, against 3.7 and 1.8 on the CAD plant. This changes the headline comparison of the whole project. The learned policy's 2.6\,m/s is no longer comfortably inside the envelope; it sits essentially \emph{at} it, and roughly twice the sustained figure. For context, the bipedal 100\,m record is approximately 4\,m/s average, and a 100\,m dash is about 25\,s of continuous running against a continuous torque rating, so it is the \emph{sustained} number that decides whether a record is reachable.
+
+The honest conclusion is that this chassis is a walking and jogging demonstrator with an unusually good measurement pedigree, not a record contender. The design implications for a successor fall directly out of the analysis above: bus voltage first, since speed scales linearly with no-load speed and not at all with peak torque, and distal mass second.
+
+These corrected figures are a propagation of the sensitivity coefficients, not a re-run of the full feasibility sweep. The sweep should be repeated properly on the corrected plant before submission; the tooling to do so now exists in validated form.
 
 \subsubsection{Limitations}
 
-The analysis provides an optimistic upper bound on performance. It neglects torso attitude stabilization, lateral dynamics, impact losses, control bandwidth limitations, and the coupled actuator torque-speed envelope. In addition, CAD inertial properties remain approximate, although the sensitivity analysis indicates that distal link inertia strongly influences the predicted performance. The analysis should therefore be repeated once experimentally identified inertial parameters become available.
-UPDATE HERE ONCE I VALIDATED THE INNERTIA MATRIX OF EVERY SEGMENT !
+The analysis provides an optimistic upper bound on performance. It neglects torso attitude stabilization, lateral dynamics, impact losses, control bandwidth limitations, and the coupled actuator torque-speed envelope. The last of these is no longer a small omission: \cref{sec:plant-id-drive} measures the drive's position loop at 0.8\,Hz, so the assumption that a commanded joint trajectory is actually executed fails well below the cadences this analysis assumes.
+
+Inertia tensors also remain approximate. The segment \emph{masses} are now weighed (\cref{tab:masses}) and the model's tensors were rescaled by the per-body mass ratio, but the tensor \emph{shapes} are still CAD, and the identification of \cref{sec:plant-id-sysid} was unable to resolve the mass distribution any further. Since \cref{tab:mass-sensitivity} shows the result is most sensitive to exactly that quantity, this is the largest remaining uncertainty in the analysis.
 
 \subsection{Toy problem / RL Warmup}
 
@@ -187,18 +429,47 @@ raw torque action space the policy has to synthesise, from scratch and at every 
 the gravity compensation that keeps the robot standing \emph{and} the periodic structure that makes
 it walk; the reward landscape in between is dominated by ways of falling over that tricked the reward into thinking it was doing well.
 
-\textbf{More decisively, it was not deployable.} The CubeMars drives expose a servo mode with an
+\textbf{More decisively, it was judged undeployable.} The CubeMars drives expose a servo mode with an
 internal position/velocity loop running on the drive itself; commanding torque means bypassing that
-loop and streaming current setpoints over CAN from Python on a Raspberry Pi. I managed to push the measured CAN loop
-rate on our hardware to 200\,Hz but with millisecond-scale jitter and occasional missed
-deadlines, which is one to two orders of magnitude short of what torque-level biped control
-normally assumes; Furthermore, the CAN bus bandwitdh would not have been sufficient, to stream data faster. 
-A missed deadline in torque mode means the drive holds the last commanded
-torque blindly, which lead to constant acceleration.
+loop and streaming current setpoints over CAN from Python on a Raspberry Pi. The budget was estimated
+rather than measured, and the estimate was pessimistic on three counts: that the achievable loop rate
+would be low and jittery, that the CAN bus would not carry the traffic needed to go faster, and that
+a missed deadline in torque mode leaves the drive holding the last commanded torque blindly, which on
+a loaded leg integrates into a runaway rather than a pause. Only the third of those is still true.
+On top of it, the output-side torque constant of the actuator was not known, so the Newton-metres
+being commanded would have been approximate in any case.
 
-The two failures point the same way: the policy class that most needs high control bandwidth and an
-accurate actuator model is exactly the one for which we have neither. Torque control was therefore
-dropped.
+The two arguments pointed the same way: the policy class that most needs high control bandwidth and
+an accurate actuator model appeared to be exactly the one for which we had neither. Torque control
+was dropped, and position control adopted in its place.
+
+\paragraph{The measurement campaign partially reverses this decision.} It is worth being explicit
+that this is one of the clearest results of the project, because it is a case of instrumentation
+overturning a design decision that had already been acted on. Every quantitative premise of the
+bandwidth argument was measured a year later (\cref{sec:plant-id-timing}), and both of the first two
+were wrong, in the same direction:
+
+\begin{itemize}[leftmargin=*]
+  \item The Raspberry Pi holds a full 200\,Hz control loop --- drain both CAN buses, run the policy
+  forward, write six commands --- at a jitter of 0.141\,ms standard deviation and \textbf{half its
+  time budget spare}, with the web interface competing for CPU. 400\,Hz also holds. Policy inference
+  is 117\,$\mu$s, 2.3\,\% of a 5\,ms budget. Far from being marginal, 50\,Hz is reproducibly
+  \emph{worse} than 200\,Hz.
+  \item The CAN bus is at 26\,\% of one 1\,Mbit line, and the drives already broadcast their state at
+  exactly 200.0\,Hz whether asked to or not.
+\end{itemize}
+
+So the compute and the bus, the two things assumed to be the constraint, have ample headroom. The
+actual bottleneck turned out to be \emph{inside the servo mode that was kept instead}: the drive's
+own position loop rolls off at 0.8\,Hz (\cref{sec:plant-id-drive}), which is the single largest
+sim-to-real gap in the project.
+
+The current direction is therefore \texttt{SET\_CURRENT} commands with the position PD closed on the
+Pi at 200\,Hz, and a torque-source actuator with a real torque--speed envelope in simulation. That is
+the Cheetah-lineage standard, the drives support it, and the timing measurement shows the Pi has the
+budget to do it. It is not a full return to Attempt 1: the policy would still emit position targets,
+and the PD loop closing them would simply move from the drive to the Pi, where its bandwidth is known
+and its gains are writable. What is reversed is the premise, not the action space.
 
 \subsubsection{Attempt 2: joint position targets (PD)}
 \label{sec:rl-position}
@@ -532,10 +803,43 @@ preserved: only the restoring \emph{gain} rises, the posture is unchanged.
 This result also \emph{overturned} our own earlier recommendation. After the emulated-ankle
 experiments we had concluded that the robot needed a policy-controlled actuated ankle --- a motor,
 two more action dimensions, and a full retrain of the milestone ladder. The stiffness experiment
-shows a passive spring is sufficient, which is dramatically cheaper. The open question is now
-mechanical rather than algorithmic: whether the real ankle and foot structure can be built that
-stiff. And, as noted in \cref{sec:speed-ceiling}, the static load analysis independently arrives at
-the same 350\,N$\cdot$m/rad threshold, which is reassuring.
+shows a passive spring is sufficient, which is dramatically cheaper. And, as noted in
+\cref{sec:speed-ceiling}, the static load analysis independently arrives at the same
+350\,N$\cdot$m/rad threshold.
+
+That left one question open --- whether the real ankle could be built that stiff --- and the answer,
+when it was measured, invalidated the result.
+
+\paragraph{The measured spring, and what it does to this conclusion.}
+\label{sec:rl-ankle-overturned}
+
+The fabricated ankle is $k = 41.4$\,N$\cdot$m/rad with \textbf{no preload}. Neither number matches the
+model: $k = 350$ will not be built, and the 12.8\,N$\cdot$m of stance preload that the simulation
+carried does not exist on the robot.
+
+The second discrepancy turns out to matter more than the first, which is the genuinely useful finding
+here. The preload, not the stiffness, was doing almost all of the work. At the same $k$, the modelled
+spring sags 19\,mm at stance with its preload and \textbf{145\,mm without it}. That reframes the whole
+ankle question: the parameter the study spent its compute sweeping was not the parameter that
+mattered.
+
+Statics disposes of the real spring before any learning is involved. At 0.5 body weights per foot ---
+double support, the easiest possible load case, against a 3.5\,BW running requirement --- the
+no-preload spring deflects $26.6^\circ$, drops the robot 145\,mm, and puts the heel 11.9\,mm into the
+floor at the reset pose. Contact forces are well behaved throughout, so this is genuine load-capacity
+collapse rather than a solver artefact.
+
+\textbf{Everything in \cref{tab:rl-results} was therefore obtained on an ankle that does not exist.}
+The balance result of this section is real as a statement about what the \emph{plant} needed; it is
+not a statement about what this robot does.
+
+The live candidate is now neither the fabricated spring nor a stiffer one: it is a tension-only
+strut, taut at the flat-foot angle and buckling in compression. It stands like a welded ankle
+($0.08^\circ$ of deflection, 0.8\,mm of sag) and, by deleting the spring assembly, removes 249\,g from
+each shin. \cref{tab:mass-sensitivity} independently favours that: at $-0.93$\,(m/s)/kg on distal
+mass, 249\,g per leg is worth roughly $+0.5$\,m/s of top speed, which is the largest single
+improvement available anywhere on the robot. A design decision reached for one reason turns out to be
+supported by an unrelated measurement, which is the closest this project comes to a free result.
 
 \subsubsection{The cadence problem and a cautionary bug}
 \label{sec:rl-cadence}
@@ -592,7 +896,10 @@ hardware, the real mechanical damping of the ankle would absorb some of it.
 \caption{Deterministic (greedy) evaluation of the milestone ladder, each stage warm-started from
 the previous. \texttt{m7} is not a new degree of freedom but the \texttt{m3} plant retrained after
 the gait-frequency fix of \cref{sec:rl-cadence}. Survival is capped at 60\,s by the
-episode limit, so \texttt{m6} is at the ceiling.}
+episode limit, so \texttt{m6} is at the ceiling.
+\textbf{Plant epoch: CAD masses (12.83\,kg), $k = 350$\,N$\cdot$m/rad ankle with preload, datasheet
+peak torque, an idealised $\approx$35\,Hz drive.} None of those four match the measured robot; see
+\cref{sec:rl-what-survives}.}
 \label{tab:rl-results}
 \end{table}
 
@@ -603,7 +910,25 @@ at 2.6\,m/s. Two caveats belong next to it: \texttt{m6} balances but runs
 one), and \texttt{m5} still topples on a fraction of episodes and needs more training. Against the
 capability bound of \cref{sec:speed-ceiling}, 2.6\,m/s is about
 70\,\% of the credible-cadence ceiling and already above the thermally sustainable
-figure.
+figure. On the corrected plant of \cref{sec:speed-ceiling-corrected} it sits at the burst ceiling and
+at twice the sustained one.
+
+\paragraph{An A/B on the generator itself.} Because the Fourier series is one of several ways to
+parameterise a periodic gait, it was compared directly against a phase-amplitude coupled-oscillator
+generator of the kind used in the biologically-inspired locomotion literature, with the foot
+trajectory mapped through a measured inverse-kinematics table. Sixteen runs, one plant, one reward,
+one schedule, only the generator swapped. The verdict is that \textbf{there is no clear winner}: the
+oscillator is more sample-efficient from a cold start on the hardest milestone, the Fourier
+generator is more reliable across random seeds, and the single best controller measured in the whole
+experiment was an oscillator run --- the only arm of the sixteen that ever executed the stop phase,
+at 2.9\,m/s with a left/right asymmetry of 0.08.
+
+One ablation in that experiment is worth reporting because it refutes a hypothesis stated earlier in
+this chapter. Removing the per-step residual channel, leaving a pure oscillator, produced
+\emph{stability without locomotion}: the robot survived most of the episode but travelled 15\,m of 72
+at 0.25\,m/s, with the worst cadence in the entire set. The residual channel was the suspected fast
+open path responsible for the 6\,Hz footfall of \cref{sec:rl-cadence}; removing it made the chatter
+worse, not better, so that explanation is wrong.
 
 \paragraph{Cost.} Training ran on the EPFL Izar cluster. Throughput is $\approx 2900$
 environment-steps per second on a V100 node, which is $\approx 1.9\times$ the CPU-only rate on the
@@ -612,6 +937,39 @@ same node --- and, worth recording, not because the network is large. Physics is
 stops PyTorch from stealing cores from the parallel MuJoCo workers. At that rate a 600\,M-step
 milestone is a multi-day job, which is why the warm-start chain across milestones matters as much
 as it does.
+
+\subsubsection{Which of these results survive the plant correction}
+\label{sec:rl-what-survives}
+
+\cref{sec:plant-id} invalidates the plant that every number in \cref{tab:rl-results} was measured on.
+Rather than delete the table, it is more useful to state precisely which conclusions depend on the
+plant and which do not, because that distinction \emph{is} the sim-to-real argument.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{7.0cm}p{7.0cm}}
+\toprule
+\textbf{Survives a plant change} & \textbf{Does not} \\
+\midrule
+The action-space comparison: torque, per-step position, and periodic generator with residuals, in that order of tractability. & Every absolute speed and survival time in \cref{tab:rl-results}. \\
+\addlinespace
+The reward-exploit register (\cref{sec:rl-position}) and the general lesson that reward curves cannot certify a gait. & The claim that the fully-free plant ``runs and does not fall''. It ran, on a plant with an ankle that will not be built. \\
+\addlinespace
+The base-DOF curriculum, and warm-starting across stages with fixed observation and action widths. & The ankle-stiffness recommendation, which \cref{sec:rl-ankle-overturned} replaces. \\
+\addlinespace
+The gait-frequency bug and its general lesson about non-binding parameter ranges. & The 2.6\,m/s figure as evidence of hardware capability. \\
+\addlinespace
+The capture-step diagnostic and the finding that foot placement lagged the centre of mass. & Any claim of readiness for deployment. \\
+\bottomrule
+\end{tabular}
+\caption{What the plant correction of \cref{sec:plant-id} does and does not invalidate.}
+\label{tab:survives}
+\end{table}
+
+The pattern is that the \emph{methodological} results transfer and the \emph{performance} results do
+not. That is an unsurprising conclusion in hindsight and an expensive one to learn: roughly 3 billion
+environment-steps of training were spent on a robot 18\,\% too light, 18\,\% too strong, with an
+ankle spring an order of magnitude too stiff and an actuator an order of magnitude too fast.
 
 \subsubsection{Validation status and known gaps}
 \label{sec:rl-validation}
@@ -623,30 +981,44 @@ that remains.
 plant (different constrained dynamics) and every stage loads the previous stage's weights, so a
 policy that only worked by exploiting a particular rail fails visibly at the next rung. The
 ankle-stiffness and centre-of-mass experiments are the same mechanism used deliberately as a
-plant-sensitivity probe.
+plant-sensitivity probe, and the drive-bandwidth correction of \cref{sec:plant-id-drive} is the most
+severe instance of it: a converged walker collapsed from an episode length of 1448 to 251 with only
+the ankle and the drive changed.
 
-\textbf{Sim-to-real has not been attempted}, and the sprint policies in
-\cref{tab:rl-results} are not deployable as they stand. They observe two privileged quantities that
-do not exist on the robot: the base linear velocity (which would require a state estimator we have
-not built) and the distance remaining to the finish line. A separate policy lineage was therefore
-started for a drivable demonstrator, which removes both --- velocity has to be inferred from a
-200\,ms strided observation history instead --- and adds per-episode plant
-randomisation (mass, inertia, friction, servo gains, joint damping, ankle spring stiffness, gravity
-tilt, actuation delay), a sensor-noise model including the accelerometer leakage that makes a real
-IMU's ``down'' swing by several degrees during push-off, and the steering channels the mirror-symmetric
-gait lacks. That lineage cannot warm-start from the sprint milestones --- the observation and action
-dimensions both changed --- so it is a separate training cost, currently in progress.
+\textbf{No trained policy has run on the robot.} That is the precise statement, and it is narrower
+than ``nothing has run on hardware''. A great deal has: the hand-authored fixed gait plays on the
+real motors, the web interface drives all six joints under safety limits, the workspace calibration
+and the system-identification excitation runs are all recordings taken from the machine, and every
+measurement in \cref{sec:plant-id} came off it. What has never happened is a learned controller
+closing a loop on the physical robot.
+
+The sprint policies in \cref{tab:rl-results} are not deployable as they stand, independently of the
+plant correction. They observe two privileged quantities that do not exist on the robot: the base
+linear velocity, which would require a state estimator that has not been built, and the distance
+remaining to the finish line. A separate policy lineage was therefore started for a drivable
+demonstrator, which removes both --- velocity has to be inferred from a 200\,ms strided observation
+history instead --- and adds per-episode plant randomisation (mass, inertia, friction, servo gains,
+joint damping, ankle spring stiffness, gravity tilt, actuation delay), a sensor-noise model including
+the accelerometer leakage that makes a real IMU's ``down'' swing by several degrees during push-off,
+and the steering channels the mirror-symmetric gait lacks. That lineage cannot warm-start from the
+sprint milestones, since the observation and action dimensions both changed, so it is a separate
+training cost.
+
+Domain randomisation ranges are now set from measurement rather than from taste where the measurement
+exists. Ground friction is sampled over 0.35--0.60 against a measured $\mu = 0.84$ (a $40^\circ$ slip
+angle), deliberately well below the real value, because the failure mode being guarded against is
+planting a foot that then slides. Joint homing error is sampled at $5^\circ$ against a calibration
+accurate to 1--2$^\circ$, as a safety envelope. Where no measurement exists the range stays wide and
+is flagged as such: link inertia tensors are randomised at $\pm 25\,\%$ precisely because
+\cref{sec:plant-id-sysid} could not resolve the mass distribution.
 
 The remaining known gaps, recorded deliberately rather than discovered later: there is no policy
-export path and no inference loop on the Pi, so nothing has run on hardware yet; the actuator model
-gives each motor an independent torque limit and speed limit rather than a coupled torque--speed
-envelope, which makes the simulation optimistic exactly in the high-speed regime the project cares
-about; and the CAD link inertials are still placeholders, which is why the domain-randomisation
-range on inertia is as wide as $\pm 25$\,\% and why the capability analysis of
-\cref{sec:speed-ceiling} should be re-run once measured values land. First hardware bring-up is
-planned with the base fixed and the legs in the air, which validates wiring, direction conventions,
-joint limits and gait shape --- but, with no ground contact, tells us nothing about balance or
-transfer.
+export path and no inference loop on the Pi; the actuator model gives each motor an independent
+torque limit and speed limit rather than a coupled torque--speed envelope, which makes the simulation
+optimistic exactly in the high-speed regime the project cares about; and the drive-bandwidth
+correction has not yet produced a converged policy. First hardware bring-up is planned with the base
+fixed and the legs in the air, which validates wiring, direction conventions, joint limits and gait
+shape, but with no ground contact tells us nothing about balance or transfer.
 
 % --- remaining notes for this section (not yet written up) ---------------------------------
 % need to rework software to streamline theses experiements.
@@ -667,16 +1039,140 @@ transfer.
 %   specific one (teach it to run only instead of run for 100m then stop)
 % -------------------------------------------------------------------------------------------
 
-\subsection{deployment}
+\subsection{Negative results}
+\label{sec:negative}
 
-\subsubsection{linux and RT}
+Several substantial pieces of work in this project produced no usable artefact, and are recorded here
+deliberately. Each cost real time, each closes a door that would otherwise look open, and in most
+cases the reason for the failure is more informative than a success would have been.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{3.6cm}p{4.4cm}p{6.0cm}}
+\toprule
+\textbf{What was tried} & \textbf{Outcome} & \textbf{Why it is worth knowing} \\
+\midrule
+Direct joint-torque RL (\cref{sec:rl-torque}) & Never converged; abandoned on a bandwidth argument that was later measured wrong & The action space was not the problem. The rejection premise was, and only instrumentation could tell. \\
+\addlinespace
+Per-step position policy for walking (\cref{sec:rl-position}) & Skated, at 32\,M steps, behind a healthy reward curve & Reward curves cannot certify a gait. Instrumented gait probes can. \\
+\addlinespace
+Emulated actuated ankle (fixed torque reflex) & Strong version destabilised the gait; gentle version gave a small non-solving lift & A phase-blind torque fights the gait it stabilises. But the small positive identified the right lever. \\
+\addlinespace
+Decaying external pitch assist, in four variants & Crutch dependence every time; the unaided policy was worse than no assist at all & Any aid that holds the robot up will be leaned on, and the in-training curve will hide it. \\
+\addlinespace
+Lowering the simulated centre of mass by 6--12\,cm & Slightly worse & Rules out the cheapest candidate plant fix. \\
+\addlinespace
+Hard velocity, acceleration and cadence limits & Collapsed the warm-started policy & They were fighting a broken internal default (\cref{sec:rl-cadence}), not the gait. \\
+\addlinespace
+Centre-of-mass identification from the excitation runs (\cref{sec:plant-id-sysid}) & Rejected: explains $\leq$11--19\,\% of the gravity residual, 10 of 18 directions in the null space & The CAD centres of mass stand. Knowing the experiment cannot resolve them prevents fitting the same null space again. \\
+\addlinespace
+Per-body mass, load-dependent stiction, base tilt, passive-pivot friction & All rejected as explanations of the same residual & The residual is conservative and gravity-correlated; no friction model can produce it. \\
+\addlinespace
+Pure oscillator generator without a residual channel & Stability without locomotion: 15\,m of 72, worst cadence in the set & Refutes the residual channel as the cause of the high-frequency footfall. \\
+\bottomrule
+\end{tabular}
+\caption{Approaches that did not work, and what each one rules out.}
+\label{tab:negative}
+\end{table}
+
+\subsection{Deployment}
+
+\subsubsection{Linux and real time}
+
+The robot runs a stock, non-realtime Linux kernel. The BeagleBone's programmable realtime coprocessor
+was the main argument for that platform and was rejected because exploiting it needs custom firmware
+and its benefit was unquantified (\cref{sec:compute-choice}). \cref{tab:loop-timing} shows the
+decision was safe: a plain Python loop on a Raspberry Pi 3B holds 200\,Hz at 0.141\,ms of jitter and
+half the time budget spare, with a web server competing for CPU. The residual late ticks are operating
+system scheduling and amount to a handful per second.
+
+The relevant conclusion is not that realtime scheduling is unnecessary in general, but that for this
+robot the timing budget was never the binding constraint, and the effort a realtime kernel would have
+cost was better spent measuring the actuator.
 
 \subsubsection{CAN}
 
-\subsubsection{motor controller}
+See \cref{sec:deploy-can} for the measured protocol and \cref{sec:plant-id-timing} for the measured
+bus load. In summary: two independent 1\,Mbit buses, one per leg, at 26\,\% utilisation; a single
+8-byte feedback frame per motor at exactly 200\,Hz, free-running; and no bus-voltage telemetry
+anywhere in the protocol.
 
-\subsubsection{hardware validation}
-webUI with simple path, safe limits, ...
+\subsubsection{Motor controller}
+
+The drives are operated in servo position mode, which is what made the position action space of
+\cref{sec:rl-position} map one-to-one onto the hardware. \cref{sec:plant-id-drive} measures the price
+of that convenience: the internal position loop is first-order at 0.8\,Hz with 25\,ms of transport
+delay, and its gains are not writable from the runtime. The proposed replacement is current-mode
+commands with the position loop closed on the Pi.
+
+\subsubsection{Hardware validation and the safety envelope}
+\label{sec:safety}
+
+A browser-based control interface runs on the robot and is the only path through which the hardware
+is commanded by hand. It is treated here as methodology rather than as tooling, because the safety
+envelope it enforces is also an experimental instrument.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Measured joint limits, not CAD limits.} Each joint is backdriven by hand through its
+  full travel with the motors limp and the excursion recorded, giving a per-joint range that reflects
+  the assembled machine including cabling and interference. The 4-bar's assemblable band is a joint
+  \emph{pair} constraint, so the recorded reachable region is a box in the foot's fore-aft and lift
+  coordinates rather than a set of independent joint ranges.
+  \item \textbf{The recorded workspace is reused in simulation.} The same measured box is applied as a
+  termination criterion during training: an episode ends the moment a foot leaves the region the real
+  robot is known to reach. This began as a safety measure and became a sim-to-sim gate, because it
+  makes an entire class of simulator-only exploit impossible rather than merely expensive. It also
+  has to be applied carefully, since the criterion is expressed in the base frame and therefore cannot
+  by itself distinguish a collapsed ankle from a folded linkage (\cref{sec:sim-hygiene}).
+  \item \textbf{Playback is capped by kinematics, not by preference.} After a part failed during a
+  high-cadence trajectory playback, the frequency ceiling was reduced from 5\,Hz to 2.5\,Hz, and the
+  number was derived rather than guessed. Differentiating the stored waveform gives the peak joint
+  speed per unit cadence as a property of the trajectory \emph{shape}: the cam joint demands
+  359\,deg/s per Hz and reaches the actuator's no-load speed at 3.5\,Hz. Past that the command is not
+  merely hard to track, it is kinematically impossible, and the drive simply saturates current
+  chasing a target it cannot reach. At the 5\,Hz previously allowed, the cam was being commanded at
+  143\,\% of no-load speed. The 2.5\,Hz ceiling leaves it at 71\,\%. Raising it again requires a
+  hardware argument, and because the limit depends on the shape, a gentler trajectory can safely go
+  faster.
+  \item \textbf{Trip conditions.} Tracking error, joint range and temperature are monitored
+  continuously and latch the drives to zero current. The tracking-error trip in particular had to be
+  decoupled from the commanded trajectory once \cref{sec:plant-id-drive} showed that a large tracking
+  error at speed is the \emph{expected} behaviour of this drive rather than a fault.
+\end{itemize}
 
 \subsection{Hardware experiments}
+
+\subsubsection{Static end-effector force map}
+\label{sec:hw-force-map}
+
+The cam actuator reaches the knee through the pushrod 4-bar, so the transmission from motor torque to
+toe force is a strong function of posture. Whether the strong direction is the one running needs had
+never been checked.
+
+The constrained toe Jacobian differentiates the loop closure out, so it carries the linkage's
+transmission ratio, and statics against the actuator torque box gives the feasible force set at every
+reachable toe position. Self-tests check loop closure against the stance keyframe, the analytic
+Jacobian against central differences, and a fast analytic ankle column against the full Jacobian.
+
+Three findings, all statics-only and therefore bounding capability rather than predicting behaviour:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{The leg stands at 96\,\% of its reach}, with about 3\,mm of further extension available
+  anywhere near the stance position. Everything else follows from sitting that close to the
+  leg-extension singularity.
+  \item \textbf{Force there is 19:1 anisotropic}: 16.4 body weights straight down, 0.85 body weights
+  horizontally. This is the same near-singular corner the speed-ceiling analysis found from the power
+  side, seen from the force side. It is a property of the fully-extended pose rather than of the whole
+  workspace: over the running stance region the median tilted capacity recovers to 5.95\,BW, because
+  compressed postures rotate their strong axis.
+  \item \textbf{The motors are not the binding constraint; the ankle is, by a factor of eight.} Over
+  the stance region the actuators give a 4.30\,BW median vertical capacity, and 77\,\% of the region
+  clears the 3.5\,BW running requirement. The passive ankle gives a 0.42\,BW median, and
+  \textbf{0.0\,\%} of the region clears it.
+\end{itemize}
+
+The last point is a third independent route to the conclusion of \cref{sec:rl-ankle-overturned} and
+\cref{sec:speed-ceiling}, reached from statics with no learning and no dynamics: the linkage and
+motor sizing are adequate to generous, and the foot spring is the design defect.
 
