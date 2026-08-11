@@ -1,19 +1,54 @@
 \section{Background and State of the Art}
 
-Hype in running robot, recent achievment, ...
-
 \subsection{Dynamic biped locomotion}
-the modelts that exist, why its hard, how to stabilize
+
+Running differs from walking in that the centre of mass follows a spring-like, not vaulting,
+trajectory, with flight phases and ground contacts of tens of milliseconds. The reduced models
+that organise the field — the inverted pendulum for walking, the spring-loaded inverted pendulum
+(SLIP) for running, and capture-point/instantaneous-capture-point analysis for push recovery —
+appear throughout this thesis in load-bearing roles: the capture point underlies both the
+hand-wired pitch reflex (\cref{sec:rl-reflexes}) and the scripted baseline
+(\cref{sec:scripted-baseline}), and the free-topple time of the inverted pendulum turns out to
+\emph{be} the m3 failure signature (\cref{sec:scripted-baseline}). Stabilisation is hard because
+the dynamics are underactuated during flight and contact, the useful control inputs (foot
+placement, CoP modulation) are discrete or saturating, and the timescales are short relative to
+actuator bandwidth — the last of which this project measured the hard way
+(\cref{sec:plant-id-drive}).
 
 \subsection{Control approaches}
-classical vs RL, why RL is interesting
+
+Classical stacks decompose the problem: a gait/footstep planner, a whole-body or centroidal
+controller, and joint-level tracking. They are transparent and analysable but demand accurate
+models and high-bandwidth torque control. Learned controllers collapse the stack into a policy
+trained in simulation, trading analysability for robustness to the messiness of contact — at the
+price of a sim-to-real gap that must be closed with modelling fidelity and domain randomisation.
+This thesis ends up using both: RL for the gait, and classical structure (reflexes, a clocked
+generator, capture-point priors) exactly where feedback must not be blind
+(\cref{sec:rl-reflexes}). The scripted baseline of \cref{sec:scripted-baseline} is the classical
+counterfactual, built on the same plant to answer ``was the learning ever the bottleneck?''
 
 \subsection{RL for locomotion}
-PPO
-action spaces
-reward design
-sim-to-real
-and all other things I tried / read (fourier, torque vs position, ...)
+
+The relevant lineage for this work is the family of \emph{periodically parameterised} action
+spaces: Policies-Modulating-Trajectory-Generators (PMTG)~\cite{pmtg2018}, oscillator-based
+CPG-RL~\cite{cpgrl2022}, and the clock/phase-reward methods of Siekmann et
+al.~\cite{siekmann2021}, which carried Cassie to a 100\,m Guinness record (24.73\,s,
+$\approx$4.1\,m/s average)~\cite{crowley2024cassie}. A literature review conducted mid-project
+(\cref{sec:rl-cpg}) returned one unambiguous constraint that reshaped the architecture here:
+\textbf{no published system achieves running with per-cycle-only gait-parameter updates and no
+intra-cycle feedback channel} — every successful system keeps a per-step path from observation to
+action. The same review supplied the phase-gated contact rewards and efficiency-term designs
+adopted in \cref{sec:rl-cpg}. On the sim-to-real side, the standard toolkit — domain
+randomisation with curricula, observation history in place of privileged state, explicit sensor
+models — is exercised in \cref{sec:sim2real-lineage}, where an ablation shows which of its
+components actually carried the cost.
+% \cite placeholders: pmtg2018 = arXiv:1910.02812; cpgrl2022 = arXiv:2211.00458;
+% siekmann2021 = arXiv:2011.01387; crowley2024cassie = arXiv:2508.03070.
 
 \subsection{Existing robot platforms}
-im not sure I care much about it. done aldready by max anyway...
+
+% TODO(nathann): you noted this is largely covered by Max's work — either cite that survey and
+% write two paragraphs positioning DASH-01 (custom, low-cost, quasi-direct-drive, parallel knee,
+% passive ankle) against Cassie/Digit (high bus voltage, series-elastic), the MIT Cheetah lineage
+% (torque-mode QDD, the architecture §3.8 concludes DASH-01 should adopt), and hobby-class
+% humanoids — or drop the subsection.

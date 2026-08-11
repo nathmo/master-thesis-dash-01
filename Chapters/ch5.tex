@@ -1,21 +1,67 @@
 \section{Discussion}
 
-\subsection{Sucesses}
-What worked?
-pipeline
-modelling
-standing
-gait formulation
+\subsection{Successes}
+
+The pipeline exists end to end and each stage has been validated at least once: CAD to a
+loop-closed MJCF that matches the measured workspace at 100\,\% of poses; a capability analysis
+that independently reproduces both the RL-discovered high-cadence optimum and the
+RL-discovered ankle-stiffness threshold; an action-space design that turned a non-converging
+problem into a reliably trainable one, twice confirmed by an independent generator A/B; a
+curriculum mechanism (base-DOF release with rigid rails and constant observation/action shape)
+that carries warm starts across plants; a measurement campaign that corrected the plant with
+instruments built on the robot itself; and a deployment stack whose flight recorder proved its
+value within an hour of installation. The standing policy on the fully free plant — 60 seconds,
+zero falls, 2.6\,m/s — is a real result on a hard plant, and the drivable lineage's survival of
+the descent to the measured 0.8\,Hz drive is the strongest sim-to-real evidence in the record.
 
 \subsection{Failures}
-What did not work?
-direct torque RL
-fully autonomous running
 
-
+Direct torque control failed twice over (convergence and assumed deployability) and its
+abandonment was itself partially wrong — the measured premises now point back toward
+current-mode control with the PD on the Pi. Fully autonomous untethered running was not reached:
+the sprint policies observe privileged state, the drivable lineage is not yet robust, no policy
+has run on the robot, and the record ambition is dead on this chassis by measurement
+($\approx$1.3\,m/s sustained against a 4\,m/s record pace). The roll milestone remains the RL
+ladder's weak link; the 6\,Hz footfall chatter survives every post-hoc lever and awaits a
+from-scratch retrain with cadence pressure from step zero; and the left leg of the physical
+robot was lost to a calibration failure before any policy reached it — the clearest possible
+demonstration that deployment infrastructure is not overhead.
 
 \subsection{Lessons learned}
-Simulation fidelity matters.
-Action-space design matters.
-Hardware integration dominates development time.
-Progressive validation reduces debugging complexity.
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Optimisers exploit objectives; neural networks are not the culprit.} The reward
+        was gamed by PPO (skating, floor penetration, shuttling, penalty-suicide), and the
+        scripted baseline's coordinate-descent tuner gamed its objective identically. Every
+        objective needs adversarial review before its optimiser gets it.
+  \item \textbf{Every assumed plant parameter measured later moved pessimistically} — mass
+        $+18\%$, torque $-15\%$, drive bandwidth $-16\times$, friction, the ankle. Measure
+        before training, not after; and when a measurement lands, apply it as \emph{the} plant,
+        not as an optional variant (the wrong default will otherwise be trained on).
+  \item \textbf{Simulation results need the same scepticism as rewards}: soft joint limits,
+        constraints inactive at settle, frame-relative safety checks, stale keyframes, a
+        solver-version split, and an actuator-velocity cap that was simply never present (letting
+        a prized policy ``balance'' at 23\,rad/s on a 22\,rad/s motor) each produced a clean,
+        converged, wrong result before being caught by self-tests, smoke gates, or measurement.
+  \item \textbf{Evaluation hygiene is a first-class deliverable}: aid-off evaluation (three
+        deceptions by training curves with a crutch), fixed-task evaluation across curricula,
+        $\geq$20 seeded episodes, paired seeds with survivor counts under bimodality, peak-not-final
+        under one-way curricula, and \texttt{curriculum.json} as ground truth for restore. Four
+        separate evaluation bugs each nearly discarded or crowned the wrong policy.
+  \item \textbf{Curricula: gate the advance, not just the opening; never gate a rescue ramp on
+        the competence it is meant to rescue; and diff configs against the last working run
+        before theorising.}
+  \item \textbf{A parameter range widened ``to be non-binding'' can become the operating point}
+        — the neutral network output decodes to the middle of the range (the 25\,Hz gait-clock
+        bug), and a comment asserting an unexercised assumption stays wrong for months.
+  \item \textbf{Hardware integration dominates, and instrumentation pays for itself}: the
+        measurement instrument found the drive ceiling; the flight recorder found a
+        daemon-killing crash and a dead bus in its first hour; and the measurement-disturbs-
+        the-measured trap was walked into twice (IMU on a swaying rig, loop rate under SSH
+        load) — the second time producing a committed wrong conclusion that only an A/B
+        retracted.
+  \item \textbf{Progressive validation works.} The base-DOF ladder localised failures to single
+        degrees of freedom; the toy problem debugged the deploy chain at one DOF; L0-style
+        telemetry cross-checks and the workspace-as-safety-net made hardware sessions survivable
+        — with the one incident occurring precisely in the gap the guard now closes.
+\end{enumerate}

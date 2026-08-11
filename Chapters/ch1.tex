@@ -1,47 +1,79 @@
 \section{Introduction}
 
-This thesis investigates the practical challenges of applying existing RL methods to a custom high-speed biped robot and provides a reproducible development methodology covering robot modelling, simulation, control integration, and experimental validation.
-
-
 \subsection{Problem statement}
+
+Reinforcement learning has produced striking legged-locomotion results on a small set of
+well-instrumented research platforms. Reproducing those results on a new, custom, imperfectly
+known robot is a different problem, and it is the problem most robot builders actually face: the
+plant parameters are uncertain, the actuators have undocumented internal control loops, the
+sensors are commodity parts, and the compute is a single-board computer. The gap between ``RL
+walks in simulation'' and ``RL walks on this machine'' is dominated not by learning algorithms but
+by modelling fidelity, actuation bandwidth, calibration, and instrumentation.
+
+DASH-01 is a two-legged, six-motor robot with a parallel-linkage knee and a passive ankle,
+designed around the ambition of high running speed. This thesis takes it from a partially
+finished mechanical design to a measured, simulated, learning-trained and hardware-instrumented
+platform, and reports — deliberately including the negative results — what each stage cost and
+what it revealed.
 
 \subsection{Objectives of the Project}
 
+\begin{enumerate}[leftmargin=*]
+  \item Model the robot faithfully enough to train against: kinematics (including the closed
+        4-bar loop), masses, actuators, sensors.
+  \item Establish the robot's physical performance envelope independently of any controller, so
+        learned results can be judged against a ceiling rather than against hope.
+  \item Train locomotion policies with reinforcement learning, iterating on the action-space
+        design until one converges reliably, and quantify what remains between those policies and
+        hardware deployment.
+  \item Build the deployment stack — control loop, calibration, safety, telemetry — on the real
+        robot, and validate as much of the chain as the hardware state allows.
+  \item Record the methodology honestly enough to be reproducible, including the failures.
+\end{enumerate}
+
 \subsection{Methodology Overview}
-What tool / technic, ... did I use / applied
-my strategy to solve the problem
+
+The project is a hybrid start: the mechanical design existed in part, and the work here begins at
+modelling and hardware selection for the non-mechanical subsystems. The development order was:
+CAD re-assembly and export to a simulable model; validation of the model against the physical
+robot (workspace, statics, then full dynamic identification); a first-principles capability
+analysis on the validated model; a toy problem (a single-joint inverted pendulum) to exercise the
+complete train--export--deploy chain at minimum stakes; three generations of RL policy design
+trained on an HPC cluster; and finally the deployment stack on the robot, driven by a measurement
+campaign that fed corrections back into the simulation. \Cref{sec:overall-method} details the
+sequence; the single most consequential methodological finding is that \emph{every} assumed plant
+parameter that was later measured moved in the pessimistic direction
+(\cref{tab:plant-id}).
+
 \subsection{Contributions}
-What I did, recap of my original work.
 
-What I did :
-actuator mapping database with metric for figure of merit
-battery mapping database with metric for figure of merit
-URDF modelling from scratch
-linux, CAN, cubemars setup
-Battery pack design and performance
-RL toy problem -> Spinoff as TP ?
-RL for running robot, incremental approach and test
--> torque control -> no convergence, too slow with RT linux
--> Position control -> converged before update mass and innertia, not converging anymore...
--> gait generator approach, fourrier coefficient, simplified problem with reduced DOF, hypothesis that the abduction alone can stay oin position control and be enough to act as reflex system to keep robot stable. running with the based attach on a threadmill.
--> attempt to train for fully unthethered operation (not done yet)
-
-
-
-
-
-things to develop
-
-map motor power density
-how to URDF from CAD correctly. (manual process)
-
-state of the art running robot mechanical (model (SLIP, oscillator, ) , timming estimation, ...
-state of the art RL and bipedal + sim2real
-sensor choice
-BOM development
-electrical system (and control issue + timming and jitter)
-toy problem to test the system and setup manual for student TP
-real implementation and training
-real deployment and challenge
-
-
+\begin{itemize}[leftmargin=*]
+  \item A complete CAD-to-MJCF modelling pipeline for a closed-loop-linkage biped, including the
+        loop-closure treatment URDF cannot express, and validation tooling (analytic Jacobians
+        checked against finite differences, loop closure checked against the measured backdriven
+        workspace at 100\,\% of 2789 poses).
+  \item A measured plant: weighed segment masses, identified torque constants via a known-mass
+        method that breaks the $K_t$/gravity degeneracy, the drive's internal position-loop Bode
+        (0.8\,Hz + 25\,ms), IMU noise with provenance labels, loop timing, and CAN protocol —
+        together with an explicit statement of what the identification could \emph{not} resolve.
+  \item A first-principles running-speed capability analysis validated against MuJoCo, with a
+        mass-location sensitivity result (distal mass $\sim$9$\times$ costlier than torso mass)
+        that later measurements repeatedly confirmed as the binding design axis.
+  \item A policy architecture — learned Fourier gait generator re-parameterised per step, mirrored
+        across legs, plus hard-wired and learned reflexes and a per-step residual channel — and a
+        base-DOF-release curriculum that trains it, with an A/B against an explicit-oscillator CPG
+        generator on identical plants and rewards.
+  \item A catalogue of failure modes with measured diagnoses: reward exploits (skating, floor
+        penetration, shuttling, suicide-by-penalty), curriculum deadlocks, evaluation-restore
+        bugs, a warm-start seed bug that silently duplicated every seed replicate, and the
+        pitch-balance wall traced to plant statics rather than learning.
+  \item A scripted classical baseline (capture-point + clocked gait, 21 gains, no learning) that
+        outperforms RL on the constrained plant and fails identically on the free plant —
+        evidence that the wall is physical.
+  \item Deployment infrastructure on the robot: a 200\,Hz daemon on stock Linux, a web bring-up
+        instrument through which most of the measurement campaign was performed, and a three-tier
+        flight recorder with a pre-move safety guard, built in response to a hardware failure and
+        validated by reproducing that failure.
+  % TODO(nathann): if you want the actuator/battery figure-of-merit maps listed as contributions,
+  % add them here once the figures exist.
+\end{itemize}

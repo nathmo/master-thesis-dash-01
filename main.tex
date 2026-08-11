@@ -46,6 +46,30 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
+This thesis documents the development of DASH-01, a custom parallel-linkage biped built to
+investigate how fast a small, low-cost legged robot can run, and — more centrally — what it
+actually takes to apply modern reinforcement-learning locomotion methods to a robot that exists,
+rather than to a simulator. The work covers the full chain: mechanical modelling of a
+closed-kinematic-loop leg that URDF cannot express, simulation in MuJoCo with explicit loop
+closure, a measurement campaign that replaced every assumed plant parameter with a measured one,
+three successive action-space designs for the learned controller (direct torque, per-step position
+targets, and a policy-tuned central pattern generator with hard-wired reflexes), a base-DOF-release
+curriculum, and deployment infrastructure on the robot itself — a 200\,Hz control daemon on a
+non-realtime Raspberry Pi, a web-based bring-up instrument, and an always-on flight recorder.
+
+The headline simulation result is a policy that runs at 2.6\,m/s on the fully free plant without
+falling. The headline measurement result is less comfortable: the real robot is 18\,\% heavier,
+$\sim$15\,\% weaker, and its actuator position loop is more than an order of magnitude slower than
+the model every policy was trained against, which moves the robot's credible ceiling to roughly
+2.7\,m/s burst and 1.3\,m/s sustained — a walking-and-jogging demonstrator, not a record platform.
+The thesis argues, with evidence, that this gap is the normal product of simulation-first
+development, and that the countermeasures are methodological: measure early, treat every training
+aid and reward term as an exploit target, evaluate on fixed tasks with paired seeds, and instrument
+the hardware so that failures are reconstructible. A hand-designed classical controller, built
+late in the project as a baseline, beats the learned policy on the constrained plant and fails at
+exactly the same wall on the free plant — demonstrating that the binding constraint is the machine,
+not the learning algorithm.
+
 \newpage
 }
 %%%
