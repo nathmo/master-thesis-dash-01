@@ -42,6 +42,32 @@ numbers and each reversed or reframed by later measurement).
 \subsubsection{Motor}
 \label{sec:hw-motor}
 
+\paragraph{The selection instrument.} Actuator datasheets are not comparable as published, so
+the choice was made against a purpose-built component database and explorer rather than against a
+spreadsheet of vendor headline figures.\footnote{\url{https://github.com/nathmo/actuatorReview}}
+It holds 140 commercial integrated actuators, 121 motors, 121 gearboxes and 9 standalone drivers
+as four joined tables, with every unit decomposed into its motor, gearbox and driver layer so that
+a candidate can be \emph{composed} rather than only looked up. The modelling follows Lee et al.,
+\emph{How to Model Brushless Electric Motors for the Design of Lightweight Robotic Systems}
+(arXiv:2310.00080).
+
+Two ideas from that work do the actual work of making a selection possible.
+
+\textbf{The motor constant is the only portable figure of merit.} $K_m = K_t/\sqrt{R} =
+\tau/\sqrt{P_{\text{copper}}}$ is invariant both to operating current and to rewinding (rewind
+$n$ turns and $K_t \propto n$ while $R \propto n^2$), so unlike $K_t$ or $K_v$ it can be compared
+across vendors, and it sets continuous torque through the thermal limit as $\tau_{\text{cont}} =
+K_m\sqrt{\Delta T/R_{th}}$. Ranking candidates by $K_v$ — the intuitive move, since $K_v$ is what
+sets top speed — compares winding choices rather than motors.
+
+\textbf{Every electrical constant is meaningless without its reference frame.} A $K_t$, $K_v$ or
+$R$ can be quoted phase, line-to-line, q-axis, bus or RMS, in wye or delta, and vendors each pick
+a different one; the same physical motor differs by up to $\sqrt{3/2}$ or a factor of 3 depending
+on the convention. The database therefore stores a raw value plus an explicit frame tag and
+normalises on the fly, leaving under-determined conversions flagged rather than guessed. This is
+not a pedantic point: \cref{sec:hw-motor-critique} shows it lands directly on this project's own
+$K_t$ measurement.
+
 Each leg carries three actuators, all CubeMars quasi-direct-drive units with integrated
 drivers speaking a servo-mode CAN protocol:
 
@@ -55,44 +81,196 @@ drivers speaking a servo-mode CAN protocol:
 Part & CubeMars AK60-39 & CubeMars AKE90-8 & \\
 Reduction & 39:1 & 8:1 & \\
 Peak torque (datasheet) & 72\,N$\cdot$m & 170\,N$\cdot$m & \\
-Continuous torque & --- & 55\,N$\cdot$m & \\
+Continuous torque & 24\,N$\cdot$m & 55\,N$\cdot$m & \\
 No-load speed & 10.3\,rad/s & 22\,rad/s & \\
-Motor $K_t$ & (unpublished) & 0.272\,N$\cdot$m/A & \\
+Motor $K_t$ (line-to-line) & 0.12\,N$\cdot$m/A & 0.272\,N$\cdot$m/A & \\
+Motor $R$ (line-to-line) & 0.60\,$\Omega$ & 0.164\,$\Omega$ & \\
+Motor constant $K_m$ & 0.15\,N$\cdot$m/$\sqrt{\text{W}}$ & 0.674\,N$\cdot$m/$\sqrt{\text{W}}$ & \\
+Motor current, cont./peak & 4.5 / 17\,A & 21 / 72\,A & \\
 Reflected armature & 0.046\,kg$\cdot$m$^2$ & 0.0216\,kg$\cdot$m$^2$ & \\
 Mass & 0.75\,kg & 1.40\,kg & \\
+Unit price & EUR\,393 & EUR\,424 & \\
 \bottomrule
 \end{tabular}
-\caption{The six actuators (two AK60-39, four AKE90-8), datasheet values. \Cref{sec:plant-id}
-measures the effective joint $K_t$ at 82--89\,\% of these figures ($\approx$85\,\% gearbox
-efficiency), so the deployed peak torques are 61.2 and 144.5\,N$\cdot$m respectively.}
+\caption{The six actuators (two AK60-39, four AKE90-8), datasheet values as ingested into the
+actuator database. \Cref{sec:plant-id} measures the effective joint $K_t$ at 82--89\,\% of these
+figures ($\approx$85\,\% gearbox efficiency), so the deployed peak torques are 61.2 and
+144.5\,N$\cdot$m respectively — but see \cref{sec:hw-motor-critique} for why that ratio may be
+partly a reference-frame artefact rather than gearbox loss.}
 \label{tab:motors}
 \end{table}
 
 The no-load speeds follow from the 48\,V bus: the AK60-39 is a KV80 motor, so
-$80\,\mathrm{rpm/V} \times 48\,\mathrm{V} / 39 = 10.3$\,rad/s at the joint; the AKE90-8's
-22\,rad/s implies KV\,$\approx$\,35. The sagittal pair dominates the robot's capability envelope:
-the capability analysis of \cref{sec:speed-ceiling} finds 87\,\% of feasible gaits limited at the
-cam actuator's peak-power corner ($P \approx \tau_0\omega_0/4 \approx 935$\,W), which makes
-\emph{no-load speed}, not peak torque, the axis a successor should buy. The low reduction ratios
-keep reflected inertia low enough that the legs can be backdriven by hand — the property the
-teach-and-replay gait recording of \cref{sec:hw-experiments} depends on — but the integrated
-drivers turned out to carry the project's largest hidden constraint: an internal,
-proportional-only position loop with a 0.8\,Hz bandwidth that no runtime command can retune
-(\cref{sec:plant-id-drive}).
+$80\,\mathrm{rpm/V} \times 48\,\mathrm{V} / 39 = 10.3$\,rad/s at the joint; the AKE90-8 is KV35,
+giving $35 \times 48 / 8 = 210$\,rpm $= 22$\,rad/s. The sagittal pair dominates the robot's
+capability envelope: the capability analysis of \cref{sec:speed-ceiling} finds 87\,\% of feasible
+gaits limited at the cam actuator's peak-power corner, which makes \emph{no-load speed}, not peak
+torque, the axis a successor should buy. The low reduction ratios keep reflected inertia low
+enough that the legs can be backdriven by hand — the property the teach-and-replay gait recording
+of \cref{sec:hw-experiments} depends on.
 
-One deliberate modelling omission is documented rather than papered over: the simulation applies
-independent torque and speed caps but \emph{no coupled torque--speed curve}, because the phase
-resistance $R$ has never been measured on this robot. The bound $R \leq K_t V/\tau_{\text{peak}}$
-(0.72\,$\Omega$ for the AKE90-8, 3.65\,$\Omega$ for the AK60-39) places both motors on the flat
-branch of the curve at every \emph{observed} joint speed, so a constant force range is currently
-correct — but the omission is optimistic exactly in the fast-running regime the project targets,
-and is flagged accordingly in \cref{sec:speed-ceiling}.
+\paragraph{Where the choice sits in the field.} Filtering the database to the cam/thigh
+requirement — a single actuator carrying more than 100\,N$\cdot$m of peak output torque — leaves
+36 commercial candidates from eight vendors. Ranking them on the quantity the capability analysis
+says is binding gives \cref{tab:actuator-field}.
 
-% TODO(nathann): the "actuator mapping database with figure-of-merit metric" you list as a
-% contribution — add the map figure here (torque density vs speed for the candidate motors, with
-% the AK60/AKE90 marked) and one paragraph on the selection rationale. NOTE: a repo-wide sweep
-% (2026-08-11) found no motor/battery database or BOM anywhere in the repo or its git history,
-% so this figure must come from outside the repo or be built fresh.
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Actuator} & $\omega_0$ & $\tau_{\text{pk}}$ & $\tau_{\text{cont}}$ & \textbf{Mass} & \textbf{Price} & $\tau_{\text{pk}}\omega_0/4m$ \\
+ & (rad/s) & (N$\cdot$m) & (N$\cdot$m) & (kg) & (EUR) & (W/kg) \\
+\midrule
+\textbf{CubeMars AKE90-8} (8:1) & \textbf{22.0} & \textbf{170} & \textbf{55} & \textbf{1.40} & \textbf{424} & \textbf{668} \\
+RobStride RS04 (9:1)            & 20.9 & 120 & 40  & 1.42 & 280  & 442 \\
+MyActuator RMD-X12-P20 (20:1)   & 13.1 & 320 & 85  & 2.37 & 1003 & 442 \\
+MyActuator RMD-X15-P20 (72\,V)  & 11.3 & 450 & 145 & 3.50 & ---  & 364 \\
+MyActuator RMD-X8-P20 (19.6:1)  & 16.5 & 120 & 43  & 1.40 & 593  & 354 \\
+MAB MA-p-100-30 (30:1)          & 10.1 & 150 & 50  & 1.10 & 898  & 343 \\
+CubeMars AK80-64 (64:1)         &  7.9 & 120 & 48  & 0.85 & 780  & 278 \\
+ZeroErr eRob110i (strain 50:1)  &  6.3 & 127 & 51  & 2.57 & 1270 &  77 \\
+\bottomrule
+\end{tabular}
+\caption{The $\geq$100\,N$\cdot$m class, sorted by mass-specific peak mechanical power. The
+AKE90-8 is not a compromise: across all 130 commercial actuators in the database with complete
+speed/torque/mass rows it ranks \textbf{4th} on this metric and \textbf{1st} among everything
+above 100\,N$\cdot$m, while also holding the highest no-load speed in its class and the lowest
+mass. At EUR\,0.45 per watt of peak power it ties the cheapest entry (RobStride) and undercuts
+the strain-wave options by a factor of 14.}
+\label{tab:actuator-field}
+\end{table}
+
+The pattern in the table is the design lesson, not the winner. Peak mechanical power per kilogram
+saturates around 450--670\,W/kg regardless of vendor or price; what varies is \emph{where on the
+torque--speed line} a product places that power, and the reduction ratio is the knob. Strain-wave
+and high-ratio planetary units buy torque density and positioning accuracy at a catastrophic cost
+in speed — the eRob110i has a comparable peak torque to the AKE90-8, costs three times as much,
+weighs 1.8 times as much, and delivers one twelfth the mass-specific power, because 50:1 puts its
+no-load speed at 6.3\,rad/s. For an industrial arm that is the right trade. For a running leg it
+is fatal, and it is the trade that most of the actuator market is built around.
+
+\paragraph{The choice was correct, and correct for the stated reason.} This matters because it
+would have been easy to buy the same part for the wrong reason. A selection made on
+\emph{torque} density would have chosen the MyActuator RMD-X15 (129\,Nm/kg peak against the
+AKE90-8's 121) and lost 49\,\% of joint speed; one made on \emph{rated} torque density would have
+chosen from the database's own headline ranking — MAB MA-p-100-30 at 45.5\,Nm/kg continuous, or
+the MyActuator EPS-RH-25-100 at 44.6 — and lost 54\,\% and 86\,\% of joint speed respectively.
+That ranking is a trap for this application, and it is the first thing the tool shows you. The one metric that selects
+the AKE90-8 is the product $\tau\omega$, and \cref{sec:speed-ceiling} independently confirms
+$\tau\omega$ is what binds.
+
+\paragraph{The coupled torque--speed curve, now that $R$ is known.} An earlier draft of this
+section recorded that the simulation applies independent torque and speed caps but \emph{no
+coupled torque--speed curve}, on the grounds that the phase resistance was unavailable. That was
+wrong: the resistance is published, and the database ingested it — $R_{ll} = 0.164\,\Omega$ for
+the AKE90-8 and $0.60\,\Omega$ for the AK60-39, in the same line-to-line frame as the quoted
+$K_t$, which is the pairing that makes $K_m = K_t/\sqrt{R}$ exact without knowing the winding.
+CubeMars' own published $K_m$ of 0.674 reproduces $K_t/\sqrt{R_{ll}}$ to five digits, which
+cross-validates both numbers.
+
+With $R$ in hand the envelope can be stated rather than bounded. Back-EMF plus $IR$ exhausts the
+48\,V bus at $K_b\omega_m = 48 - (72 \times 0.164) = 36.2$\,V, i.e.\ a corner at
+$36.2/0.272 = 133$\,rad/s at the motor, \textbf{16.6\,rad/s at the joint}. Below that corner the
+actuator is current-limited and the torque cap is flat; above it torque falls linearly to zero at
+22\,rad/s. Every operating point the capability analysis actually visits (the worst case is
+64\,N$\cdot$m at 13.7\,rad/s) lies on the flat branch with roughly a factor of two in torque to
+spare, so the constant force range in simulation is not merely defensible — it is correct, and
+the omission previously flagged as ``optimistic in the fast-running regime'' is smaller than
+feared. What remains genuinely unmodelled is the fall-off between 16.6 and 22\,rad/s, which is
+now a five-line addition to the model rather than an unmeasurable unknown.
+
+\subsubsection{What the actuator selection got wrong}
+\label{sec:hw-motor-critique}
+
+Three criticisms survive the vindication above, in increasing order of consequence.
+
+\textbf{The abduction actuator was chosen on the wrong axis, harmlessly.} The AK60-39 ranks 10th
+of 18 in its own class (45--130\,N$\cdot$m, under 1.1\,kg) on mass-specific power, at 246\,W/kg
+against 472 for the CubeMars AK10-9. It was bought for torque density — 96\,Nm/kg peak, which is
+genuinely near the top of that class — and abduction is not a propulsive axis, so the low speed
+costs nothing measurable. The real cost is elsewhere and was not anticipated: 39:1 gives it
+0.046\,kg$\cdot$m$^2$ of reflected armature inertia, more than double the sagittal pair's, and a
+published 1.4\,N$\cdot$m of back-drive torque. The teach-and-replay workflow of
+\cref{sec:hw-experiments} depends on backdriving the legs by hand, and the abduction axis is the
+one that resists. A 16:1 part (the AKH70-16, 78\,N$\cdot$m, 0.88\,kg, EUR\,525) would have kept
+the torque and cut the ratio-squared inertia amplification by $(39/16)^2 \approx 6$ for EUR\,132
+more per side. This is a small, real, and cheap-to-fix error.
+
+\textbf{The measured 85\,\% ``gearbox efficiency'' may not be gearbox efficiency.} The database's
+central methodological warning applies with force to this project's own measurement. The
+datasheet $K_t$ is tagged line-to-line; the drive reports a current over CAN whose reference
+frame is documented nowhere and was never established. If the drive reports q-axis current, the
+correct comparator is $K_t^q = \sqrt{3/2}\,K_t^{ll} = 0.333$, and the measured effective constant
+is not 85\,\% of datasheet but 69\,\% — a number no planetary gearbox explains. If it reports bus
+current the discrepancy moves the other way. A single-stage 8:1 planetary should run at 94--97\,\%,
+so 85\,\% was always slightly suspicious and was accepted because it sat comfortably inside a
+plausible range. The two hypotheses are not separable from the data already recorded, and the
+experiment that separates them is trivial: command a known current into a stalled motor and
+measure the DC bus current with a clamp meter. Until that is done, the peak torques of
+\cref{tab:motors} carry an unquantified frame risk on top of the geometric uncertainty already
+acknowledged in \cref{sec:plant-id}. \textbf{The correction, if it is one, is pessimistic.}
+
+\textbf{The driver was the mistake, and it was a separable purchase.} The single largest
+sim-to-real gap in this project is the drive's 0.8\,Hz proportional-only position loop with
+unwritable gains (\cref{sec:plant-id-drive}). It is worth being precise about whose fault that is.
+The database records the AKE90-8 as a bare quasi-direct-drive module — no encoder, no driver
+board, sold separately — which means the drive electronics were an independent decision, not an
+inseparable consequence of choosing the best motor in the field. Its driver table lists at least
+two alternatives that were available at the time and would have removed the problem entirely: the
+mjbots moteus-n1 (100\,A peak, 10--54\,V, 14.6\,g, EUR\,137, open-source firmware, integrated
+absolute encoder) and the MAB MD80 v3.0 (80\,A peak, 48\,V or 60\,V variants, 15\,g, EUR\,220,
+FDCAN at 8\,Mbit, with position, velocity, impedance and torque modes and writable gains). Either
+would have cost \emph{less} than the bundled CubeMars electronics, exposed a torque mode with a
+known loop, and — in the 60\,V MD80 case — raised the bus to 60\,V for a 25\,\% gain on the
+no-load speed that \cref{sec:speed-ceiling} identifies as the binding axis.
+
+The counter-argument is real and should not be waved away. A bare module plus a third-party driver
+requires mounting and calibrating an encoder, commissioning firmware, and tuning a commutation
+loop per joint — six times — before a single line of control code runs, on a one-person thesis
+with a fixed end date. The integrated option was plug-and-play with a documented CAN protocol and
+bought perhaps three weeks of schedule. That is a defensible trade against a nine-month project.
+
+What is \emph{not} defensible is that the trade was made without asking the question. No vendor
+publishes a servo-loop bandwidth, so it could not have been looked up — but it could have been
+measured on a single unit in an afternoon with the swept-sine rig that eventually did measure it a
+year later, and the cost of being wrong was not three weeks, it was every policy trained in the
+project. The database captures peak torque, rated torque, speed, mass, price, IP rating and
+communications, and \textbf{it has no column for control-loop bandwidth or gain writability},
+because at the time of building it nobody knew to ask. That omission is the most useful thing this
+project learned about buying actuators, and it is recorded here as the schema's first missing
+field rather than as a datasheet the vendor should have written.
+
+\paragraph{A flagged inconsistency for the corrected sweep.} The capability analysis of
+\cref{sec:speed-ceiling} caps the cam actuator at $P \approx \tau_0\omega_0/4 \approx 935$\,W.
+That expression is the maximum of a linear torque--speed line running from stall torque to no-load
+speed, which is the envelope of a voltage-limited brushed motor. It is not the envelope of a
+current-limited FOC drive, which is flat at $\tau_{\text{pk}}$ up to the 16.6\,rad/s corner
+derived above and therefore peaks near $170 \times 16.6 \approx 2.8$\,kW; CubeMars' own
+peak-power curve for the part is annotated 1500\,W. The burst figures of
+\cref{tab:speed-ceiling} may therefore be \emph{pessimistic} by a factor between 1.6 and 3 —
+the only correction in this entire chapter that would move in the optimistic direction. Two
+cautions keep this from being good news. The thermally sustained figure is set by the
+55\,N$\cdot$m continuous rating and does not move at all, and it is the sustained figure that
+decides whether a record is reachable (\cref{sec:speed-ceiling-corrected}); and the 0.8\,Hz drive
+bandwidth caps achievable cadence far below any of these power limits. The discrepancy is
+recorded here rather than resolved because resolving it means re-running the sweep with a proper
+envelope, which is listed among the outstanding items in \cref{sec:speed-ceiling-corrected}.
+
+\paragraph{Cost, delivery and assembly.} For completeness, the non-performance constraints that
+bounded the search. \emph{Cost}: six actuators at EUR\,424/EUR\,393 is EUR\,2482, roughly
+half the hardware budget; the strain-wave alternatives in \cref{tab:actuator-field} would have
+been EUR\,7000--12000 for strictly worse running performance, so price and performance pointed
+the same way for once. \emph{Delivery}: CubeMars ships to Switzerland in two to three weeks
+against quote-only lead times of two to three months for Maxon's HEJ series, and a slipped
+actuator delivery is a slipped project — the database records list price and stock channel for
+exactly this reason. \emph{Assembly}: the integrated units bolt to a face and expose a four-wire
+CAN and power harness, against a bare module needing an encoder mount, a driver enclosure and
+thermal path per joint; with 12 joints' worth of harness already in the base this was a real
+consideration and it pulled the same way as the schedule argument above. \emph{Effort}: the
+database itself cost about a week to build and populate across eight vendors, which is only
+justifiable because it is reusable — it is published as a standalone tool, and its verdict on
+this robot's actuators is reproducible by anyone who disagrees with it.
 
 \subsubsection{Battery pack}
 \label{sec:hw-battery}
@@ -102,27 +280,191 @@ short, violent current peaks — a sprint robot's duty cycle, not a marathon rob
 needs under ten seconds for 100\,m; this robot would be delighted with thirty.) The pack is
 therefore optimised for \emph{power} density rather than energy density.
 
-Cell chemistry was reviewed on that criterion. LTO and high-rate LiPo chemistries are nominally
-more power-dense, but no reputable supplier could be found that ships bare cells of either —
-commercial LTO cells surfaced only on AliExpress and were judged not worth the provenance risk,
-and packaged LiPo modules could not be sourced at 48\,V. The practical supplier space (Nkon, the
-supplier used in past lab projects) reduced the choice to high-rate 21700 NMC cells, of which the
-\textbf{EVE INR21700-50PL} (5.0\,Ah, 125\,A rated discharge) was the most power-dense available;
-cost was a secondary criterion pointing the same way.
+\paragraph{The selection instrument.} As with the actuators, the choice was made against a
+purpose-built database and explorer rather than a shortlist.\footnote{\url{https://github.com/nathmo/batteryReview}}
+It holds roughly 430 distinct cell models, 54 BMS modules and 110 commercial packs, each row
+carrying a source URL, and it synthesises packs from \texttt{cell $+$ BMS $+$ (nS, mP)} so that
+``what I could build'' plots on the same axes as ``what I can buy''. Two conventions in it matter
+for what follows.
 
-The pack is \textbf{13S2P} (48.1\,V nominal, 10\,Ah, $\approx$480\,Wh), giving a cell-limited
-250\,A. The BMS is rated 200\,A continuous — thermally limited — with the peak capped at 250\,A in
-software. % TODO(nathann): confirm BMS make/model if you want it named.
+\textbf{Current is a curve, not a number.} The direct analogue of the actuator database's
+rated/peak/momentary torque tiers. Every current rating carries a duration stamp and falls into
+one of three tiers: \emph{continuous} (thermal steady state), \emph{pulse at $t$} (thermal
+transient, interpolated as $I(t) = \sqrt{I_{\text{cont}}^2 + (I_{\text{pulse}}^2 -
+I_{\text{cont}}^2)\,t_{\text{pulse}}/t}$), and \emph{fault} (the protection trip, which is a
+disconnection event and never usable power). A rating quoted without its duration cannot be
+placed in any tier and is not a specification.
 
-One consequence of the \emph{drive} selection only became visible once the CAN traffic was
-sniffed (\cref{sec:deploy-can}): the motor controllers publish position, speed, current,
-temperature and an error flag, but \textbf{no bus voltage}. Pack sag under a sprint is therefore
-not observable from the drives at all, and would need external sensing on the Pi or the BMS.
-Until that exists, voltage droop is modelled in simulation as a randomised within-episode torque
-derating (\cref{sec:sim2real-lineage}) rather than as a measured quantity.
+\textbf{Estimated values are marked as such.} Roughly half the cell rows carry at least one field
+inferred rather than read off a datasheet, written \texttt{ESTIMATED<n>} so it still parses and
+can be filtered out. Every figure quoted below comes from a datasheet-sourced row.
 
-% TODO(nathann): the battery figure-of-merit map (commercial offerings vs theoretical chemistry
-% limits) you sketched — insert here if you build it.
+\paragraph{What the database says about the pack that was built.} The pack is \textbf{13S2P} of
+\textbf{EVE INR21700-50PL} (48.1\,V nominal, 10\,Ah, 468\,Wh, 1.87\,kg of cells), with a BMS rated
+200\,A continuous and a software peak cap at 250\,A.
+% TODO(nathann): confirm BMS make/model if you want it named.
+The database corrects the specification this was sized against, and the correction is not
+cosmetic. The 50PL is a 5.0\,Ah cell at \textbf{50\,A continuous} and \textbf{180\,A for 2\,s};
+the 125\,A figure this project sized the pack on is a marketed peak with \emph{no published
+duration}, which is precisely the class of number the tier convention exists to reject. The pack's
+real ratings are therefore:
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrl}
+\toprule
+\textbf{Tier} & \textbf{Cell-limited} & \textbf{Bus power} & \textbf{Binding element} \\
+\midrule
+Continuous       & 100\,A & 4.8\,kW  & the cells (not the 200\,A BMS) \\
+Pulse, 10\,s     & 184\,A & 8.9\,kW  & the cells, then the BMS \\
+Pulse, 2\,s      & 360\,A & 17.3\,kW & the 250\,A software cap \\
+\bottomrule
+\end{tabular}
+\caption{The 13S2P pack by current tier, from the database's pulse model. The single figure of
+``250\,A cell-limited'' previously quoted conflates the 2-second tier with the continuous one:
+the pack sustains 100\,A indefinitely, not 250\,A.}
+\label{tab:pack-tiers}
+\end{table}
+
+Two consequences follow. First, the BMS is \emph{not} the binding element at continuous, as was
+assumed — the cells are, at half the BMS's rating, so the pack is over-specified on the BMS and
+under-specified on the cells. Second, the 250\,A software cap is a 2-second-tier number enforced
+with no duration logic: a policy drawing 250\,A for thirty seconds runs the cells at 25\,C against
+a 10\,C continuous rating, and nothing in the stack notices. That is a real safety gap and the fix
+is cheap — an $I^2t$ accumulator in the control daemon rather than a scalar clamp.
+
+Whether 4.8\,kW continuous suffices is the question the sizing should have asked. Six actuators at
+the capability analysis's worst observed operating point draw a few kilowatts electrical, so the
+pack is adequate — but with a margin near 1.2--1.6$\times$, not the 3$\times$ the 250\,A figure
+implied.
+
+\paragraph{Chemistry: right answer, wrong reasons.} The original rationale was that LTO and
+high-rate LiPo are nominally more power-dense but neither could be sourced as bare cells from a
+reputable supplier — LTO surfacing only on AliExpress, LiPo unavailable packaged at 48\,V — which
+left high-rate 21700 NMC as the practical space. Having actually swept the supplier landscape,
+both halves of that reasoning turn out to be wrong, and they fail in opposite directions.
+
+\textbf{LTO: rejected for a bad reason, and the rejection was correct anyway.} EU-warehouse LTO
+specialists do exist and were found (SeLian Energy and BatteryFinds both stock Yinlong cells in
+Germany and Poland with published prices, and ELERIX and GWL sell into the EU from Czechia), so
+the provenance objection does not hold. What kills LTO is the number nobody checked: it is
+\emph{not} more power-dense on the axis that matters. The best LTO cell in the database is the
+Toshiba 20\,Ah SCiB at 932\,W/kg and 93\,Wh/kg; the chosen NMC cell delivers 2500\,W/kg and
+250\,Wh/kg. LTO's reputation for power comes from its C-rate, and C-rate is a ratio — its 2.3\,V
+cell voltage and heavy steel construction throw the advantage away in absolute terms. A 48\,V LTO
+pack needs 21S at 2.3\,V, and at 1.24\,kg per Yinlong cell that is a \textbf{26\,kg} battery on a
+15\,kg robot. The 21S floor is what makes this inescapable: the lightest LTO cell in the database
+is a 1.5\,Ah 18650 at 45\,g, and 21S of those carries only 76\,Wh, so reaching 480\,Wh at 48\,V
+still costs 6.6\,kg. No LTO configuration in the database clears the requirement in under 6\,kg.
+The chemistry was excluded on sourcing when it should have been excluded on mass, and
+that matters because the sourcing argument would have collapsed under thirty seconds of scrutiny
+while the mass argument is unanswerable.
+
+\textbf{LiPo: rejected for a bad reason, and this one changes the answer.} High-rate LiPo is
+sourceable as bare 1S cells, from \textbf{Swaytronic in Niederlenz} — a Swiss domestic supplier,
+no import, no customs, no VAT handling, two-day delivery, which makes it the \emph{easiest}
+supplier in the entire survey rather than the hardest. Its 1S cells are rated 25\,C continuous and
+50\,C burst, and because they are 1S the ``no packaged 48\,V module'' objection dissolves: series
+count is a free parameter. \Cref{tab:pack-alt} puts the two builds side by side.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+ & \textbf{13S2P EVE 50PL} & \textbf{13S1P Swaytronic 10\,Ah} \\
+ & \textbf{(built)} & \textbf{(available, not chosen)} \\
+\midrule
+Energy                    & 468\,Wh  & 481\,Wh \\
+Cell mass                 & 1.87\,kg & 2.54\,kg \\
+Continuous current        & 100\,A (4.8\,kW)  & 250\,A (12.0\,kW) \\
+Pulse, 10\,s              & 184\,A (8.9\,kW)  & 500\,A (24.1\,kW) \\
+Cell cost                 & EUR\,96  & EUR\,559 \\
+Cells to assemble         & 26 & 13 \\
+\bottomrule
+\end{tabular}
+\caption{The built pack against the high-rate LiPo pack the survey shows was available from a
+Swiss domestic supplier. At the sprint timescale the project explicitly designs for, the
+alternative delivers 2.7$\times$ the current for 0.67\,kg and EUR\,463.}
+\label{tab:pack-alt}
+\end{table}
+
+The comparison is unflattering on the criterion the section itself declares. The stated design
+target is a sprint — ``Usain Bolt needs under ten seconds for 100\,m'' — so the ten-second tier is
+the one that should have driven the choice, and on that tier the LiPo pack delivers 2.7 times the
+current. The mass penalty is 0.67\,kg carried in the \emph{torso}, where
+\cref{tab:mass-sensitivity} prices it at $-0.11$\,(m/s)/kg, or about $-0.07$\,m/s — against an
+actuator budget of EUR\,2482 the EUR\,463 is real but not decisive. On the project's own stated
+optimisation criterion, this was the wrong pick.
+
+Three honest counterweights, none of which was actually the reason at the time:
+\emph{cycle life} — high-rate LiPo runs a few hundred cycles against 500--1000 for a 21700, and
+this robot is a lab platform that will see thousands of trials; \emph{assembly} — 26 cylindrical
+cells spot-weld into a rigid, self-supporting brick that carries load in the base, whereas 13
+pouch cells need a compression fixture, a case, and tabs joined without cooking them, which is
+more work and a worse failure mode; and \emph{lab safety} — high-rate LiPo attracts storage and
+charging restrictions that a cylindrical NMC pack behind a certified BMS does not, and a battery
+one cannot leave charging overnight in the lab has a schedule cost that no datasheet shows. Taken
+together these are a genuine defence of the built pack. They are not the defence that was
+recorded, and the difference between ``we chose NMC because LiPo was unsourceable'' and ``we chose
+NMC because pouch cells are a fire-safety and assembly liability we did not want on a shared
+bench'' is the difference between an error and a trade-off.
+
+\paragraph{Build versus buy.} Building was necessary, and the database is what establishes it
+rather than assumption. Of 110 commercial packs surveyed, the 48\,V space is almost entirely
+stationary storage — 16S LFP rack and wall units from 5 to 32\,kWh weighing 29 to 370\,kg, useless
+here — and e-bike packs. The closest commercial match to the requirement is a Swaytronic 48\,V
+13S3P 10.35\,Ah at 497\,Wh, 2.2\,kg and EUR\,485, which is essentially the pack this project
+built, at twice the cost and with no assembly labour. It fails on exactly one axis: as an e-bike
+pack it is rated in the 40\,A class, roughly 2.5$\times$ short of the requirement. \textbf{Nothing
+in the commercial 48\,V market is built for a sprint duty cycle}, which is the finding that
+justifies building a pack at all, and it took a 110-row survey to state it rather than assume it.
+
+\paragraph{Cost, delivery and assembly.} \emph{Cost}: EUR\,96 of cells plus roughly EUR\,90--165
+for a 13S 200\,A smart BMS (JBD and JKBMS both list suitable units) plus nickel strip and holders
+— call it EUR\,250 against EUR\,485 for the nearest commercial pack, which is a saving but not the
+reason. \emph{Delivery}: the surveyed supplier space is stratified by border, not by price — a
+Swiss supplier ships in two days, EU sellers in under a week with Swiss import VAT at the border,
+China-direct via EU warehouses in one to three days but with loose cells frequently barred from
+air freight, and US shops, which have the best transparency and MOQ of anyone, cannot legally air
+freight loose lithium to Europe at all and were excluded on that basis alone. \emph{MOQ}: single
+cells are available for 18650/21700 NMC, whereas LTO ships in six-cell matched sets and large-format
+LFP in four-packs — the minimum order quantity, not the price, is what actually gates a prototyper
+out of a chemistry. \emph{Assembly}: 26 spot welds of nickel strip is an afternoon with a lab
+welder and yields a structural element; this is the constraint that most quietly favoured
+cylindrical cells and it was never written down as a criterion.
+
+\paragraph{Voltage sag is probably the largest unmeasured quantity on the robot.} One consequence
+of the \emph{drive} selection only became visible once the CAN traffic was sniffed
+(\cref{sec:deploy-can}): the motor controllers publish position, speed, current, temperature and
+an error flag, but \textbf{no bus voltage}. Pack sag under a sprint is therefore not observable
+from the drives at all, and would need external sensing on the Pi or the BMS. Until that exists,
+voltage droop is modelled in simulation as a randomised within-episode torque derating
+(\cref{sec:sim2real-lineage}) rather than as a measured quantity.
+
+The database's internal-resistance model shows this is not a second-order effect, and connects it
+to the actuator argument above. A pack's sag ceiling is $(V_{\text{nom}} - V_{\text{cutoff}})/R$,
+and a 13S2P arrangement multiplies cell resistance by $13/2 = 6.5$. The 50PL row is one of those
+that carries \emph{no} datasheet internal resistance — a gap in the data, flagged rather than
+filled — but a high-drain 21700 sits around 12--15\,m$\Omega$, which puts the pack near
+80--100\,m$\Omega$. At the 100\,A continuous tier that is 8--10\,V of sag; at the 184\,A
+ten-second tier it is 15--18\,V, taking a nominally 48\,V bus down toward 30\,V.
+
+If that estimate is even approximately right it is the most important unmeasured number on the
+robot, because \cref{sec:speed-ceiling} establishes that no-load speed is the binding axis and
+no-load speed is \emph{linear in bus voltage}. A 30\,\% sag is a 30\,\% loss of joint speed
+arriving exactly when the policy is asking for speed, on a robot that cannot see it happen. It
+also sharpens the LiPo comparison of \cref{tab:pack-alt} in the same direction: a 13S1P pack has
+$13\times$ cell resistance against $6.5\times$, but from cells whose resistance is roughly an
+order of magnitude lower, so its sag would be a fraction of this.
+
+The figures in this paragraph are an inference from a typical cell resistance, not a measurement,
+and they are presented as such. The point is not the number — it is that the cheapest remaining
+experiment in the project (a voltmeter across the pack during a sprint, or one datasheet lookup
+for the 50PL's DCIR) addresses a plant parameter with more leverage on top speed than most of what
+\cref{sec:plant-id} did measure. That it went unmeasured is the same failure mode this chapter
+documents everywhere else: the quantity nobody instrumented is the quantity that moved.
 
 \subsubsection{Compute}
 \label{sec:compute-choice}

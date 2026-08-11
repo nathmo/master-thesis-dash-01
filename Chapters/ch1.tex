@@ -74,6 +74,13 @@ parameter that was later measured moved in the pessimistic direction
         instrument through which most of the measurement campaign was performed, and a three-tier
         flight recorder with a pre-move safety guard, built in response to a hardware failure and
         validated by reproducing that failure.
-  % TODO(nathann): if you want the actuator/battery figure-of-merit maps listed as contributions,
-  % add them here once the figures exist.
+  \item Two published, reusable component databases with figure-of-merit tooling: an actuator
+        explorer (140 commercial actuators, 121 motors, 121 gearboxes, 9 drivers across eight
+        vendors) built on the winding-invariant motor constant $K_m = K_t/\sqrt{R}$ with explicit
+        electrical reference frames, and a cell/pack explorer ($\approx$430 cells, 54 BMS, 110
+        packs) built on duration-stamped current tiers and a pack synthesiser. Both were used to
+        audit this robot's own hardware choices after the fact (\cref{sec:hw-motor-critique}),
+        which vindicated the actuator selection as the Pareto-optimal choice in its class, and
+        found the battery selection to have been made against a peak current rating quoted without
+        a duration.
 \end{itemize}
