@@ -1774,6 +1774,75 @@ driving 1.6\,m/s against a 0.3\,m/s command to farm the distance term on the pit
 \textbf{Reward exploitation is a property of optimisation against an objective, not of neural
 networks.}
 
+\paragraph{Why the learned controller did not win, and what that says about stability margin.}
+\label{sec:margin-analysis}
+\Cref{sec:bg-margin} states the theoretical expectation: the scripted controller lies inside the
+policy class, so with an exact plant and unbounded training the learned optimum can only match or
+exceed it. The measurement disagrees at both milestones, and --- this is the part worth reporting
+--- \emph{for different reasons at each}. Collapsing the two into a single ``RL underperformed''
+loses the whole finding.
+
+\emph{At m2, a margin existed and the learning did not find it.} The scripted controller survives
+60\,s on 5 of 5 seeds against the learned reference's 20.3\,$\pm$\,21.6\,s, so this is not a plant
+limit; the plant is stabilisable and one of the two controllers stabilises it. Three mechanisms
+account for the gap, and each is a statement about the optimisation rather than about the policy
+class:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{The feedforward inverse is representable but not discoverable.} The scripted
+        controller inverts the drive pole explicitly, $q_{\text{cmd}} = q + \tau\dot q$. Nothing
+        prevents a network from expressing that map --- it is linear in quantities the observation
+        history contains --- but expressing it and \emph{finding} it are different problems. The
+        gradient signal for phase lead is indirect: a policy is rewarded for surviving, not for
+        leading the plant by 199\,ms, and the credit for a correctly anticipated command arrives
+        several control steps after the action that earned it. Universality of the policy class
+        does not confer the credit assignment needed to exploit it.
+  \item \textbf{Margin is not in the objective, and the variance is the evidence.} The return is
+        survival time and distance; the distance from the state to the failure boundary is priced
+        nowhere. An optimiser given that objective has no reason not to park close to the boundary
+        and collect the reward, and the signature of a policy that has done so is bimodality
+        rather than degradation --- it works or it falls. That is exactly the measured shape:
+        20.3\,$\pm$\,21.6\,s is a standard deviation larger than its own mean, against 5 of 5 at
+        the episode cap. \textbf{The seed variance is the margin measurement.} A controller with
+        margin does not produce a bimodal seed distribution, and a learning curve reporting the
+        mean will not show this.
+  \item \textbf{``Unbounded training'' is doing real work in the theoretical claim.} A milestone
+        here is 600\,M environment-steps and a multi-day cluster job
+        (\cref{sec:rl-results}); the project as a whole spent roughly 3\,billion. That is a large
+        budget and it is not the asymptotic one the argument assumes.
+\end{itemize}
+
+\emph{At m3, no margin existed for either controller.} Survival equals the analytic free-fall time
+of an \emph{uncontrolled} inverted pendulum to within 3--9\,\% across a 5$\times$ change in the
+plant's time constant (\cref{tab:freefall}), from a formula with no controller term in it. The
+mechanisms above are the reason: with zero centre-of-pressure authority and foot placement outrun
+2:1, the set of stabilising action sequences from the initial condition is essentially empty, and
+every controller drawn from an empty feasible set performs identically. Reinforcement learning
+optimises over the space of \emph{controllers}; it has no purchase on the space of \emph{physics}.
+The theoretical margin advantage is not wrong at m3 --- it is vacuous, because the quantity it
+promises to enlarge is already zero.
+
+Two further observations tie this to the rest of the chapter. First, the mechanism one would
+normally use to convert the theoretical advantage into a real one --- randomising what is not known,
+so that the policy is optimal over a set of plants rather than one --- was measured on this robot to
+\emph{cost} more than it bought: domain randomisation was the thing breaking the drivable policy
+(\cref{sec:sim2real-lineage}), and the measured plant applied all at once killed a working policy
+that survived the same correction applied as a curriculum. The robustness bought by randomisation is
+paid for out of performance margin, and on a plant whose margin is already near zero there is
+nothing to pay with. On a machine with margin to spare the trade is invisible; here it is the
+dominant term. Second, margin is a frequency-domain quantity, and neither method can synthesise
+phase the actuator does not have: a 199\,ms drive pole against a 311\,ms divergence constant bounds
+what \emph{any} controller can achieve, learned or hand-built, which is why the drive loop appears
+in \cref{sec:speed-ceiling-corrected} and \cref{sec:future} as a mechanical priority rather than a
+tuning one.
+
+The claim this supports is narrower and more useful than either ``RL beats classical'' or the
+reverse: \textbf{the stability-margin advantage of learning scales with how much margin the plant
+has to give.} On a plant with margin, learning must still be paid --- in reward design that prices
+the boundary, and in the training budget to reach the asymptote --- before it collects. On a plant
+without margin, the comparison measures the machine, and the correct response is to change the
+machine.
+
 \subsubsection{Postscript: the rebuilt robot, and a cap that was never there}
 \label{sec:rebuilt-robot}
 

@@ -34,6 +34,29 @@ demonstration that deployment infrastructure is not overhead.
         was gamed by PPO (skating, floor penetration, shuttling, penalty-suicide), and the
         scripted baseline's coordinate-descent tuner gamed its objective identically. Every
         objective needs adversarial review before its optimiser gets it.
+  \item \textbf{The stability-margin advantage of learning is conditional, and the conditions are
+        measurable.} The theoretical case for RL on an unstable plant is that the hand-designed
+        controller lies inside the policy class, so the learned optimum can only match or exceed it
+        (\cref{sec:bg-margin}). Three premises carry that argument, and this project paid none of
+        them in full: an exact-enough plant (every parameter moved, \cref{tab:plant-id}), a reward
+        that prices distance from the failure boundary (ours priced survival and distance, so the
+        optimiser parked on the boundary), and the training budget to reach the asymptote (600\,M
+        steps per milestone is large, not asymptotic). Hence the m2 result, where a margin existed
+        and the learning did not find it. The generalisable diagnostic is that
+        \textbf{seed variance is the margin measurement}: 20.3\,$\pm$\,21.6\,s against 5-of-5 at
+        the episode cap is not a worse mean, it is bimodality, and a learning curve plotting the
+        mean will not show it. And at m3 the comparison is vacuous rather than adverse — with an
+        empty feasible set, every controller drawn from it performs identically, and RL optimises
+        over controllers, not over physics (\cref{sec:margin-analysis}).
+  \item \textbf{The useful question about a gait prior is which kind, not how much.} A shape prior
+        fixes the trajectory and exposes its timing; tuning it does not enlarge the reachable set,
+        so it is safe only when the morphology has a natural template to copy. A structural prior
+        constrains the class and leaves the member free, and its reachable set grows with the
+        parameterisation. DASH-01 --- whose cam turned out to be a full crank with no biological
+        analogue --- is the case that separates them, and the cadence agreement between the learned
+        optimum and the independent physics sweep is the evidence the wider space was genuinely
+        used (\cref{sec:bg-prior}). The prior never vanished: it moved into the action space, and
+        stayed hand-wired at the one channel where feedback must not be blind.
   \item \textbf{Every assumed plant parameter measured later moved pessimistically} — mass
         $+18\%$, torque $-15\%$, drive bandwidth $-16\times$, friction, the ankle. Measure
         before training, not after; and when a measurement lands, apply it as \emph{the} plant,
