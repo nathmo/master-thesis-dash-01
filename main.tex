@@ -47,14 +47,11 @@
 \addcontentsline{toc}{section}{Abstract}
 
 This thesis documents the development of DASH-01, a custom parallel-linkage biped built to
-investigate how fast a small, low-cost legged robot can run, and — more centrally — what it
-actually takes to apply modern reinforcement-learning locomotion methods to a robot that exists,
-rather than to a simulator. The work covers the full chain: mechanical modelling of a
-closed-kinematic-loop leg that URDF cannot express, simulation in MuJoCo with explicit loop
-closure, a measurement campaign that replaced every assumed plant parameter with a measured one,
-three successive action-space designs for the learned controller (direct torque, per-step position
-targets, and a policy-tuned central pattern generator with hard-wired reflexes), a base-DOF-release
-curriculum, and deployment infrastructure on the robot itself — a 200\,Hz control daemon on a
+investigate how fast a small, low-cost legged robot can run, and, more centrally, what it
+actually takes to transfer reinforcement-learning locomotion methods to a physical robot. The work covers the full chain: mechanical modelling of a
+closed-kinematic-loop leg, simulation in MuJoCo, a measurement campaign that replaced every assumed plant parameter with a measured one,
+three successive action-space designs for the learned controller (direct torque, per-step position targets, and a policy-tuned central pattern generator), a base-DOF-release
+curriculum, and deployment infrastructure on the robot itself. a 200\,Hz control daemon on a
 non-realtime Raspberry Pi, a web-based bring-up instrument, and an always-on flight recorder.
 
 The headline simulation result is a policy that runs at 2.6\,m/s on the fully free plant without
