@@ -2,50 +2,51 @@
 
 \subsection{Hardware}
 
-The delivered hardware platform: a 15.14\,kg biped as weighed — 14.72\,kg after the
-carbon-ankle rebuild (\cref{sec:rebuilt-robot}) — with six quasi-direct-drive
-actuators (\cref{tab:motors}), a 13S2P / 480\,Wh / 250\,A pack (\cref{sec:hw-battery}), a
-Raspberry Pi 3B closing a 200\,Hz control loop at 3\,\% late ticks on stock Linux with half its
-budget spare (\cref{tab:loop-timing,tab:deploy-ab}), dual 1\,Mbit CAN at 26\,\% utilisation, an
-IMU characterised to provenance-labelled noise figures (\cref{tab:imu}), and a measured plant
-model whose every correction is tabulated in \cref{tab:plant-id}. The capability analysis on the
-corrected plant places the machine at $\approx$2.7\,m/s credible burst and $\approx$1.3\,m/s
+The delivered hardware platform is a biped weighed at 15.14\,kg, or 14.72\,kg after the carbon-ankle
+rebuild (\cref{sec:rebuilt-robot}). It carries six quasi-direct-drive actuators
+(\cref{tab:motors}) and a 13S2P pack of 480\,Wh rated to 250\,A peak (\cref{sec:hw-battery}). A
+Raspberry Pi 3B closes a 200\,Hz control loop on stock Linux, at 3\,\% late ticks with half its
+budget spare (\cref{tab:loop-timing,tab:deploy-ab}). Two 1\,Mbit CAN buses run at 26\,\%
+utilisation. The IMU is characterised to provenance-labelled noise figures (\cref{tab:imu}), and
+\cref{tab:plant-id} tabulates every correction in the measured plant model. The capability analysis
+on the corrected plant places the robot at about 2.7\,m/s credible burst and about 1.3\,m/s
 thermally sustained (\cref{sec:speed-ceiling-corrected}). The deployment stack — calibration,
-safety guards, flight recorder — runs on the robot under systemd and has survived (and
-diagnosed) its first real incident (\cref{sec:deploy}).
+safety guards and flight recorder — runs on the robot under systemd, and it has survived and
+diagnosed its first real incident (\cref{sec:deploy}).
 
 \subsection{RL experiments}
 
-\Cref{tab:rl-results} remains the headline: the milestone ladder culminating in a 6-DOF-free
-plant that runs 60\,s without falling at 2.6\,m/s, and the cadence-fixed m7 at 2.71\,m/s —
-$\approx$70\,\% of the (pre-correction) credible ceiling. Around it, the consolidated findings:
+\Cref{tab:rl-results} remains the headline. The milestone ladder culminates in a 6-DOF-free plant
+that runs 60\,s without falling at 2.6\,m/s, and in the cadence-fixed m7 at 2.71\,m/s. The latter
+is about 70\,\% of the credible ceiling as it stood before the plant correction. The consolidated
+findings sit around that result.
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Action space}: direct torque never converged and was undeployable as assumed
-        (\cref{sec:rl-torque}; premises later partially overturned by measurement); per-step
-        position targets converged to standing but skated (\cref{sec:rl-position}); the
-        per-step-reparameterised Fourier CPG with reflexes and residuals is the design that
+  \item \textbf{Action space.} Direct torque never converged, and it was judged undeployable on
+        premises that measurement later partly overturned (\cref{sec:rl-torque}). Per-step
+        position targets converged to standing but skated (\cref{sec:rl-position}). The Fourier
+        CPG, re-parameterised every step and wrapped in reflexes and residuals, is the design that
         works (\cref{sec:rl-cpg}).
-  \item \textbf{Generator A/B}: oscillator-CPG vs Fourier is a measured tie with complementary
-        strengths; the oscillator produced the single best controller (the only one that
-        executes the sprint's stop phase) but walls at the roll DOF where Fourier passes
-        (\cref{sec:cpg-ab}).
-  \item \textbf{The pitch wall is the plant's}: identical $\sim$1\,s failures for RL and for a
-        21-gain classical controller, equal to the analytic free-topple time across a 5$\times$
-        gravity sweep (\cref{sec:scripted-baseline}); broken in simulation only by a
-        12$\times$ ankle stiffening (\cref{sec:rl-pitch-wall}); and it survives the hardware
-        drive retune to 3\,Hz (\cref{sec:rebuilt-robot}) — structural, not bandwidth.
-  \item \textbf{On the rebuilt plant} (carbon ankle, 3\,Hz drive, velocity caps), the scripted
-        controller demonstrates the first full command-following mission — stand, walk forward,
-        walk backward, stand again — 35\,s, 3/3 seeds, drive delivery 0.98
-        (\cref{sec:rebuilt-robot}).
-  \item \textbf{On the measured plant}, the sim-to-real lineage completes the descent to the
-        real 0.8\,Hz drive with a 3$\times$ score gain over its parent, and its diagnosis
-        history (steering asymmetry, DR ablation, command-range fit) is itself a result
-        (\cref{sec:sim2real-lineage}).
-  \item \textbf{The ankle question closed as a build decision}: statics eliminate the as-built
-        soft spring, learning selects the compression-capable strut, and buckling arithmetic
-        rejects the fabricated part in favour of carbon (\cref{sec:ankle-build}).
+  \item \textbf{Generator A/B.} The oscillator CPG and the Fourier series tie by measurement, with
+        complementary strengths. The oscillator produced the single best controller, and the only
+        one that executes the sprint's stop phase. It walls at the roll degree of freedom, where
+        the Fourier generator passes (\cref{sec:cpg-ab}).
+  \item \textbf{The pitch wall belongs to the plant.} RL and a 21-gain classical controller fail
+        identically at about 1\,s, which equals the analytic free-topple time across a 5$\times$
+        gravity sweep (\cref{sec:scripted-baseline}). Only a 12$\times$ ankle stiffening breaks it
+        in simulation (\cref{sec:rl-pitch-wall}). It survives the hardware drive retune to 3\,Hz
+        (\cref{sec:rebuilt-robot}), which makes it structural rather than bandwidth-limited.
+  \item \textbf{On the rebuilt plant}, with the carbon ankle, the 3\,Hz drive and velocity caps,
+        the scripted controller demonstrates the first full command-following mission: stand, walk
+        forward, walk backward, stand again. It runs 35\,s on 3 of 3 seeds, at a drive delivery of
+        0.98 (\cref{sec:rebuilt-robot}).
+  \item \textbf{On the measured plant}, the sim-to-real lineage completes the descent to the real
+        0.8\,Hz drive, with a 3$\times$ score gain over its parent. Its diagnosis history is
+        itself a result, covering the steering asymmetry, the domain-randomisation ablation and
+        the command-range fit (\cref{sec:sim2real-lineage}).
+  \item \textbf{The ankle question closed as a build decision.} Statics eliminate the as-built
+        soft spring. Learning selects the compression-capable strut. Buckling arithmetic rejects
+        the fabricated part in favour of carbon (\cref{sec:ankle-build}).
 \end{itemize}
 
 % TODO(nathann): drop in the milestone strip figure (training/milestones/ladder.png + the

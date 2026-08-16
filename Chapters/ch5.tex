@@ -2,89 +2,93 @@
 
 \subsection{Successes}
 
-The pipeline exists end to end and each stage has been validated at least once: CAD to a
-loop-closed MJCF that matches the measured workspace at 100\,\% of poses; a capability analysis
-that independently reproduces both the RL-discovered high-cadence optimum and the
-RL-discovered ankle-stiffness threshold; an action-space design that turned a non-converging
-problem into a reliably trainable one, twice confirmed by an independent generator A/B; a
-curriculum mechanism (base-DOF release with rigid rails and constant observation/action shape)
-that carries warm starts across plants; a measurement campaign that corrected the plant with
-instruments built on the robot itself; and a deployment stack whose flight recorder proved its
-value within an hour of installation. The standing policy on the fully free plant — 60 seconds,
-zero falls, 2.6\,m/s — is a real result on a hard plant, and the drivable lineage's survival of
-the descent to the measured 0.8\,Hz drive is the strongest sim-to-real evidence in the record.
+The pipeline exists end to end, and every stage has been validated at least once. CAD exports to a
+loop-closed MJCF that matches the measured workspace at 100\,\% of poses. A capability analysis
+independently reproduces both the high-cadence optimum and the ankle-stiffness threshold that RL
+discovered. An action-space design turned a non-converging problem into a reliably trainable one,
+and an independent generator A/B confirmed that twice. A curriculum mechanism — base-DOF release,
+with rigid rails and a constant observation and action shape — carries warm starts across plants. A
+measurement campaign corrected the plant, using instruments built on the robot itself. And a
+deployment stack proved the value of its flight recorder within an hour of installation. The
+standing policy on the fully free plant — 60 seconds, zero falls, 2.6\,m/s — is a real result on a
+hard plant. The drivable lineage's survival of the descent to the measured 0.8\,Hz drive is the
+strongest sim-to-real evidence in the record.
 
 \subsection{Failures}
 
-Direct torque control failed twice over (convergence and assumed deployability) and its
-abandonment was itself partially wrong — the measured premises now point back toward
-current-mode control with the PD on the Pi. Fully autonomous untethered running was not reached:
-the sprint policies observe privileged state, the drivable lineage is not yet robust, no policy
-has run on the robot, and the record ambition is dead on this chassis by measurement
-($\approx$1.3\,m/s sustained against a 4\,m/s record pace). The roll milestone remains the RL
-ladder's weak link; the 6\,Hz footfall chatter survives every post-hoc lever and awaits a
-from-scratch retrain with cadence pressure from step zero; and the left leg of the physical
-robot was lost to a calibration failure before any policy reached it — the clearest possible
+Direct torque control failed twice over, on convergence and on assumed deployability. Abandoning it
+was itself partly wrong, because the measured premises now point back toward current-mode control
+with the PD closed on the Pi. Fully autonomous untethered running was not reached. The sprint
+policies observe privileged state, the drivable lineage is not yet robust, and no policy has run on
+the robot. The record ambition is dead on this chassis by measurement, at about 1.3\,m/s sustained
+against a 4\,m/s record pace. Three further failures stand out. The roll milestone remains the RL
+ladder's weak link. The 6\,Hz footfall chatter survives every post-hoc lever, and awaits a
+from-scratch retrain with cadence pressure applied from step zero. And the physical robot's left
+leg was lost to a calibration failure before any policy reached it, which is the clearest possible
 demonstration that deployment infrastructure is not overhead.
 
 \subsection{Lessons learned}
 
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Optimisers exploit objectives; neural networks are not the culprit.} The reward
-        was gamed by PPO (skating, floor penetration, shuttling, penalty-suicide), and the
-        scripted baseline's coordinate-descent tuner gamed its objective identically. Every
-        objective needs adversarial review before its optimiser gets it.
+  \item \textbf{Optimisers exploit objectives, and neural networks are not the culprit.} PPO gamed
+        the reward by skating, penetrating the floor, shuttling and committing suicide by penalty.
+        The scripted baseline's coordinate-descent tuner gamed its own objective identically.
+        Every objective needs adversarial review before its optimiser gets it.
   \item \textbf{The stability-margin advantage of learning is conditional, and the conditions are
         measurable.} The theoretical case for RL on an unstable plant is that the hand-designed
-        controller lies inside the policy class, so the learned optimum can only match or exceed it
-        (\cref{sec:bg-margin}). Three premises carry that argument, and this project paid none of
-        them in full: an exact-enough plant (every parameter moved, \cref{tab:plant-id}), a reward
-        that prices distance from the failure boundary (ours priced survival and distance, so the
-        optimiser parked on the boundary), and the training budget to reach the asymptote (600\,M
-        steps per milestone is large, not asymptotic). Hence the m2 result, where a margin existed
-        and the learning did not find it. The generalisable diagnostic is that
-        \textbf{seed variance is the margin measurement}: 20.3\,$\pm$\,21.6\,s against 5-of-5 at
-        the episode cap is not a worse mean, it is bimodality, and a learning curve plotting the
-        mean will not show it. And at m3 the comparison is vacuous rather than adverse — with an
-        empty feasible set, every controller drawn from it performs identically, and RL optimises
-        over controllers, not over physics (\cref{sec:margin-analysis}).
+        controller lies inside the policy class, so the learned optimum can only match or exceed
+        it (\cref{sec:bg-margin}). Three premises carry that argument, and this project paid none
+        of them in full. The plant was not exact enough, because every parameter moved
+        (\cref{tab:plant-id}). The reward did not price distance from the failure boundary; it
+        priced survival and distance, so the optimiser parked on the boundary. And the training
+        budget did not reach the asymptote, because 600\,M steps per milestone is large rather
+        than asymptotic. Hence the m2 result, where a margin existed and the learning did not find
+        it. The generalisable diagnostic is that \textbf{seed variance is the margin measurement}.
+        A figure of 20.3\,$\pm$\,21.6\,s against 5 of 5 at the episode cap is not a worse mean. It
+        is bimodality, and a learning curve plotting the mean will not show it. At m3 the
+        comparison is vacuous rather than adverse. With an empty feasible set, every controller
+        drawn from it performs identically, and RL optimises over controllers, not over physics
+        (\cref{sec:margin-analysis}).
   \item \textbf{The useful question about a gait prior is which kind, not how much.} A shape prior
-        fixes the trajectory and exposes its timing; tuning it does not enlarge the reachable set,
+        fixes the trajectory and exposes its timing. Tuning it does not enlarge the reachable set,
         so it is safe only when the morphology has a natural template to copy. A structural prior
         constrains the class and leaves the member free, and its reachable set grows with the
-        parameterisation. DASH-01 --- whose cam turned out to be a full crank with no biological
-        analogue --- is the case that separates them, and the cadence agreement between the learned
-        optimum and the independent physics sweep is the evidence the wider space was genuinely
-        used (\cref{sec:bg-prior}). The prior never vanished: it moved into the action space, and
-        stayed hand-wired at the one channel where feedback must not be blind.
-  \item \textbf{Every assumed plant parameter measured later moved pessimistically} — mass
-        $+18\%$, torque $-15\%$, drive bandwidth $-16\times$, friction, the ankle. Measure
-        before training, not after; and when a measurement lands, apply it as \emph{the} plant,
-        not as an optional variant (the wrong default will otherwise be trained on).
-  \item \textbf{Simulation results need the same scepticism as rewards}: soft joint limits,
+        parameterisation. DASH-01 is the case that separates the two, because its cam turned out
+        to be a full crank with no biological analogue. The cadence agreement between the learned
+        optimum and the independent physics sweep is the evidence that the wider space was
+        genuinely used (\cref{sec:bg-prior}). The prior never vanished. It moved into the action
+        space, and stayed hand-wired at the one channel where feedback must not be blind.
+  \item \textbf{Every assumed plant parameter measured later moved pessimistically}: mass by
+        $+18\%$, torque by $-15\%$, drive bandwidth by $-16\times$, plus friction and the ankle.
+        Measure before training, not after. And when a measurement lands, apply it as \emph{the}
+        plant rather than as an optional variant, or the wrong default gets trained on.
+  \item \textbf{Simulation results need the same scepticism as rewards.} Soft joint limits,
         constraints inactive at settle, frame-relative safety checks, stale keyframes, a
-        solver-version split, and an actuator-velocity cap that was simply never present (letting
-        a prized policy ``balance'' at 23\,rad/s on a 22\,rad/s motor) each produced a clean,
-        converged, wrong result before being caught by self-tests, smoke gates, or measurement.
-  \item \textbf{Evaluation hygiene is a first-class deliverable}: aid-off evaluation (three
-        deceptions by training curves with a crutch), fixed-task evaluation across curricula,
-        $\geq$20 seeded episodes, paired seeds with survivor counts under bimodality, peak-not-final
-        under one-way curricula, and \texttt{curriculum.json} as ground truth for restore. Four
+        solver-version split, and an actuator-velocity cap that was simply never present each
+        produced a clean, converged, wrong result. The last of those let a prized policy
+        ``balance'' at 23\,rad/s on a 22\,rad/s motor. Self-tests, smoke gates or measurement
+        caught each one.
+  \item \textbf{Evaluation hygiene is a first-class deliverable.} Six rules earned their place:
+        evaluate with training aids forced off, after three separate deceptions by curves with a
+        crutch; evaluate on a fixed task across curricula; use at least 20 seeded episodes; use
+        paired seeds and survivor counts under bimodality; report peak rather than final under
+        one-way curricula; and treat \texttt{curriculum.json} as ground truth on restore. Four
         separate evaluation bugs each nearly discarded or crowned the wrong policy.
-  \item \textbf{Curricula: gate the advance, not just the opening; never gate a rescue ramp on
-        the competence it is meant to rescue; and diff configs against the last working run
-        before theorising.}
-  \item \textbf{A parameter range widened ``to be non-binding'' can become the operating point}
-        — the neutral network output decodes to the middle of the range (the 25\,Hz gait-clock
-        bug), and a comment asserting an unexercised assumption stays wrong for months.
-  \item \textbf{Hardware integration dominates, and instrumentation pays for itself}: the
-        measurement instrument found the drive ceiling; the flight recorder found a
-        daemon-killing crash and a dead bus in its first hour; and the measurement-disturbs-
-        the-measured trap was walked into twice (IMU on a swaying rig, loop rate under SSH
-        load) — the second time producing a committed wrong conclusion that only an A/B
-        retracted.
+  \item \textbf{Curricula need three rules.} Gate the advance, not just the opening. Never gate a
+        rescue ramp on the competence it is meant to rescue. And diff configurations against the
+        last working run before theorising.
+  \item \textbf{A parameter range widened ``to be non-binding'' can become the operating point.} A
+        neutral network output decodes to the middle of the range, which is what produced the
+        25\,Hz gait-clock bug. A comment asserting an unexercised assumption also stays wrong for
+        months.
+  \item \textbf{Hardware integration dominates, and instrumentation pays for itself.} The
+        measurement instrument found the drive ceiling. The flight recorder found a daemon-killing
+        crash and a dead bus within its first hour. And the trap of the measurement disturbing the
+        measured was walked into twice: once with the IMU on a swaying rig, once with the loop
+        rate under SSH load. The second time produced a committed wrong conclusion that only an
+        A/B retracted.
   \item \textbf{Progressive validation works.} The base-DOF ladder localised failures to single
-        degrees of freedom; the toy problem debugged the deploy chain at one DOF; L0-style
-        telemetry cross-checks and the workspace-as-safety-net made hardware sessions survivable
-        — with the one incident occurring precisely in the gap the guard now closes.
+        degrees of freedom. The toy problem debugged the deploy chain at one degree of freedom.
+        Telemetry cross-checks and the workspace-as-safety-net made hardware sessions survivable,
+        and the one incident occurred precisely in the gap the guard now closes.
 \end{enumerate}
