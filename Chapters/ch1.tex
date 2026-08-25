@@ -2,7 +2,7 @@
 
 \subsection{Problem statement}
 
-Reinforcement learning has produced striking legged-locomotion results on a small set of
+Reinforcement learning has produced legged-locomotion results on a small set of
 well-instrumented research platforms. Reproducing those results on a new, custom, imperfectly
 known robot is a different problem, and it is the problem most robot builders actually face.
 On such a robot the plant parameters are uncertain, the actuators hide undocumented internal
@@ -26,8 +26,8 @@ deliberately.
   \item Train locomotion policies with reinforcement learning. Iterate on the action-space design
         until one design converges reliably, then quantify what still separates those policies
         from hardware deployment.
-  \item Build the deployment stack on the real robot — control loop, calibration, safety and
-        telemetry — and validate as much of the chain as the hardware state allows.
+  \item Build the deployment stack on the real robot (control loop, calibration, safety and
+        telemetry), and validate as much of the chain as the hardware state allows.
   \item Record the methodology honestly enough to be reproducible, including the failures.
 \end{enumerate}
 
@@ -38,7 +38,7 @@ begins at modelling and at hardware selection for the non-mechanical subsystems.
 order was as follows. First, CAD re-assembly and export to a simulable model. Second, validation
 of that model against the physical robot, by workspace calibration, then statics, then full
 dynamic identification. Third, a first-principles capability analysis on the validated model.
-Fourth, a toy problem — a single-joint inverted pendulum — to exercise the complete
+Fourth, a toy problem (a single-joint inverted pendulum) to exercise the complete
 train--export--deploy chain at minimum stakes. Fifth, three generations of RL policy design,
 trained on an HPC cluster. Last, the deployment stack on the robot, driven by a measurement
 campaign that fed corrections back into the simulation. \Cref{sec:overall-method} details the
@@ -58,7 +58,7 @@ parameter that was later measured moved in the pessimistic direction (\cref{tab:
         labels, loop timing and the CAN protocol. It states explicitly what the identification
         could \emph{not} resolve.
   \item A first-principles capability analysis of running speed, validated against MuJoCo. Its
-        sensitivity result — distal mass costs roughly nine times what torso mass costs — was
+        sensitivity result (distal mass costs roughly nine times what torso mass costs) was
         confirmed repeatedly by later measurement as the binding design axis.
   \item A policy architecture and the curriculum that trains it. The architecture is a learned
         Fourier gait generator, re-parameterised every step and mirrored across legs, with

@@ -6,11 +6,11 @@ The pipeline exists end to end, and every stage has been validated at least once
 loop-closed MJCF that matches the measured workspace at 100\,\% of poses. A capability analysis
 independently reproduces both the high-cadence optimum and the ankle-stiffness threshold that RL
 discovered. An action-space design turned a non-converging problem into a reliably trainable one,
-and an independent generator A/B confirmed that twice. A curriculum mechanism — base-DOF release,
-with rigid rails and a constant observation and action shape — carries warm starts across plants. A
+and an independent generator A/B confirmed that twice. A curriculum mechanism (base-DOF release,
+with rigid rails and a constant observation and action shape) carries warm starts across plants. A
 measurement campaign corrected the plant, using instruments built on the robot itself. And a
 deployment stack proved the value of its flight recorder within an hour of installation. The
-standing policy on the fully free plant — 60 seconds, zero falls, 2.6\,m/s — is a real result on a
+standing policy on the fully free plant (60 seconds, zero falls, 2.6\,m/s) is a real result on a
 hard plant. The drivable lineage's survival of the descent to the measured 0.8\,Hz drive is the
 strongest sim-to-real evidence in the record.
 
@@ -57,7 +57,10 @@ demonstration that deployment infrastructure is not overhead.
         to be a full crank with no biological analogue. The cadence agreement between the learned
         optimum and the independent physics sweep is the evidence that the wider space was
         genuinely used (\cref{sec:bg-prior}). The prior never vanished. It moved into the action
-        space, and stayed hand-wired at the one channel where feedback must not be blind.
+        space, and stayed hand-wired at the one channel where feedback must not be blind. Neither
+        the Fourier basis nor the practice of emitting basis coefficients as actions is new
+        (\cref{sec:bg-prior}); what the two-axis reading buys is a way to compare systems that are
+        usually filed under a single label.
   \item \textbf{Every assumed plant parameter measured later moved pessimistically}: mass by
         $+18\%$, torque by $-15\%$, drive bandwidth by $-16\times$, plus friction and the ankle.
         Measure before training, not after. And when a measurement lands, apply it as \emph{the}

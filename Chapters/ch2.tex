@@ -20,8 +20,8 @@ degree of freedom it cannot control.
 \textbf{The control inputs are unilateral and saturating.} A foot can push on the ground but not
 pull. It can push only within a friction cone, or it slips. The point where that push applies is
 the \emph{centre of pressure}, and it can move only within the contact patch. For a point foot the
-patch is a point, so the centre of pressure cannot move at all. The most powerful input available
-is \emph{where to put the next foot}, and that input is not continuous. It is chosen once per
+patch is a point, so the centre of pressure cannot move at all. That leaves
+\emph{where to put the next foot} as the principal input, and it is not continuous. It is chosen once per
 step, and the leg's reachable workspace bounds it. A controller therefore holds a small number of
 discrete, bounded opportunities to act rather than continuous authority.
 
@@ -148,9 +148,7 @@ instantiation: a biped built to \emph{be} a SLIP, with fibreglass leaf springs i
 drives. Cassie and Digit are its commercial descendants.
 
 \emph{What it buys.} Correct physics for running, rather than a walking framework pushed past its
-validity. The spring recovers impact energy that the gearbox would otherwise dissipate as heat. The
-spring also rejects high-frequency disturbances at the speed of sound in steel, which is faster
-than any feedback loop can react. That second property is often missed.
+validity. The spring recovers impact energy. The spring also rejects high-frequency disturbances at a speed much faster than any feedback loop can react.
 
 \emph{What it costs.} The spring rate is a \emph{design commitment}, chosen once, in hardware. It
 sets the leg's natural frequency and therefore the narrow band of speeds at which the robot is
@@ -183,7 +181,7 @@ feet are permissible. It needs no accurate dynamic model, because the placement 
 essentially one empirical gain. The three-loop decomposition is also simple enough to implement on
 1980s hardware.
 
-\emph{What it costs.} Three assumptions, examined in \cref{sec:bg-raibert} because DASH-01 violates
+\emph{What it costs.} Three assumptions, of which DASH-01 violates
 all three. And no proof: the hoppers demonstrably worked, but the approach offers no certificate
 that they will.
 
@@ -201,18 +199,35 @@ Koditschek~\cite{westervelt2003hzd} established the framework, the accompanying
 monograph~\cite{westervelt2007book} systematised it, and RABBIT~\cite{chevallereau2003rabbit}
 demonstrated it on a physical underactuated biped with point feet.
 
+The mechanism can be stated as a choice about what advances the phase, and three options span the
+field. A \emph{clock} advances it at a rate fixed independently of the robot, so a step that runs
+slow leaves the reference ahead of the body and the error compounds. A \emph{coupled oscillator}
+advances it by its own dynamics while sensory feedback modulates that rate, so a swing leg that has
+not yet reached its target holds the oscillator back until it does. That is the entrainment
+mechanism of the central pattern generator literature~\cite{ijspeert2008}. A \emph{virtual
+constraint} removes the oscillator and reads the phase from the configuration itself as
+$\theta(q)$, usually the absolute angle of the stance leg, which sweeps once per step whatever the
+step duration. HZD is the stiff limit of the second option: the phase keeps no dynamics of its own,
+so the reference can neither lead nor lag the body. That is also why the zero dynamics is
+two-dimensional, because the phase contributes no state.
+
 \emph{What it buys.} The only genuine stability proof in this chapter, for an underactuated robot
 with point feet, which is precisely the case ZMP cannot address. It also buys an idea that has
 outlived its framework: indexing a gait by \emph{phase} rather than by time. That idea reappears in
-essentially every modern learned locomotion architecture, including the gait phase $\varphi$ of
-this thesis's own generator (\cref{sec:rl-cpg}).
+essentially every modern learned locomotion architecture. This thesis's own generator sits in the
+middle of that axis, with a coupling that is learned rather than authored: the gait phase $\varphi$
+integrates a frequency the policy re-selects from the observation at every control step, rather
+than a rate fixed in advance or a function of configuration (\cref{sec:rl-cpg}).
 
 \emph{What it costs.} The proof is a proof about the \emph{model}. The gait itself comes from an
 offline trajectory optimisation over that model, so the accuracy requirements are severe and the
 guarantee degrades silently when the plant is wrong. This thesis met that failure mode in a
 different guise (\cref{tab:plant-id}). Each gait is a separate optimisation, so speed changes,
 turning and terrain must be handled by scheduling among precomputed cycles rather than emerging
-from the controller.
+from the controller. The stiff phase coupling also removes the oscillator's fallback. A central
+pattern generator keeps producing a rhythm when feedback is absent or corrupted, whereas a phase
+read as $\theta(q)$ is only as good as the estimate of $q$, and outside the modelled regime the
+phase variable itself stops meaning anything.
 
 \subsubsection{Stability from re-solving the problem: optimisation-based control}
 \label{sec:bg-mpc}
@@ -289,7 +304,7 @@ policy. \Cref{sec:plant-id} is this document's demonstration of that last point.
 Static / ZMP
 & Geometry: CoP inside the support polygon
 & Transparent, checkable, tolerant of model error, safe
-& Walking only --- no flight phase; large flat feet and flat ground; poor efficiency (CoT $\approx$1.6). Position-controlled joints suffice. \\
+& Walking only: no flight phase; large flat feet and flat ground; poor efficiency (CoT $\approx$1.6). Position-controlled joints suffice. \\
 \addlinespace
 Passive dynamics
 & The mechanism itself
@@ -304,7 +319,7 @@ SLIP / series elasticity
 Foot placement (Raibert)
 & One decision per step
 & Running with point feet; near model-free; simple enough to hand-build
-& Three assumptions (\cref{sec:bg-raibert}); no proof. Demands actuators that execute a placement within one swing. \\
+& Three assumptions (\cref{sec:bg-hopping}); no proof. Demands actuators that execute a placement within one swing. \\
 \addlinespace
 Hybrid zero dynamics
 & A certified limit cycle
@@ -319,7 +334,7 @@ MPC / whole-body
 Deep RL
 & Experience over a distribution
 & No contact model needed; robust by construction; runs on cheap compute
-& No proof; reward becomes the specification and is gamed; $10^8$--$10^9$ samples; inherits every simulator error. Demands a faithful plant model --- in software. \\
+& No proof; reward becomes the specification and is gamed; $10^8$--$10^9$ samples; inherits every simulator error. Demands a faithful plant model, in software. \\
 \bottomrule
 \end{tabular}
 \caption{The six families, read as answers to ``where does the stability come from?''. The last
@@ -338,53 +353,7 @@ its own. It then moves to a simulator faithful enough that a policy trained in i
 trend is what makes measurement, rather than control design, the critical path of a project like
 this one.
 
-\subsection{The hopping lineage's assumptions, and why DASH-01 breaks all three}
-\label{sec:bg-raibert}
-
-The three-loop decomposition of \cref{sec:bg-hopping} is not free. It embeds three assumptions, and
-each is worth naming individually. DASH-01 violates all three, and the manner of each violation is
-a result of this thesis rather than a caveat to it.
-
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{A point foot is sufficient, because attitude authority comes from the hip and not
-        from the foot.} This assumption is the one most often quoted as a virtue of the approach,
-        and it holds only while the hip route is open. Hip torque against a pinned foot is a
-        reaction torque, so three conditions must hold. The leg needs a usable moment arm, the
-        stance must last long enough to apply the torque, and the friction cone must hold. When
-        any of those conditions fails, a point foot
-        has \emph{no} remaining attitude authority, because a point contact permits zero
-        centre-of-pressure travel by definition. \Cref{sec:scripted-baseline} measures exactly that
-        state on DASH-01: at milestone m3 the single toe sphere yields zero centre-of-pressure
-        authority at \emph{any} ankle stiffness, so the ankle there is not weak but disconnected.
-        \Cref{sec:hw-force-map} shows that the passive ankle which should have supplied the missing
-        authority delivers 0.42 body weights against a 3.5\,BW requirement, and clears that
-        requirement over 0.0\,\% of the running-stance region. Two practical conclusions follow. A
-        point foot is an acceptable simplification only for a robot whose hip-and-stance route is
-        strong. And a foot with real fore--aft extent is a load-bearing design choice, not a
-        refinement.
-  \item \textbf{The commanded foot placement is reachable.} \Cref{eq:neutral-point} returns a
-        position, not a feasible one. On this robot the usable fore--aft workspace is
-        $\pm 0.30$\,m of a 1.06\,m geometric span (\cref{sec:speed-ceiling}). The toe hangs about
-        0.92\,m below the centre of mass, so a pitch rate $\dot\theta$ sweeps the contact point
-        forward at $L\dot\theta$. That sweep was measured to outrun the controller's corrective
-        foot motion \textbf{2:1}, until the workspace saturates in under a second
-        (\cref{sec:scripted-baseline}). The placement law does not fail because it is wrong. It
-        fails because the plant diverges faster than the foot can travel, which is a statement
-        about linkage proportions rather than about control.
-  \item \textbf{The actuator executes what the placement law commands, within one stance.}
-        Raibert's hydraulics did. DASH-01's drive is a 0.8\,Hz position loop with
-        $\tau = 199$\,ms (\cref{sec:plant-id-drive}), against an inverted-pendulum divergence
-        constant $\sqrt{h/g} = 311$\,ms. The scripted baseline therefore latches the target once
-        per swing rather than tracking it continuously, a structural choice
-        \cref{sec:scripted-baseline} defends at length. Even so, the drive recovers only about
-        83\,\% of the commanded placement by touchdown.
-\end{enumerate}
-
-Replacing the classical controller with a learned one repairs none of the three. That is the
-substance of \cref{sec:scripted-baseline}, and the reason this thesis reaches a mechanical
-conclusion from a control experiment.
-
-\subsection{The actuation axis, which decides which approach is available}
+\subsection{Actuation decides which control approach is available}
 \label{sec:bg-actuation}
 
 \Cref{tab:bg-approaches} ends each row with a hardware demand, and that column is not incidental. A
@@ -393,7 +362,7 @@ actuation choice is therefore made \emph{before} the control choice, whether or 
 notices. Three families dominate.
 
 \textbf{Hydraulic.} Raibert's hoppers, BigDog~\cite{raibert2008bigdog} and the Boston Dynamics
-Atlas are hydraulic. The family offers enormous force density, very high bandwidth, and a commanded
+Atlas are hydraulic. The family offers high force density, high bandwidth, and a commanded
 force that arrives essentially instantaneously. The cost is a pump, a reservoir, noise, leaks and a
 floor on system size and budget that puts the family out of reach for most laboratories and all
 students.
@@ -437,65 +406,192 @@ controller, and joint-level tracking. They are transparent and analysable, but t
 models and high-bandwidth torque control. Learned controllers collapse the same stack into a policy
 trained in simulation. They trade analysability for robustness to the messiness of contact, and
 they pay for it with a sim-to-real gap that modelling fidelity and domain randomisation must close.
-This thesis uses both. RL supplies the gait, and classical structure — reflexes, a clocked
-generator, capture-point priors — sits exactly where feedback must not be blind
+This thesis uses both. RL supplies the gait, and classical structure (reflexes, a clocked
+generator, capture-point priors) sits exactly where feedback must not be blind
 (\cref{sec:rl-reflexes}). The scripted baseline of \cref{sec:scripted-baseline} is the classical
 counterfactual, built on the same plant to answer one question: was the learning ever the
 bottleneck?
 
-\subsubsection{Two kinds of gait prior}
+\subsubsection{Two kinds of gait prior, on two axes}
 \label{sec:bg-prior}
 
 ``Learned controllers need no gait prior'' is a common and unhelpful summary, and this thesis is a
 poor advertisement for it. The architecture that finally worked here (\cref{sec:rl-cpg}) is a
 Fourier-series central pattern generator with hand-wired reflexes, which is a great deal of prior.
-The useful distinction is not \emph{how much} prior but \emph{which kind}. That distinction
-concerns the reachable set of gaits, not the amount of engineering involved.
+The useful distinction is not \emph{how much} prior but \emph{which kind}, and on \emph{which axis}.
 
 A \textbf{shape prior} fixes the trajectory and exposes its timing. Raibert's
 leg~\cite{raibert1986}, a fixed limit cycle in the classical CPG tradition~\cite{ijspeert2008}, a
 reference motion clip tracked by imitation~\cite{peng2018deepmimic} and any clocked foot-path
 generator all belong here. The controller chooses phase, frequency, amplitude and the reset on
 contact, but the \emph{shape} of the motion is authored in advance. The decisive property of a
-shape prior is that tuning does not enlarge what the robot can do. However carefully the gains are
-set, the reachable set of gaits stays a low-dimensional family around the authored gait. If the
+shape prior is that tuning does not enlarge what the robot can do. However carefully the parameters
+are set, the reachable set of gaits stays a low-dimensional family around the authored gait. If the
 authored gait is wrong for the morphology, no amount of tuning reaches a better one.
 
 A \textbf{structural prior} constrains the \emph{class} of trajectories and leaves the member
-unspecified. The Fourier action space of \cref{sec:rl-cpg} asserts only that the gait is periodic,
-smooth, bounded and mirrored left to right. Which periodic function it is remains a free parameter,
-and the reachable set grows monotonically with the harmonic count $N$, approaching every periodic
-gait the workspace admits. PMTG~\cite{pmtg2018} and CPG-RL~\cite{cpgrl2022} sit here too. The prior
-does real work: it is the reason the problem is trainable at all, where the prior-free torque
-parameterisation of \cref{sec:rl-torque} never converged. But it works on the \emph{search} rather
-than on the \emph{answer}.
+unspecified. The Fourier action space of \cref{sec:rl-cpg} asserts that the sagittal motion of a
+leg is periodic, band-limited and bounded. Which periodic function it is remains a free parameter,
+because the policy emits the coefficients themselves. The reachable set is every waveform
+expressible in $N$ harmonics, and it grows with $N$ toward any periodic gait the workspace admits.
+That growth is a property of the parameterisation rather than a measured result: $N = 3$ throughout
+this work, and no sweep over $N$ was run. The prior still does real work, since it is the reason
+the problem is trainable at all, where the prior-free torque parameterisation of
+\cref{sec:rl-torque} never converged. But it works on the \emph{search} rather than on the
+\emph{answer}.
 
-The distinction earns this much space because DASH-01 is precisely the case that separates the two.
-A shape prior is safe when the morphology has a natural template to copy. An animal with roughly
-these proportions can be filmed, and the observed gait is a defensible starting shape. This robot
-has no such template. Hardware calibration established that \textbf{the cam is a full crank}: it
-sweeps about $245^\circ$ against a CAD-guessed $\pm 86^\circ$, and the 4-bar assembles at every
-angle (\cref{sec:hw-experiments}). The transmission ratio the 4-bar produces varies strongly with
-posture (\cref{sec:hw-force-map}), and no animal offers a gait for that. The cadence result is the
-evidence that the wider search space was genuinely used rather than merely available.
-Reinforcement learning repeatedly converged on a high-cadence solution, and the independent
-first-principles feasibility sweep of \cref{sec:speed-ceiling} located the unconstrained optimum at
-the same 12.4\,steps/s from physics alone, with no learning in it. A learned gait found the plant's
-own optimum on a morphology for which no template exists, and an independent analysis confirmed the
-location.
+\textbf{The class is well populated, and the basis is not the contribution.} A band-limited
+periodic parameterisation of a gait predates this work by more than a decade, and the citation
+trail is worth stating plainly before any claim is made on top of it. Truncated Fourier series
+gait generators ran on RoboCup humanoids from 2009, with the coefficients fixed offline by
+particle swarm optimisation~\cite{shafii2010tfs}. Yang et al.~\cite{yang2010tfs} combined the
+same formulation with reinforcement learning, which adjusted the reference online while the
+series supplied the shape. Rhythmic dynamic movement primitives~\cite{ijspeert2013dmp} carry a
+Fourier-type basis over phase and are the standard statement of ``smooth cycle, shape left
+free'', as distinct from the fixed limit cycle of~\cite{ijspeert2008}. Fourier Latent
+Dynamics~\cite{fld2024} parameterises periodic and quasi-periodic motion in a continuously
+parameterised Fourier latent and uses it as a structured representation for motion learning on
+the MIT Humanoid. Wang et al.~\cite{wang2023fourier} plan a Fourier-series periodic gait offline
+and hand the policy only the phase, and Ates and Morg\"ul~\cite{ates2025freqgait} learn a
+frequency-domain gait generator from motion capture and wrap it in PPO.
+
+The nearest neighbour is Castillo et al.~\cite{castillo2020hzdrl}, who put the \emph{coefficients}
+of the trajectory basis into the action space directly. Their policy maps a reduced state to the
+B\'ezier coefficients of the hybrid-zero-dynamics virtual
+constraints~\cite{westervelt2003hzd,westervelt2007book}, plus the tracking gains, and the
+reachable-set argument given above applies to their parameterisation unchanged. The basis differs,
+B\'ezier against Fourier, which matters only in that a truncated Fourier series closes the cycle by
+construction where a polynomial over phase closes it by boundary condition. \textbf{Emitting basis
+coefficients as the action is therefore theirs, not this thesis's.} What is added here is narrower:
+the mid-cycle rewrite is explicitly priced rather than free (\cref{sec:rl-cpg}), the gait channel
+and the fast-feedback channel are separated and billed differently, and the choice of basis is
+settled by a measured A/B against the oscillator family on identical plants and rewards
+(\cref{sec:cpg-ab}) rather than by assertion. The taxonomy that follows is likewise a way of
+reading published systems, not a new object.
+
+\textbf{The distinction is per-axis, not per-system.} A legged controller carries two independent
+decisions, and a system can take opposite positions on them. The \emph{intra-limb} axis is the
+trajectory one leg follows through its own cycle. The \emph{inter-limb} axis is the phase
+relationship between legs, which is what the word ``gait'' usually names. Filing a whole system
+under a single label hides that split.
+
+CPG-RL~\cite{cpgrl2022} is the clearest case. It places one amplitude-controlled phase oscillator
+on each leg of a quadruped, and the policy emits an intrinsic amplitude $\mu_i$, an intrinsic
+frequency $\omega_i$ and an orientation rate $\psi_i$ per leg, which is twelve numbers at 100\,Hz.
+The foot target is reconstructed from the oscillator state in closed form,
+\begin{equation}
+  x_i = -d_{\text{step}}\,(r_i - 1)\cos\theta_i\cos\phi_i,
+  \qquad
+  z_i = -h + \begin{cases} g_c \sin\theta_i & \text{if } \sin\theta_i > 0,\\[2pt]
+                           g_p \sin\theta_i & \text{otherwise,}\end{cases}
+  \label{eq:cpgrl-foot}
+\end{equation}
+with the step length $d_{\text{step}}$ and the stance penetration $g_p$ fixed. On the intra-limb
+axis that is a shape prior in the strict sense given above. One authored curve, an ellipse
+flattened during stance, is scaled by $\mu_i$, retimed by $\omega_i$ and rotated in the ground
+plane by $\phi_i$. No action the policy can emit changes the curve, and there is no coefficient and
+no harmonic count to raise. On the inter-limb axis the same paper does the opposite. The coupling
+weights are set to zero, $w_{ij} = 0$, deliberately, so that the four oscillators are independent
+and the policy has to discover the phase relationship. Trot, walk and the transitions between them
+are outcomes there rather than inputs.
+
+DASH-01 takes the opposite position on both axes, which makes the two systems complements rather
+than neighbours.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{3.2cm}p{5.0cm}p{5.0cm}}
+\toprule
+& \textbf{Intra-limb trajectory} & \textbf{Inter-limb coordination} \\
+\midrule
+Raibert~\cite{raibert1986} & Authored & Authored \\
+\addlinespace
+TFS generators~\cite{shafii2010tfs,yang2010tfs} & Free within a truncated Fourier band; coefficients fixed offline by evolutionary search & Authored: fixed phase offset \\
+\addlinespace
+PMTG~\cite{pmtg2018} & Authored generator, plus a residual channel that can leave the authored family & Authored \\
+\addlinespace
+CPG-RL~\cite{cpgrl2022} & Authored curve, \cref{eq:cpgrl-foot}; three parameters per leg & Free: uncoupled oscillators, phasing discovered \\
+\addlinespace
+HZD-RL~\cite{castillo2020hzdrl} & Free: B\'ezier coefficients of the virtual constraints, emitted by the policy & Authored: alternation fixed by the hybrid model \\
+\addlinespace
+DASH-01 (\cref{sec:rl-cpg}) & Free: 14 Fourier coefficients, re-emitted every control step & Authored: mirrored at half a cycle \\
+\bottomrule
+\end{tabular}
+\caption{The two axes of gait prior. A system can be prior-free on one axis and fully authored on
+the other, and CPG-RL and DASH-01 sit at opposite corners. The intra-limb column also separates
+systems that share this thesis's basis: TFS generators free the same class but fix the member
+offline, and HZD-RL frees it online in a different basis.}
+\label{tab:prior-axes}
+\end{table}
+
+\textbf{What the mirror buys, and what it costs.} The left--right mirror of \cref{sec:rl-cpg} is a
+shape prior on the inter-limb axis, by the test stated above: no coefficient setting produces an
+asymmetric gait, so tuning cannot enlarge the reachable set in that direction. It was chosen for
+two reasons that hold for this project. The task is a straight-line dash, in which an alternating
+symmetric gait is the answer anyway. And the mirror halves the emitted gait specification from 28
+coefficients to 14 while guaranteeing alternation by construction, which is worth real wall-clock
+time at the throughput available here, about 2900 environment-steps per second on one node
+(\cref{sec:rl-results}).
+
+The cost was paid later. A mirror-symmetric gait can only travel in a straight line, so steering
+had to be added afterwards as two explicit asymmetry channels rather than emerging on its own, and
+the drivable-demonstrator lineage of \cref{sec:sim2real-lineage} could not warm-start from the
+sprint milestones, because both the observation and the action widths changed. CPG-RL shows that
+the alternative is available. Emitting the two legs independently, at 28 coefficients instead of
+14, would leave DASH-01 free on both axes and let the policy discover antiphase for itself. The
+price is a larger action space and an exploration problem that has to rediscover a relationship the
+mirror supplies for nothing. That trade was not affordable on this compute budget, and it is the
+first thing to revisit given a larger one.
+
+\textbf{Why the intra-limb axis was the one worth freeing.} DASH-01 separates the two kinds of
+prior precisely because it has no template to copy. A shape prior is safe when the morphology has
+one. An animal with roughly these proportions can be filmed, and the observed gait is a defensible
+starting shape. Hardware calibration established that \textbf{the cam is a full crank}: it sweeps
+about $245^\circ$ against a CAD-guessed $\pm 86^\circ$, and the 4-bar assembles at every angle
+(\cref{sec:hw-experiments}). The transmission ratio the 4-bar produces varies strongly with posture
+(\cref{sec:hw-force-map}), and no animal offers a gait for that. The cadence result is the evidence
+that the wider search space was genuinely used rather than merely available. Reinforcement learning
+repeatedly converged on a high-cadence solution, and the independent first-principles feasibility
+sweep of \cref{sec:speed-ceiling} located the unconstrained optimum at the same 12.4\,steps/s from
+physics alone, with no learning in it. A learned gait found the plant's own optimum on a morphology
+for which no template exists, and an independent analysis confirmed the location. No shape-prior
+arm was ever trained on this robot, so that is evidence the freed axis was used, rather than a
+measurement of what an authored foot path would have cost.
+
+\textbf{Gait-shape optimality is a studied question, in a different literature.} The claim above is
+not that the optimal shape of a gait is an open problem in general. It is answered, and answered
+well, in trajectory optimisation. Srinivasan and Ruina~\cite{srinivasan2006} optimise a minimal
+biped over an infinite family of gaits under an energetic cost and recover inverted-pendulum
+walking at low speed, a bouncing run at high speed, and a pendular run in between, with no gait
+authored in advance. Rosa et al.~\cite{rosa2023optimalgaits} generate continuous families of
+energetically optimal gaits by continuation from passive dynamic walking gaits~\cite{mcgeer1990},
+and the passive-walker lineage itself~\cite{collins2005} is an argument that the shape can be a
+property of the mechanism rather than of the controller. What that literature answers is optimality
+for a reduced-order model under an analytic cost. The gap this thesis works in is narrower and
+should be stated as such: no reduced-order model of this transmission exists, the cost is a task
+reward rather than cost of transport, and the plant is measured rather than assumed
+(\cref{sec:hw-force-map}). The Fourier prior is therefore adopted because the optimal shape here
+cannot be computed in advance, not because nobody has computed one anywhere.
 
 Two qualifications keep this honest. First, \textbf{periodicity alone is demonstrably not
 sufficient} on this plant. \Cref{sec:bg-rl-loco} reports the literature constraint that no
-published system runs on per-cycle-only gait updates, and an experiment reproduced it here. An
-ablation removed the per-step residual channel, leaving a pure oscillator, and produced stability
-without locomotion: 15\,m of a 72\,m course at 0.25\,m/s (\cref{sec:cpg-ab}). The working policy
-class is periodic \emph{plus} an aperiodic intra-cycle correction. The structural prior is an
-exploration scaffold, not the policy. Second, \textbf{the prior did not disappear, it moved}, and
-where it moved is informative. The sagittal pitch reflex is hand-tuned rather than learned
-(\cref{sec:rl-reflexes}), and it sits deliberately at the one channel where feedback must not be
-blind. The design axis is therefore a dial, not a binary between prior and no prior. It runs from
-``which trajectory'' to ``which class of trajectories, plus explicit structure only where the plant
-demands it''.
+published system runs on per-cycle-only gait updates, and the generator A/B of \cref{sec:cpg-ab}
+reproduced it here. The arm that removed the per-step residual channel from the \emph{oscillator}
+generator produced stability without locomotion: it survived most of the episode but travelled
+15\,m of a 72\,m course at 0.25\,m/s. No equivalent arm was run on the Fourier generator, so the
+result constrains the family rather than this exact controller. The constraint is on update rate
+rather than on residuals as such. CPG-RL carries no residual channel at all and satisfies it by
+re-selecting the oscillator setpoints at 100\,Hz, while PMTG keeps a residual, which on an authored
+trajectory generator is also the only channel that can leave the authored family. The working
+policy class is periodic \emph{plus} an aperiodic intra-cycle path of some kind. The structural
+prior is an exploration scaffold, not the policy.
+
+Second, \textbf{the prior did not disappear, it moved}, and where it moved is informative. The
+sagittal pitch reflex is hand-tuned rather than learned (\cref{sec:rl-reflexes}), and it sits
+deliberately at the one channel where feedback must not be blind. Each axis is therefore a dial
+rather than a binary between prior and no prior, and each runs from ``which trajectory'' to ``which
+class of trajectories, plus explicit structure only where the plant demands it''.
 
 \subsubsection{What learning should buy in stability margin}
 \label{sec:bg-margin}
@@ -504,16 +600,16 @@ The theoretical case for a learned controller on an unstable plant is a case abo
 hand-designed controller is a local object. Its gains are tuned around an operating point, its
 structure encodes an assumed regime, and its region of attraction is whatever that construction
 happens to yield. A policy trained over a distribution of states and plants approximates, in the
-limit, a globally optimal feedback law over that distribution. Crucially, the hand-designed
+limit, a globally optimal feedback law over that distribution. The hand-designed
 controller lies \emph{inside} the policy class. With an exact plant and unbounded training, the
 learned optimum can therefore only match or exceed it.
 
 The argument is correct, and its premises are load-bearing. That is why
 \cref{sec:scripted-baseline} finds the opposite on real numbers: a 21-gain scripted controller
 beats the learned reference on the constrained plant, and fails identically to it on the free one.
-Three premises fail. The plant is not exact. The training is not unbounded. And, least obviously
-and most importantly, a margin does not always exist to be won. \Cref{sec:margin-analysis} gives
-the measured breakdown. The conclusion it supports is that the margin advantage of learning scales
+Three premises fail. The plant is not exact. The training is not unbounded. And a margin does not
+always exist to be won. \Cref{sec:margin-analysis} gives the measured breakdown. The conclusion it
+supports is that the margin advantage of learning scales
 with how much margin the plant has to give. That is a statement about robots rather than about
 methods, and it is the reason this thesis ends in a mechanical recommendation.
 
@@ -529,6 +625,22 @@ of~\cite{ijspeert2008}. The clock and phase-reward methods of Siekmann et al.~\c
 carried Cassie to the 100\,m Guinness record~\cite{crowley2024cassie}. The appeal is exactly the
 structural prior of \cref{sec:bg-prior}: the network no longer has to discover that locomotion is
 periodic, only which periodic signal it wants.
+
+\textbf{The periodicity prior is close to universal, and systems differ in where they put it.} It
+is common to summarise learned locomotion as prior-free, and the summary does not survive contact
+with the systems that work. There are four places to put the periodicity, and published work uses
+all of them. It can go in the \emph{reward}, as in the phase-gated periodic reward composition of
+Siekmann et al.~\cite{siekmann2021}, where the action space stays joint-level and the clock
+supplies the structure. It can go in a \emph{reference}, as in imitation of a motion
+clip~\cite{peng2018deepmimic} or a mocap-derived spectral prior~\cite{ates2025freqgait}. It can go
+in an authored \emph{generator} that the policy modulates, as in PMTG~\cite{pmtg2018} and
+CPG-RL~\cite{cpgrl2022}. Or it can go in the \emph{action space} itself, as in the basis
+coefficients of Castillo et al.~\cite{castillo2020hzdrl} and of \cref{sec:rl-cpg}. Only the last
+of these makes the shape of one cycle a decision variable at run time, and only the first leaves
+the action space untouched. The useful comparison across this lineage is therefore placement
+rather than presence, which is what \cref{tab:prior-axes} sorts on. DASH-01 sits in the
+action-space column, and \cref{sec:rl-torque} records what happened on this plant when the prior
+was placed nowhere at all.
 
 A literature review conducted mid-project (\cref{sec:rl-cpg}) returned one unambiguous constraint,
 and that constraint reshaped the architecture here. \textbf{No published system achieves running
