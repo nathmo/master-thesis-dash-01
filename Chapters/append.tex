@@ -1,56 +1,101 @@
-\section{Appendix}
-
 \subsection{logbook}
 
 \begin{itemize}[leftmargin=1.5cm,label={}]
     \item[\textbf{2025-02-20}] Creation of this report, rough layout of the idea in chapter
-    
-    \item[\textbf{2025-02-25}] Longitudinal kinematic model, research about markov modelling and cycle
-    
-    \item[\textbf{2025-02-26}] dynamic simulation creation, implemented a basic simulation in pybullet with keybaord navigation and parametric surface + wheel rolling down
-    
-    \item[\textbf{2025-02-27}] refining efficiency to take into account whole cycle, reading paper
-    
-    \item[\textbf{2025-02-28}] Writing Idea about improving efficiency trough identified parameters
 
-    \item[\textbf{2025-03-04}] Adding graph about car occupancy and real world driving needs + reading paper
+    \item[\textbf{2026-04-13}] Repository created. First RL framework (\texttt{RL/}): MuJoCo + Stable-Baselines3 PPO on a generic legged environment, observation space still being pinned down.
 
-    \item[\textbf{2025-03-06}] Brainstorming kinematic, reading PHd thesis on narrow track
+    \item[\textbf{2026-04-14}] Headless rendering for the training server; missing dependencies and configs sorted out.
 
-    \item[\textbf{2025-03-09}] URDF is a PAIN to implement to due lack of tool, trying to define a kinematic model in python
+    \item[\textbf{2026-04-17}] \texttt{StraightPath} task added and the reward restructured; \texttt{run\_train.sh} entry point and an \texttt{n-steps} argument so runs can be launched unattended.
 
-    \item[\textbf{2025-03-11}] reworking part of chapter 2
+    \item[\textbf{2026-04-18}] Resume-from-checkpoint fixed; the virtualenv stops being tracked by git.
 
-    \item[\textbf{2025-03-17}] reading paper about cars and bike and limiting factor to adoption
+    \item[\textbf{2026-04-20}] Start position reworked to make learning easier, then a dozen commits of reward and hyper-parameter tuning in one day. The robot learns to \emph{belly-flop} --- the fall penalty is raised repeatedly, and forward-speed weight, alive bonus and feet-air-time thresholds are all chased in turn.
 
-    \item[\textbf{2025-03-18}] keep reading paper, also about narrow track vehicle
+    \item[\textbf{2026-04-21}] Tuning continues and starts going backwards (``trying to recover working system''). Decision to attack sim2real separately on a toy problem: an inverted pendulum, on its own branch.
 
-    \item[\textbf{2025-03-20}] trying to structure what I learned from the papers
+    \item[\textbf{2026-04-30}] Pendulum environment, PPO training, ONNX export and a Raspberry Pi runtime. First complete simulation$\rightarrow$hardware transfer of the project, with a curriculum on the initial-angle span.
 
-    \item[\textbf{2025-03-21}] defining the know unknown about car adoption factor (human side)
+    \item[\textbf{2026-05-21}] The generic-robot approach is abandoned. The DASH-01 URDF is exported from CAD and the simulator rewritten around it; the original \texttt{RL/} framework is deleted.
 
-    \item[\textbf{2025-03-24}] Clarifying the project goal 
+    \item[\textbf{2026-05-22}] Manual URDF repair --- the closed kinematic loop of the parallel leg cannot be expressed in URDF, and the export angles are wrong.
 
-    \item[\textbf{2025-03-27}] draw figure, added citation
+    \item[\textbf{2026-06-02}] CAD committed alongside the model; the pendulum sim2real branch merged into main.
 
-    \item[\textbf{2025-03-28}] Manual definition is an epic failure... Two way (createMultiBody -> Works but hard to read), Create body and add constraint don't work (rotation constraint crash the simulation.)
+    \item[\textbf{2026-06-19}] CAD, URDF, MJCF and SDF all regenerated cleanly from one source.
 
-    \item[\textbf{2025-04-09}] Realized that createMultibody is more stable but has a "ghost" friction problem, Might as well use URDF then.
+    \item[\textbf{2026-06-22}] First training on the real geometry: a standing policy.
 
-    \item[\textbf{2025-04-10}] learning URDF and how the origin is defined, 
+    \item[\textbf{2026-06-24}] The standing policy converges.
 
-    \item[\textbf{2025-05-25}] redefined most variant as URDF and how to simulate them. Need spend time to implement basic controller like PID to show steady state stability and control margin
+    \item[\textbf{2026-06-25}] Leg-crossing reward tuned; speed reward made direction-aware (it had been rewarding \emph{absolute} speed, so turning around paid as well as going forward). Plotting tooling added.
 
-    \item[\textbf{2025-05-28}] Meeting, dry run presentation  and shown current status.
+    \item[\textbf{2026-06-29}] Retrained with the fixed reward: no change in behaviour, the robot still spins instead of walking.
 
-    \item[\textbf{2025-05-31}] Report restructuring, writing
+    \item[\textbf{2026-07-01}] First plant-side tool: pose-reachability plots of the leg.
 
-    \item[\textbf{2025-06-02}] Chapter 4, 5, 6 writing
+    \item[\textbf{2026-07-04}] Further attempts to suppress the spin-on-a-toe; a longer training run looks promising.
 
-    \item[\textbf{2025-06-04}] Getting simulation result, finishing first draft of report.
+    \item[\textbf{2026-07-06}] \textbf{v3 anti-skating rebuild.} An instrumented rollout \emph{measures} what the policy is actually doing: both feet grounded 57--66\,\% of steps, median swing one control step, $-0.09$\,m/s of real travel under a $+0.5$\,m/s command --- it is skating, not walking. Three root causes fixed at once: contact \texttt{condim} 3$\rightarrow$6 with realistic rubber friction (at \texttt{condim}=3 the friction coefficients were silently ignored and the toe spheres were frictionless ball casters --- also the spin-on-a-toe bug), the six motor masses welded onto their stator bodies (5.73$\rightarrow$12.83\,kg), and a standing keyframe settled \emph{under gravity} (91\,mm of downward toe reach instead of 2.2\,mm --- the robot physically could not step before). The reward gains a foot-slip penalty and a per-foot stance-time cap.
 
-    \item[\textbf{2025-06-08}] Proof reading
+    \item[\textbf{2026-07-06}] Hardware bring-up begins in parallel: AK motor test scripts, slow sine sweeps, position monitoring, torque-control safety limits.
+
+    \item[\textbf{2026-07-07}] Tool to record a walking gait by hand and play it back on the robot.
+
+    \item[\textbf{2026-07-09}] Workspace and joint-limit calibration on the real leg; a clean workspace and a trajectory referenced to the URDF zero pose.
+
+    \item[\textbf{2026-07-10}] Flask web UI to drive the robot: per-motor sliders, live leg visualisation, gait recording and playback.
+
+    \item[\textbf{2026-07-11}] Another training run fails to even stand.
+
+    \item[\textbf{2026-07-14}] Naming settled to DASH-01. Two structural changes to the RL problem: a \textbf{base-DOF locking curriculum} (m1..m6, releasing the floating base one axis at a time) and a \textbf{Fourier gait controller} whose coefficients the policy tunes, instead of raw joint targets.
+
+    \item[\textbf{2026-07-15}] Reward rewritten around a full 100\,m sprint objective; free height DOF added.
+
+    \item[\textbf{2026-07-17}] The second stack is retired in turn: the repository is cleaned down to a self-contained \texttt{training/} + \texttt{robot/} layout.
+
+    \item[\textbf{2026-07-21}] m3 (pitch released) falls in 1.5\,s. Three countermeasures: a hard-wired pitch reflex in the gait generator, a centroidal-angular-momentum reward, and VecNormalize rejuvenation on warm starts.
+
+    \item[\textbf{2026-07-22}] The real m3 failure turns out to be an \textbf{entropy-gate deadlock} --- the policy's action standard deviation sat pinned at its maximum for the entire 150\,M-step run. Fixed with an entropy-anneal deadline and a speed/uprightness gate. Also this day: competence-gated curriculum ramps with a seven-preset balance-first sweep, dynamic parameter identification ($K_t$, inertia, friction) in the web UI, and the SLURM workflow on the Izar cluster.
+
+    \item[\textbf{2026-07-23}] m3 rounds 3--5. The decaying pitch assist turns into a \emph{crutch} (the policy finds a stand-still loophole), so it gets an assist-reliance penalty, then is replaced by a base-pitch armature. Then the large change: the \textbf{200\,Hz reactive stack} --- control moved 50$\rightarrow$200\,Hz with the reward made rate-invariant and $\gamma$, action delay, action filter and every curriculum count rescaled, plus a sim2real timing curriculum (loop jitter, dropped inference steps). Side arms test an ankle-torque reflex and a lowered CoM.
+
+    \item[\textbf{2026-07-24}] A diagnostic proves the m3 policy plants its feet $\sim$8\,cm \emph{behind} the CoM while falling forward: it never learned the capture step. Preload-preserving ankle stiffening and a foot-ahead-of-CoM reward follow. Separately, an \texttt{evaluate.py} bug is found and fixed --- it evaluated mid-training checkpoints at 100\,m rather than the curriculum distance, which had made m2 look degenerate when it was in fact fine.
+
+    \item[\textbf{2026-07-24}] Motor velocity and acceleration limits plus a cadence penalty added, with a cadence/symmetry diagnostic to measure them.
+
+    \item[\textbf{2026-07-25}] m4/m5/m6 stiff-ankle presets: the DOF ladder is pushed further up.
+
+    \item[\textbf{2026-07-28}] \textbf{Gait-frequency bug.} The 200\,Hz rescale had widened \texttt{gait\_freq\_hz} to $(0.5,50)$, and since the mapping is linear a neutral action meant a \emph{25\,Hz} gait clock --- the thigh output flipped sign 35 times a second. Every external velocity, acceleration and torque limit had been fighting a broken internal default. Remapped to $(0.5,4.0)$, and a torque-budget curriculum added.
+
+    \item[\textbf{2026-07-29}] The frequency fix produces the best m3 controller so far (37\,s at 2.7\,m/s). The residual 6\,Hz footfall is chased through a residual-rate penalty and a pitch-reflex fix before the actual driver is identified: \textbf{ankle-spring resonance}. Damping it is the fix.
+
+    \item[\textbf{2026-07-29}] \textbf{CPG vs Fourier A/B.} An Ijspeert-school coupled-oscillator generator is added as a second arm, with its oscillator$\rightarrow$joint mapping \emph{measured} rather than assumed: probing the plant showed that from the stand pose both cam and thigh move the toe mostly fore-aft, so the natural ``thigh = swing, cam = lift'' reading would never produce a step. The mapping is therefore written in foot space and inverted through a measured lookup table, which had to reject a folded solution branch and handle a redundant 4-bar.
+
+    \item[\textbf{2026-07-30}] A/B result: no clear winner --- the CPG wins cold m3, the Fourier generator is more seed-reliable. The whole m1..m6 ladder is relaunched twice, once with the cadence fixes baked in and once on the CPG generator, unattended overnight.
+
+    \item[\textbf{2026-07-31}] A duty-symmetry reward is added against one-legged gaits, and the curriculum learns to \emph{retreat}: a bidirectional ramp that backs difficulty off when competence drops. The CPG ladder clears m1--m4 and walls at m5 (roll).
+
+    \item[\textbf{2026-08-04}] \textbf{The measurement campaign opens.} Weighed masses replace the CAD placeholders: 12.83$\rightarrow$15.14\,kg ($+18\,\%$), with the shin 2.6$\times$ heavier than modelled --- which matters because distal leg mass is the dominant cost term for a runner. The ankle becomes a first-class experimental variable (rigid / free / passive / active / active-spring). The toe's static force capability is mapped over the whole workspace: the leg stands at 96\,\% of its reach, with 19:1 vertical:horizontal anisotropy; the motors clear 3.5 body weights while the passive ankle falls 8$\times$ short.
+
+    \item[\textbf{2026-08-05}] System identification debugged: two sign errors that had made every $K_t$ come out negative, each joint refitted only on the runs that actually moved it, and the loop Jacobian's damping reduced. The excitation is sized against travel, no-load speed \emph{and} the position loop's bandwidth. Peak joint torque is corrected to what the gearbox delivers rather than what the datasheet quotes. Sense HAT (B) sensors are read out on the robot's page. The nine-arm ankle study is launched.
+
+    \item[\textbf{2026-08-06}] \textbf{The ankle question is closed --- by statics alone.} The real spring ($k=41.4$, no preload) deflects 26.6\textdegree{} and drives the heel 11.9\,mm through the floor at half body weight; preload does 7.6$\times$ more work than stiffness. Compression capacity was the entire story --- the as-built 3\,mm PETG rod buckles at 0.27\,N, $\sim$35$\times$ below spec. Also measured this day: the CAN feedback protocol (a single frame at 200\,Hz, and no bus voltage reported, which closes the back-EMF route to $K_t$), where the IMU is really bolted, and the Pi holding a 200\,Hz control loop at 50\,\% budget with 117\,\textmu s of policy inference. The \texttt{walk\_fwd} lineage adapts the teleop walker to the measured robot with four new sim2real axes, every one of them a measured number. A warm-start bug surfaces: seed replicates had been silent duplicates.
+
+    \item[\textbf{2026-08-08}] The sim2real randomisation axes are made to ride the difficulty ramp instead of standing at full width from step zero, and \texttt{evaluate.py} loses its fourth instance of the same bug class (rebuilding a curriculum parameter at evaluation time instead of restoring it). The ankle-spring branch is merged: \textbf{the measured robot becomes the mainline}.
+
+    \item[\textbf{2026-08-09}] Commanded speeds are bounded by what the plant can actually reach (it tops out near 0.14\,m/s and dies above 0.3). The walker gets the base-DOF ladder it never had, starting at m2 and training cold --- warm-starting a free-base policy \emph{down} into a constrained rung proved strictly harmful. Standing still had been out-scoring walking; the reward stops paying for it.
+
+    \item[\textbf{2026-08-10}] \textbf{The plant becomes the robot as rebuilt.} Per-joint motor velocity caps are enforced for the first time --- they had defaulted to \emph{off} for this entire lineage, which is how an earlier m3 ``winner'' came to balance by pattering one foot at 11\,Hz past the motor ceiling. The ankle becomes a rigid carbon tube, the measured reachable workspace is finally enforced, and the drive bandwidth is bracketed to ask whether 0.8\,Hz is what stops it walking. On the hardware side, a failure that cost a joint prompts a three-tier \textbf{black-box flight recorder} with a pre-move guard. One last training bug: the entropy anneal could never open, and could never finish.
+
+    \item[\textbf{2026-08-11}] The first full ladder on the rebuilt plant: twelve jobs, $\sim$23\,h wall clock, six rungs $\times$ two seeds. m2 walks out the full 60\,s cap; \textbf{m5 (roll) is a hard wall} --- both seeds flat for 80\,M steps with no slope at all, and the retreating curriculum correctly backed off rather than papering over it. A scripted, no-RL walk controller is written as an honest baseline.
+
+    \item[\textbf{2026-08-19}] \textbf{Foot-shape study: sixteen runs, negative result.} A flat plate and a running blade are tested against the sphere across m2--m5. Reaching the answer took three wrong readings of the same data: training episode length is the wrong instrument for adaptive curricula that did not land together, a survivor threshold chosen \emph{after} seeing the data flattered the blade, and pooled medians then moved the apparent win to a different rung. The harness's own rule --- a per-arm difference smaller than the within-rung spread is not a result --- kills all of it. Separately, the web UI is moved into its own process so it stops stalling the CAN loop, and MIT-mode range identification is run on the AK drives.
+
+    \item[\textbf{2026-08-25}] \textbf{Foot arc geometry measured.} The stance leg is a fixed-length pendulum held at 99.5\,\% of its reach, so every foothold lies on a single arc: forward reach 31\,cm, \emph{backward reach 2.7\,cm}. The CoM sits at the rear edge of the workspace rather than its centre, which is why a backward fall can never be caught. Neither the ankle strut nor the pushrod changes this, but 5\,cm of crouch takes backward reach from 2.7 to 20.2\,cm for 2\,N$\cdot$m out of 144.5. Re-solving the balanced keyframe (stance lean 5.7\textdegree{} $\rightarrow -0.13$\textdegree) takes the scripted controller at m3 from 0.91\,s to 24.7\,s.
 \end{itemize}
+
 
 \subsection{URDF from CAD: step by step}
 

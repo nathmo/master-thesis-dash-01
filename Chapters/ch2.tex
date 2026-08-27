@@ -182,14 +182,18 @@ essentially one empirical gain. The three-loop decomposition is also simple enou
 1980s hardware.
 
 \emph{What it costs.} Three assumptions, of which DASH-01 violates
-all three. And no proof: the hoppers demonstrably worked, but the approach offers no certificate
-that they will.
+all three. And no certificate for the design as a whole. The hoppers demonstrably worked, and
+individual loops were later proved in simplified models: Koditschek and
+B\"uhler~\cite{koditschek1991} recast the vertical hopping loop as a discrete dynamical system and
+established its stability conditions, and the placement loop has since been formalised through
+capturability~\cite{pratt2006capture}. What the lineage never supplied is a proof for the
+composition of the three loops on a physical machine, which is what \cref{sec:bg-hzd} is about.
 
 \subsubsection{Stability from a provable limit cycle: hybrid zero dynamics}
 \label{sec:bg-hzd}
 
 Passive dynamics gives a limit cycle that cannot be commanded. Raibert gives commandable behaviour
-that cannot be proved. Hybrid zero dynamics (HZD) is the synthesis. The controller does not track a
+that was not proved. Hybrid zero dynamics (HZD) is the synthesis. The controller does not track a
 trajectory indexed by \emph{time}. It enforces \emph{virtual constraints} instead: relations among
 the joint angles parameterised by the robot's own progress through the step. Enforcing those
 constraints collapses the closed-loop dynamics onto a low-dimensional surface, the \emph{zero
@@ -352,51 +356,6 @@ burden moves first from a geometric condition checked at runtime to a mechanism 
 its own. It then moves to a simulator faithful enough that a policy trained in it survives reality. That
 trend is what makes measurement, rather than control design, the critical path of a project like
 this one.
-
-\subsection{Actuation decides which control approach is available}
-\label{sec:bg-actuation}
-
-\Cref{tab:bg-approaches} ends each row with a hardware demand, and that column is not incidental. A
-control approach is available only to a robot whose actuators can meet its requirement. The
-actuation choice is therefore made \emph{before} the control choice, whether or not the designer
-notices. Three families dominate.
-
-\textbf{Hydraulic.} Raibert's hoppers, BigDog~\cite{raibert2008bigdog} and the Boston Dynamics
-Atlas are hydraulic. The family offers high force density, high bandwidth, and a commanded
-force that arrives essentially instantaneously. The cost is a pump, a reservoir, noise, leaks and a
-floor on system size and budget that puts the family out of reach for most laboratories and all
-students.
-
-\textbf{Series elastic (SEA).} Pratt and Williamson~\cite{pratt1995sea} proposed inserting a spring
-between gearbox and load deliberately. Force then becomes a \emph{position} measurement, namely the
-spring's deflection, which is cheap and accurate to sense. The spring also protects the gear teeth
-from impact and stores running energy in the SLIP sense of \cref{sec:bg-slip}. ATRIAS, Cassie and
-Digit are the canonical bipeds~\cite{hubicki2016atrias}. The cost is that the spring is a low-pass
-filter. The spring--load resonance caps force bandwidth, and the compliance adds states that must
-themselves be controlled.
-
-\textbf{Quasi-direct drive (QDD), or proprioceptive actuation.} The MIT Cheetah
-lineage~\cite{seok2015design,wensing2017proprioceptive,katz2019minicheetah} took the opposite
-route: a large-diameter, low-$K_v$ motor behind a \emph{small} gear ratio, typically 4:1 to 10:1,
-so that the transmission is nearly transparent in both directions. Three properties follow. Torque
-can be inferred from motor current with no torque sensor, which is why the family is called
-proprioceptive. Reflected inertia is low, so an impact backdrives the motor instead of shattering a
-gear train. And the current loop sets force bandwidth, which puts it in the kilohertz range. The
-costs are honest ones. Torque density is lower than a high-ratio gearbox gives, so the robot is
-heavier for a given torque. And torque is current, current is heat, so the binding limit becomes
-thermal rather than mechanical. This thesis meets that limit directly
-(\cref{sec:speed-ceiling-corrected}).
-
-The consequence for DASH-01 belongs in the background chapter rather than in the results. The
-robot's actuators are QDD-class, chosen for exactly the reasons above, and
-\cref{sec:hw-motor-critique} vindicates them as the Pareto-optimal choice in their class. They are
-nevertheless commanded through the vendor's \emph{position} loop, which \cref{sec:plant-id-drive}
-measures at 0.8\,Hz. A position loop of that bandwidth wrapped around a transparent transmission
-discards the single property the transmission was chosen for. It also removes two entire rows of
-\cref{tab:bg-approaches} from the menu. MPC and torque-mode RL both require that a commanded force
-reach the ground, and a 0.8\,Hz position servo delivers neither. That is the mechanism behind the
-recommendation in \cref{sec:future}: treat torque-mode control as a day-one architectural
-requirement rather than as an optimisation.
 
 \subsection{Control approaches: where this thesis sits}
 \label{sec:bg-control}

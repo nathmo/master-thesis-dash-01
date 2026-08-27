@@ -46,9 +46,10 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This thesis documents the development of DASH-01, a custom biped with a parallel-linkage leg.
-The robot asks how fast a small, low-cost legged robot can run. More centrally, it asks what
-transferring reinforcement-learning locomotion methods onto real hardware actually costs.
+This thesis documents part of the development of DASH-01, a custom biped with a parallel-linkage leg.
+The robot asks how fast a small, low-cost legged robot can run.
+It develop the step to go from a CAD model to a simulation model and the caracterization of the real robot. 
+It then attempts to develop a reinforcement-learning framework for bipedal locomotion that work on the hardware.
 
 The work covers the full chain. It models a leg that closes a kinematic loop, simulates that
 model in MuJoCo, and runs a measurement campaign that replaces every assumed plant parameter
@@ -58,20 +59,8 @@ It adds a curriculum that releases the base degrees of freedom one at a time. It
 deployment stack on the robot itself: a 200\,Hz control daemon on a non-realtime Raspberry Pi, a
 web-based bring-up instrument, and an always-on flight recorder.
 
-The headline simulation result is a policy that runs at 2.6\,m/s on the fully free plant without
-falling. The headline measurement result is less comfortable. The real robot is 18\,\% heavier
-and about 15\,\% weaker than the plant every policy trained against, and its actuator position
-loop is more than an order of magnitude slower. Those corrections move the robot's credible
-ceiling to roughly 2.7\,m/s burst and 1.3\,m/s sustained. DASH-01 is therefore a walking and
-jogging demonstrator, not a record platform.
+The headline simulation result is a policy that runs at XX\,m/s on the fully free plant without falling.
 
-The thesis argues, with evidence, that such a gap is the normal product of simulation-first
-development. The countermeasures are methodological: measure early, treat every training aid and
-every reward term as an exploit target, evaluate on fixed tasks with paired seeds, and instrument
-the hardware so that failures stay reconstructible. A hand-designed classical controller, written
-late in the project as a baseline, beats the learned policy on the constrained plant. It then
-fails at exactly the same wall on the free plant. The binding constraint is the robot, not the
-learning algorithm.
 
 \newpage
 }
