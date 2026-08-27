@@ -1,5 +1,5 @@
 \documentclass[a4paper, 11 pt]{article}
-\input{General/Preamble} % Loads in the preamble 
+\input{General/Preamble} % Loads in the preamble
 \input{General/Settings} % Loads in user defined settings
 \input{General/MathCommands} % Loads in user defined math commands
 
@@ -9,22 +9,22 @@
 \thispagestyle{empty}
 \begin{center}
     \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
-    
+
     \textsc{\LARGE École Polytechnique Fédérale de Lausanne}\\[0.5cm]
     \includegraphics[width=5cm]{Figures/epfl_red.png}\\[0.5cm]
     \LARGE{\textsc{Robotique, 2025-26}}\\[0.5cm]
     \huge{\textbf{Master thesis}}
-    
+
     \HRule \\[0.4cm]
     {\huge \bfseries DASH-01 :\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
     \HRule \\[0.5cm]
     \LARGE{\textsc{REHAssist} \\
     \text{13.04.2025 - 04.09.2025}}\\[0.5cm]
-    
+
     \vspace{5mm}
     %\includegraphics[scale=0.6]{images/pageDeGarde.png}\\
     \vspace{15mm}
-    
+
     \begin{minipage}{2in} \Large
     \textbf{Author:}\\
     Nathann \textsc{Morand}\\
@@ -46,28 +46,37 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This thesis documents part of the development of DASH-01, a custom biped with a parallel-linkage leg.
-The robot asks how fast a small, low-cost legged robot can run.
-It develop the step to go from a CAD model to a simulation model and the caracterization of the real robot. 
-It then attempts to develop a reinforcement-learning framework for bipedal locomotion that work on the hardware.
+DASH-01 is a 15\,kg biped with six quasi-direct-drive actuators, a parallel 4-bar knee and a
+passive ankle. It was built at REHAssist on a student budget, around one question: how fast can a
+cheap custom biped run? This thesis takes the platform from a partially finished mechanical design
+to a measured, simulated, trained and instrumented machine. It then reports the distance between
+what a learned controller achieves in simulation and what the hardware can deliver.
 
-The work covers the full chain. It models a leg that closes a kinematic loop, simulates that
-model in MuJoCo, and runs a measurement campaign that replaces every assumed plant parameter
-with a measured one. It develops three successive action spaces for the learned controller:
-direct torque, per-step position targets, and a central pattern generator tuned by the policy.
-It adds a curriculum that releases the base degrees of freedom one at a time. It ends with the
-deployment stack on the robot itself: a 200\,Hz control daemon on a non-realtime Raspberry Pi, a
-web-based bring-up instrument, and an always-on flight recorder.
+The work covers the whole chain. A CAD-to-MJCF pipeline closes the kinematic loop that URDF cannot
+express. A measurement campaign replaces every load-bearing plant parameter with a measured one. A
+first-principles feasibility sweep bounds the running speed the mechanism admits, before any
+controller exists. Five action-space designs are trained with PPO, under a curriculum that releases
+the base degrees of freedom one at a time. A deployment stack closes a 200\,Hz control loop on a
+non-realtime Raspberry Pi, with a web bring-up instrument and an always-on flight recorder.
 
-The headline simulation result is a policy that runs at XX\,m/s on the fully free plant without falling.
+Two measurements carry the argument. Every assumed plant parameter that was later measured moved in
+the pessimistic direction. Mass moved by $+18\,\%$ and peak joint torque by $-15\,\%$. The drive's
+internal position loop moved by a factor of 16, from an assumed 13\,Hz to a measured 0.8\,Hz,
+against a 310\,ms divergence timescale. On the corrected plant the mechanism admits about 2.7\,m/s
+in burst and about 1.3\,m/s thermally. The bipedal 100\,m record pace is near 4\,m/s.
 
+The best learned policy runs 60\,s without falling at 2.6\,m/s, on the fully free simulated plant.
+A 21-gain scripted controller with no learning in it hits the same pitch-balance wall at the same
+1\,s. On this platform the binding constraint is the plant rather than the algorithm. The thesis
+therefore ends in a ranked set of mechanical changes rather than in a controller.
 
 \newpage
 }
 %%%
 %%% TABLE OF CONTENTS
 \newpage
-\renewcommand{\contentsname}{Table of Contents} 
+\setcounter{tocdepth}{2}
+\renewcommand{\contentsname}{Table of Contents}
 {
   \hypersetup{linkcolor=black}
   \tableofcontents
@@ -76,18 +85,21 @@ The headline simulation result is a policy that runs at XX\,m/s on the fully fre
 %%%
 
 % Creates the introduction, starting page numbering
-\include{Chapters/ch1} 
+\include{Chapters/ch1}
 \include{Chapters/ch2}
 \include{Chapters/ch3}
 \include{Chapters/ch4}
 \include{Chapters/ch5}
 \include{Chapters/ch6}
+\include{Chapters/ch7}
 \include{Chapters/append}
 
 % Add appendices here, if there are any
 
 \newpage
-\bibliographystyle{plain} 
+{\small
+\bibliographystyle{plain}
 \bibliography{References}
+}
 
 \end{document}

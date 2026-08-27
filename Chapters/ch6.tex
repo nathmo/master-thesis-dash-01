@@ -1,62 +1,170 @@
-\section{Conclusion and Future Work}
+\section{Discussion}
+\label{sec:discussion}
 
-\subsection{Summary of Findings}
+This chapter measures the distance between the objective of \cref{sec:intro-objective} and the
+results of \cref{sec:results}. It then answers the three hypotheses of \cref{sec:bg-gap}, and ranks
+the changes that would close the gap. The ranking is the chapter's deliverable, and every entry
+carries the measurement that ranks it.
 
-This thesis set out to apply reinforcement learning to a custom high-speed biped, and it delivered
-three things. The first is a working method: the modelling, training and curriculum stack that
-produces a 2.6\,m/s never-falling runner on the free simulated plant. The second is a measured
-robot: every load-bearing parameter of DASH-01 replaced by a measurement, with stated uncertainty
-and stated un-resolvables. The third is an honest account of the distance between the two. That
-distance is not rhetorical. The measured robot is heavier and weaker than the model it trained
-against, and an order of magnitude slower in actuation. Its corrected ceiling of
-about 2.7\,m/s burst and 1.3\,m/s sustained reclassifies the platform from record contender to
-demonstrator. The learning method itself is vindicated wherever it can be tested. It matches
-classical control, and is matched by it, exactly at the plant's own limits, which is what a healthy
-learning stack should do.
+\subsection{The distance to the objective}
 
-\subsection{Challenges and Limitations}
+The target was a bipedal 100\,m record pace near 4\,m/s. The measured mechanism sustains about
+1.3\,m/s thermally, and bursts to about 2.7\,m/s (\cref{tab:speed-ceiling}). A 100\,m dash at
+record pace is about 25\,s of continuous running against a continuous torque rating. The sustained
+figure therefore decides the record, and the gap is a factor of three.
 
-The limits of the present work are recorded throughout, and summarised once here. No policy has yet
-run on the hardware, and export plus inference on the Pi remain the critical path. The sprint
-results rest on privileged observations. Identification left the link inertia tensors and the
-0.9\,N$\cdot$m gravity residual unresolved, with the kinematic model as the remaining suspect. The
-actuator model lacks a coupled torque--speed envelope, which makes it optimistic exactly at high
-speed. The capability analysis's corrected figures are a sensitivity propagation awaiting a full
-re-sweep. And the physical robot currently stands with one functional leg.
+That gap is mechanical rather than algorithmic, and the evidence is a controlled comparison rather
+than an inference. A 21-gain scripted controller with no learning in it hits the identical
+pitch-balance wall at the identical time. The survival time equals the free-topple time of an
+uncontrolled inverted pendulum, across a 5$\times$ change in the plant's time constant
+(\cref{tab:freefall}). At that wall the set of stabilising action sequences is essentially empty,
+so every controller drawn from it performs identically. No algorithm closes the gap on this plant.
 
-\subsection{Suggestions for Future Research}
+\subsection{Verdict on the three hypotheses}
+
+\textbf{H1, dimensionality reduction: supported.} The structural prior turned a non-converging
+problem into a trainable one. The torque attempt is the control. It never converged, across an
+unbroken sequence of reward-shaping attempts (\cref{sec:rl-torque}). The per-step position policy
+converged only to standing, and skated (\cref{sec:rl-position}). The Fourier action space walked at
+0.5\,m/s on its first trained policy, with no skating signature. The claim is scoped to this plant
+and this sample budget. No arm was run at the $10^8$ to $10^9$ transitions per condition that the
+published comparisons use.
+
+\textbf{H2, control authority: partially supported, and the interesting half is untested.} Gait
+morphology alone was not sufficient. Removing the per-step residual channel from the oscillator
+generator produced stability without locomotion, at 15\,m of a 72\,m course (\cref{sec:cpg-ab}).
+The reflex and residual channels were therefore necessary. The impedance level of the hypothesis,
+phase-dependent $K_p(\varphi)$ and $K_d(\varphi)$, was designed and never run. The drive mode it
+needs was never switched on the hardware (\cref{sec:rl-impedance}). H2 is answered for the residual
+channel, and open for the impedance channel.
+
+\textbf{H3, robustness across the sim-to-real boundary: untested on hardware.} No policy has run on
+the robot. The closest available evidence is the descent onto the measured 0.8\,Hz drive. The
+structured controller completed it, to an episode length of 4938 and three times its parent's score
+(\cref{sec:sim2real-lineage}). That is a sim-to-sim result on a measured plant. No unconstrained arm
+was run through the same descent for comparison, so it does not answer H3 as stated.
+
+\subsection{Ranked levers for a successor robot}
 \label{sec:future}
-
-For \emph{this} robot, the record orders four priorities. First, ONNX export and a Pi inference
-loop, because everything else waits on them. Second, current-mode control with the position PD
-closed on the Pi at 200\,Hz, replacing the 0.8\,Hz drive loop that every measurement identifies as
-the binding constraint. Third, the carbon ankle strut. Fourth, the from-scratch cadence retrain.
-
-For a \emph{successor} robot, the measured record ranks the design levers.
 
 \begin{enumerate}[leftmargin=*]
   \item \textbf{Bus voltage before torque.} 87\,\% of feasible gaits are limited at the cam's
-        peak-power corner. Speed scales linearly with no-load speed, and not at all with peak
-        torque.
+        peak-power corner (\cref{sec:speed-ceiling}). Over that population, speed scales with
+        no-load speed and is insensitive to peak torque, and no-load speed is linear in bus
+        voltage. The scope is the sweep as run, on the CAD plant. The cost is pack mass plus a
+        drive rated for the higher voltage. A 60\,V variant of a drive already surveyed would have
+        given 25\,\% for EUR\,220 (\cref{sec:hw-motor}).
   \item \textbf{Distal mass.} At $-0.93$\,(m/s)/kg it carries nine times the leverage of torso
-        mass. A carbon shin, plus a proximally mounted spring on a tendon (a true Achilles),
-        recovers about 0.5\,m/s for free.
+        mass (\cref{tab:speed-ceiling}). A carbon shin, plus a proximally mounted spring on a
+        tendon, recovers about 0.5\,m/s. The cost is a composite part and a tendon route to
+        design. The carbon ankle already executed the cheap half of this, at $-209$\,g per shin
+        (\cref{sec:ankle-build}).
   \item \textbf{Re-proportion or replace the 4-bar.} Only 0.20 to 0.35\,m of a 1.06\,m geometric
         span is usable. The standing pose sits at 96\,\% of reach, where the toe-force ellipse is
-        19:1 anisotropic: strong vertically, and weak in exactly the propulsive direction. Target
-        a flat transmission ratio over about 0.5\,m, with stance at about 85\,\% of reach.
-  \item \textbf{Size the ankle for 3.5 body weights.} The present passive ankle delivers a median
-        of 0.42\,BW over the running-stance region, which is 8$\times$ short, and it fails in
-        positive mechanical feedback.
-  \item \textbf{Cool the cam motor.} Sustained speed is what a 100\,m record is made of, and the
-        gap between the 167\,N$\cdot$m demanded and the 55\,N$\cdot$m continuous rating is
-        thermal.
-  \item \textbf{Treat torque-mode control as an architectural requirement from day one.} That is
-        the v1 lesson, and it was paid for twice.
+        19:1 anisotropic in the wrong direction (\cref{sec:hw-force-map}). Backward reach from the
+        stance pose is 2.7\,cm against 31\,cm forward, which is why a backward fall can never be
+        caught (\cref{sec:hw-experiments}). Target a flat transmission ratio over about 0.5\,m,
+        with stance at about 85\,\% of reach. The cost is a linkage redesign. In the meantime,
+        5\,cm of crouch buys most of the backward reach for 2\,N$\cdot$m out of 144.5.
+  \item \textbf{Size the ankle for 3.5 body weights.} The passive ankle delivers a median of
+        0.42\,BW over the running stance region, which is 8$\times$ short, and it fails in positive
+        mechanical feedback (\cref{sec:hw-force-map}). The cost is either a stiffer passive element
+        with correct preload, or a seventh and eighth motor. \Cref{sec:rl-pitch-wall} shows the
+        passive route suffices in simulation, if the stiffness is achievable.
+  \item \textbf{Cool the cam motor.} The demanded 167\,N$\cdot$m sits against a 55\,N$\cdot$m
+        continuous rating, and the sustained figure is what decides a record. Cooling extends how
+        long the peak stays available. The gain is unquantified, because winding temperature has
+        never been logged at the measured duty cycle. \Cref{sec:speed-ceiling} records that as an
+        open item. This is therefore a lever with a named test rather than a ranked result. The
+        cost is added mass and an airflow path at the joint.
+  \item \textbf{Treat torque-mode control as an architectural requirement from day one.} It was
+        abandoned twice here, once on convergence and once on assumed deployability. The measured
+        0.8\,Hz drive loop points back to it (\cref{sec:plant-id-drive}). Unlike the levers above,
+        this one carries no number. In my view it is a design opinion rather than a ranked result.
 \end{enumerate}
 
-Finally, the validated toe-Jacobian force map and the capability sweep together make a
-\emph{design search in simulation} the natural next use of the training cluster. Such a search
-would range over bus voltage, gear ratio, distal mass, linkage proportions and ankle stiffness. It
-would search over robots, rather than over controllers for a robot already known to be the
-constraint.
+Two items sit outside the ranking, because they are measurement gaps rather than design changes.
+Pack voltage sag is unobservable from the drives, and plausibly worth 30\,\% of joint speed at the
+ten-second current tier (\cref{sec:hw-battery}). A voltmeter across the pack during a sprint
+settles it. And the actuator's reference frame for reported current is undocumented, which puts an
+unquantified risk on every measured torque figure (\cref{sec:hw-motor}). A clamp meter on a stalled
+motor settles that one.
+
+\subsection{Levers for this robot, in the order that unblocks the next}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{ONNX export and a Pi inference loop.} Everything else waits on it. The toy problem
+        of \cref{sec:toy-problem} already demonstrated the path at one degree of freedom.
+  \item \textbf{Current-mode control with the position PD closed on the Pi at 200\,Hz}, replacing
+        the 0.8\,Hz drive loop that every measurement identifies as binding.
+        \Cref{tab:loop-timing} shows the budget exists.
+  \item \textbf{The carbon ankle strut}, already fitted, and the corresponding retrain on the
+        rebuilt plant.
+  \item \textbf{A from-scratch retrain with cadence pressure from step zero.} Every warm-started
+        run stays trapped in the fast-stepping basin (\cref{sec:rl-cadence}).
+  \item \textbf{The phase-dependent impedance experiment} of \cref{sec:rl-impedance}. Items 1 and 2
+        make it possible, and it closes the open half of H2.
+\end{enumerate}
+
+\subsection{Method-level lessons}
+
+The lessons below are the ones that survive a plant change, by the test of \cref{tab:survives}.
+
+\textbf{Optimisers exploit objectives, and neural networks are not the culprit.} The policy gamed
+the reward by skating, penetrating the floor, shuttling and committing suicide by penalty. The
+scripted baseline's coordinate-descent tuner gamed its own objective identically. It drove at
+1.6\,m/s against a 0.3\,m/s command, to farm a distance term (\cref{sec:scripted-baseline}). On
+those two cases, in my view every objective needs adversarial review before its optimiser gets it.
+
+\textbf{The margin advantage of learning rests on three premises, and none was paid in full here.}
+The first is an exact plant, which this was not, since every parameter moved. The second is a
+reward pricing distance from the failure boundary, which this did not, since it priced survival and
+distance. The third is an asymptotic budget, which 600\,M steps per milestone is not. The
+generalisable diagnostic is that seed variance is the margin measurement. A figure of
+20.3\,$\pm$\,21.6\,s against 5 of 5 at the cap is bimodality rather than a worse mean, and a curve
+plotting the mean will not show it.
+
+\textbf{A gait prior reads on two axes, and the useful question is which kind rather than how
+much.} A shape prior fixes the trajectory and exposes its timing, so tuning does not enlarge the
+reachable set. It is therefore safe only when the morphology has a natural template. A structural
+prior constrains the class and leaves the member free. DASH-01 separates the two, because its cam
+turned out to be a full crank with no biological analogue. The evidence that the wider space was
+genuinely used is the cadence agreement between the learned optimum and the independent physics
+sweep, both at about 12.4\,steps/s (\cref{sec:speed-ceiling}). In my view the two-axis reading is a
+way of comparing systems usually filed under one label, rather than a measurement.
+
+\textbf{Every assumed parameter measured later moved pessimistically.} Mass by $+18\,\%$, torque by
+$-15\,\%$, drive bandwidth by $-16\times$, plus friction and the ankle. Measure before training.
+And when a measurement lands, apply it as \emph{the} plant rather than as an optional variant, or
+the wrong default gets trained on (\cref{sec:plant-id}).
+
+\textbf{Simulation results need the same scepticism as rewards.} Six artefacts each produced a
+clean, converged, wrong result. They were soft joint limits, constraints inactive at settle,
+frame-relative safety checks, a stale keyframe, a solver-version split between the development
+machine and the cluster, and an actuator velocity cap that was never present. The last let a policy
+balance at 23\,rad/s on a 22\,rad/s motor. Self-tests, smoke gates or measurement caught each one.
+
+\textbf{Instrumentation found the ceilings, and cost something to build.} The measurement
+instrument found the drive ceiling. The flight recorder found a daemon-killing crash and a dead bus
+within its first hour (\cref{sec:deploy-blackbox}). The cost is that the measurement disturbed the
+measured twice: once with the inertial sensor on a swaying rig, and once with the loop rate under
+SSH load. The second produced a committed wrong conclusion that only an A/B retracted.
+
+\textbf{Progressive validation localised the failures.} The base-DOF ladder localised failures to
+single degrees of freedom. The toy problem debugged the deploy chain at one degree of freedom. Both
+are cheap, and both worked.
+
+\subsection{What a successor project should do differently}
+
+The validated toe-force map and the capability sweep together make a \emph{design search in
+simulation} the natural next use of the training cluster. Such a search would range over bus
+voltage, gear ratio, distal mass, linkage proportions and ankle stiffness. It would search over
+robots rather than over controllers, for a robot already known to be the constraint. The tooling
+exists in validated form. The analysis runs on the same MJCF the policies train against, its
+Jacobians are self-tested, and its predictions agree with MuJoCo within 1\,\%.
+
+The sequencing lesson is narrower and cheaper. The measurement campaign that produced
+\cref{tab:plant-id} took three days, and it reclassified the project. It ran in month five of nine.
+Run in month one, it would have changed the actuator purchase, the ankle design and the choice of
+action space. Roughly 3 billion environment steps would then have been spent on the robot that
+exists.

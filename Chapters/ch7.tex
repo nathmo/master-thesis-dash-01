@@ -1,0 +1,62 @@
+\section{Conclusion and future work}
+\label{sec:conclusion}
+
+\subsection{What was set out to do, and what was delivered}
+
+This thesis set out to apply reinforcement learning to a custom high-speed biped. The platform was
+inherited as a partially finished mechanical design. Three things were delivered.
+
+A \textbf{working method}. It comprises the modelling, training and curriculum stack that produces
+a 2.6\,m/s never-falling runner on the free simulated plant. It also comprises the CAD-to-MJCF
+pipeline that closes a kinematic loop URDF cannot express. And it comprises the deployment stack
+that closes a 200\,Hz loop on a non-realtime single-board computer.
+
+A \textbf{measured robot}. Every load-bearing parameter of DASH-01 is replaced by a measurement,
+with stated uncertainty and stated un-resolvables. The identification reports a repeatable
+per-joint gravity gain. It also reports explicitly that the mass distribution is not the
+explanation for the residual, so the next person does not fit the same null space again.
+
+An \textbf{account of the distance between the two}. The measured robot is 18\,\% heavier and
+15\,\% weaker than the model it trained against, and an order of magnitude slower in actuation. Its
+corrected ceiling is about 2.7\,m/s burst and 1.3\,m/s sustained. That reclassifies the platform
+from record contender to demonstrator, and \cref{sec:future} ranks the changes that would move it.
+
+\subsection{The answer to the research question}
+
+\Cref{sec:bg-gap} asked at what level learning should sit, given this robot's actuator dynamics and
+available control bandwidth. The answer this work supports is narrow. \textbf{On a plant whose
+actuation bandwidth is an order of magnitude below its own divergence timescale, the level at which
+learning sits matters less than the level at which the actuator is commanded.}
+
+The evidence is that a learned controller and a 21-gain scripted controller hit the identical pitch
+wall at the identical time. The wall is predicted by a formula containing no controller term. The
+learning method held wherever it could be tested, and classical control matched it at the plant's
+own limits. That agreement is a consistency check on the stack. It is not evidence that either
+method won, because the plant bound both.
+
+\subsection{Limitations}
+
+Recorded throughout, and gathered once here. No policy has run on the hardware, and export plus
+inference on the Raspberry Pi remain the critical path. The sprint results rest on privileged
+observations, namely base linear velocity and distance to the line. Identification left the link
+inertia tensors and the 0.9\,N$\cdot$m gravity residual unresolved, with the kinematic model as the
+remaining suspect. The actuator model lacks a coupled torque--speed envelope, which makes the
+simulation optimistic exactly in the high-speed regime the project cares about. The corrected
+capability figures propagate sensitivity coefficients rather than re-running the feasibility sweep.
+The impedance action space was designed and never trained. And the physical robot currently stands
+with one functional leg.
+
+\subsection{Future work}
+
+For \emph{this} robot the record orders five steps, and \cref{sec:future} gives them with their
+dependencies. First, ONNX export and a Pi inference loop. Second, current-mode control with the
+position PD closed on the Pi. Third, the carbon ankle retrain. Fourth, a from-scratch retrain with
+cadence pressure from step zero. Fifth, the phase-dependent impedance experiment that the first two
+make possible.
+
+For a \emph{successor} robot the ranking is bus voltage, then distal mass, then the 4-bar
+proportions, then ankle sizing. Motor cooling is a lever with a named test, and torque-mode control
+is a design opinion. Underneath all of them sits one method-level recommendation. A validated force
+map and a validated feasibility sweep now exist. The natural next use of the training cluster is
+therefore a design search over robots, rather than a further search over controllers for a robot
+already known to be the constraint.

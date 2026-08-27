@@ -1,87 +1,120 @@
-\section{Introduction}
+\section{Introduction and context}
+\label{sec:intro}
 
-\subsection{Problem statement}
+This chapter states the objective, the platform, and the scope that survived the year. It closes
+with the contributions and a reading map. The rest of the document is then a single justification
+chain: physics and measurement first, then constraints, then the design that follows from them.
 
-Reinforcement learning has produced legged-locomotion results on research platforms.
-Reproducing those results on a new, custom, imperfectly known robot is a different problem, and it is the problem most robot builders actually face.
-On such a robot the plant parameters are uncertain, the actuators hide undocumented internal
-control loops, the sensors are commodity parts, and the computer is a single board. The gap
-between ``RL walks in simulation'' and ``RL walks on this robot'' is dominated by modelling
-fidelity, actuation bandwidth, calibration and instrumentation, not by learning algorithms.
+\subsection{The platform and the objective}
+\label{sec:intro-objective}
 
-DASH-01 is a two-legged, six-motor robot with a parallel-linkage knee and a passive ankle,
-designed around the ambition of high running speed. This thesis takes the robot from a partially
-finished mechanical design to a measured, simulated, trained and instrumented platform. It
-reports what each stage cost and what each stage revealed, and it includes the negative results
-deliberately.
+DASH-01 is a bipedal robot built at REHAssist. It carries two legs, six quasi-direct-drive
+actuators, a parallel 4-bar knee, a passive ankle spring and a single-board computer. The hardware
+budget was roughly EUR\,5000. \Cref{fig:robot} shows the machine as modelled.
 
-\subsection{Objectives of the Project}
+The objective at kickoff was maximum running speed, with the bipedal 100\,m record as the stated
+ambition. That record stands at 24.73\,s, or about 4.1\,m/s average, set by Cassie in
+2022~\cite{crowley2024cassie}.
+
+The project inherited a partially finished mechanical design. The work reported here therefore
+starts at modelling, and at the selection of the non-mechanical subsystems. It then runs through
+characterisation, learning and deployment. Five threads organise it:
 
 \begin{enumerate}[leftmargin=*]
-  \item Model the robot faithfully enough to train against: kinematics, including the closed
-        4-bar loop, plus masses, actuators and sensors.
-  \item Establish the robot's physical performance envelope independently of any controller, so
-        that learned results can be judged against a ceiling rather than against hope.
-  \item Train locomotion policies with reinforcement learning. Iterate on the action-space design
-        until one design converges reliably, then quantify what still separates those policies
-        from hardware deployment.
-  \item Build the deployment stack on the real robot (control loop, calibration, safety and
-        telemetry), and validate as much of the chain as the hardware state allows.
-  \item Record the methodology honestly enough to be reproducible, including the failures.
+  \item finish the robot: actuator, battery, sensor and compute selection;
+  \item learn reinforcement learning and the sim-to-real problem on a toy plant, while the robot
+        did not yet exist;
+  \item model the robot at a fidelity that policies can be trained against;
+  \item characterise the physical robot, to bound the sim-to-real risk;
+  \item produce a policy that works.
 \end{enumerate}
 
-\subsection{Methodology Overview}
+\subsection{What the year changed about the objective}
+\label{sec:intro-reframe}
 
-The project starts halfway. The mechanical design existed in part, so the work reported here
-begins at modelling and at hardware selection for the non-mechanical subsystems. The development
-order was as follows. First, CAD re-assembly and export to a simulable model. Second, validation
-of that model against the physical robot, by workspace calibration, then statics, then full
-dynamic identification. Third, a first-principles capability analysis on the validated model.
-Fourth, a toy problem (a single-joint inverted pendulum) to exercise the complete
-train--export--deploy chain at minimum stakes. Fifth, three generations of RL policy design,
-trained on an HPC cluster. Last, the deployment stack on the robot, driven by a measurement
-campaign that fed corrections back into the simulation. \Cref{sec:overall-method} details the
-sequence. The single most consequential methodological finding is that \emph{every} assumed plant
-parameter that was later measured moved in the pessimistic direction (\cref{tab:plant-id}).
+Two facts reframed the objective. Both are stated here rather than conceded late.
+
+\textbf{The record moves faster than one thesis.} New bipedal speed marks now appear at roughly a
+monthly cadence, from teams with institutional budgets. A one-person master thesis on a ~CHF\,5000
+chassis is not a credible contender on that timescale.
+
+\textbf{The measured plant does not admit record pace.} \Cref{sec:speed-ceiling} bounds this
+mechanism at about 2.7\,m/s in burst, and about 1.3\,m/s thermally sustained. The bound comes from
+first principles, with no controller in the calculation. A 100\,m dash at record pace is about
+25\,s of continuous running, so the sustained figure is the one that decides a record. The gap is a
+factor of three, and it is mechanical.
+
+The objective is therefore restated as a measured demonstrator plus a reusable method. The
+deliverable is the chain from CAD to a trained policy, with every load-bearing number measured
+rather than assumed. It includes an explicit account of the distance to the original target. The
+thesis title still names the record, and \cref{sec:future} names the design changes that chasing it
+would need.
+
+\textbf{The problem this addresses.} Reinforcement learning has produced legged-locomotion results
+on research platforms. Reproducing them on a new, custom, imperfectly known robot is a different
+problem. The plant parameters are uncertain. The actuators hide undocumented internal control
+loops. The sensors are commodity parts, and the computer is a single board. The gap between
+``reinforcement learning walks in simulation'' and ``reinforcement learning walks on this robot'' is
+dominated by modelling fidelity, actuator bandwidth, calibration and instrumentation. This thesis
+measures each of those.
+
+\textbf{Sensing scope.} Proprioception and one base inertial measurement unit are the only sensors.
+Foot impact sensors were dropped for time rather than on evidence. The hardware provision for them
+remains in place, as four analogue inputs on the sensor hat. The literature prior that foot feedback
+helps convergence is therefore untested here.
 
 \subsection{Contributions}
+\label{sec:intro-contrib}
 
 \begin{itemize}[leftmargin=*]
-  \item A complete CAD-to-MJCF modelling pipeline for a biped whose linkage closes a loop. It
-        includes the loop-closure treatment that URDF cannot express, and validation tooling:
-        analytic Jacobians checked against finite differences, and loop closure checked against
-        the measured backdriven workspace at 100\,\% of 2789 poses.
-  \item A measured plant. It comprises weighed segment masses, torque constants identified by a
-        known-mass method that breaks the degeneracy between $K_t$ and gravity, the Bode response
-        of the drive's internal position loop (0.8\,Hz plus 25\,ms), IMU noise with provenance
-        labels, loop timing and the CAN protocol. It states explicitly what the identification
-        could \emph{not} resolve.
-  \item A first-principles capability analysis of running speed, validated against MuJoCo. Its
-        sensitivity result (distal mass costs roughly nine times what torso mass costs) was
-        confirmed repeatedly by later measurement as the binding design axis.
-  \item A policy architecture and the curriculum that trains it. The architecture is a learned
-        Fourier gait generator, re-parameterised every step and mirrored across legs, with
-        hard-wired reflexes, learned reflexes and a per-step residual channel. The curriculum
-        releases the base degrees of freedom one at a time. An A/B against an explicit-oscillator
-        generator ran on identical plants and rewards.
-  \item A catalogue of failure modes with measured diagnoses. It covers reward exploits (skating,
-        floor penetration, shuttling and suicide by penalty), curriculum deadlocks, evaluation
-        restore bugs, a warm-start bug that silently duplicated every seed replicate, and the
-        pitch-balance wall traced to plant statics rather than to learning.
-  \item A scripted classical baseline: a capture point and a clocked gait, 21 gains, no learning.
-        It outperforms RL on the constrained plant and fails identically on the free plant, which
-        is evidence that the wall is physical.
-  \item Deployment infrastructure on the robot: a 200\,Hz daemon on stock Linux, a web bring-up
-        instrument that carried most of the measurement campaign, and a three-tier flight recorder
-        with a pre-move safety guard. The recorder was built in response to a hardware failure and
-        validated by reproducing that failure.
-  \item Two published, reusable component databases, each with figure-of-merit tooling. The
-        actuator explorer holds 140 commercial actuators, 121 motors, 121 gearboxes and 9 drives
-        across eight vendors, and is built on the winding-invariant motor constant
-        $K_m = K_t/\sqrt{R}$ with explicit electrical reference frames. The cell and pack explorer
-        holds roughly 430 cells, 54 BMS modules and 110 packs, and is built on duration-stamped
-        current tiers and a pack synthesiser. Both audited this robot's own hardware choices after
-        the fact (\cref{sec:hw-motor-critique}). The audit vindicates the actuator selection as
-        the Pareto-optimal choice in its class. It also shows that the battery was selected
-        against a peak current rating quoted without a duration.
+  \item \textbf{A CAD-to-MJCF pipeline for a leg that closes a kinematic loop}, with the
+        loop-closure treatment URDF cannot express. It ships with validation tooling: analytic
+        Jacobians checked against finite differences, and loop closure checked against the measured
+        backdriven workspace at 2789 of 2789 poses (\cref{sec:twin}).
+  \item \textbf{A measured plant} (\cref{tab:plant-id}). It covers weighed segment masses, a torque
+        constant identified by a known-mass method that breaks the degeneracy between $K_t$ and
+        gravity, the Bode response of the drive's internal position loop, inertial-sensor noise
+        with provenance labels, loop timing and the CAN protocol. The identification also states
+        what it could \emph{not} resolve.
+  \item \textbf{A first-principles capability analysis} of running speed on that plant, validated
+        against MuJoCo. Its mass-distribution sensitivity ranks the design levers
+        (\cref{sec:speed-ceiling}).
+  \item \textbf{An action-space and curriculum design} for the learned controller. The generator is
+        a Fourier gait basis, re-parameterised every control step and mirrored across legs. It is
+        wrapped in hard-wired and learned reflexes and a per-step residual channel, and trained
+        under a base-degree-of-freedom release curriculum
+        (\cref{sec:rl-cpg,sec:rl-curriculum}).
+  \item \textbf{Two controlled comparisons that isolate the plant.} A generator A/B against an
+        explicit-oscillator central pattern generator, on identical plants and rewards
+        (\cref{sec:cpg-ab}). And a 21-gain scripted classical controller, which beats the learned
+        reference on the constrained plant and fails identically on the free one
+        (\cref{sec:scripted-baseline}).
+  \item \textbf{A failure catalogue with measured diagnoses.} It covers reward exploits, six
+        simulation artefacts that each produced a clean converged wrong result, four evaluation
+        bugs, and the pitch-balance wall traced to plant statics (\cref{sec:negative}).
+  \item \textbf{A deployment stack on the robot.} It is a 200\,Hz daemon on stock Linux, a web
+        bring-up instrument that carried most of the measurement campaign, and a three-tier flight
+        recorder with a pre-move guard. The recorder was built after a hardware failure, and
+        validated by reproducing it (\cref{sec:deploy}).
+  \item \textbf{Two published component databases with figure-of-merit tooling}, covering 140
+        commercial actuators and roughly 430 battery cells. Both audited this robot's own hardware
+        choices after the fact (\cref{sec:hw-selection}, \cref{sec:app-db}).
 \end{itemize}
+
+\subsection{Reading map}
+\label{sec:intro-map}
+
+\Cref{sec:bg} fixes the vocabulary, reads the field as six answers to one question, and sorts those
+answers on seven analytical axes. It closes with the gap this work sits in, and three hypotheses.
+\Cref{sec:robot} builds the robot and its digital twin, and replaces every assumed plant parameter
+with a measured one. \Cref{sec:rl} develops the controller: five action spaces, one curriculum, and
+the measured verdict on each. \Cref{sec:results} reports what the robot and the policies do.
+\Cref{sec:discussion} measures the distance to the objective, and ranks the levers that close it.
+\Cref{sec:conclusion} recaps. The appendix holds the logbook, the pipeline procedure, and the
+database and configuration detail.
+
+One motif recurs across the chapters, and it is worth naming in advance. The binding constraint
+moves from the algorithm to the plant. \Cref{sec:bg} introduces it as a demand each control family
+places on the hardware. \Cref{sec:robot} demonstrates it, because every measurement moved
+pessimistically. \Cref{sec:rl} confirms it, because a learned controller and a scripted one hit the
+same wall at the same time. \Cref{sec:discussion} quantifies it.
