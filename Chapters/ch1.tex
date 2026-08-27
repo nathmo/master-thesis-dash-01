@@ -5,16 +5,14 @@
 Reinforcement learning has produced striking legged-locomotion results on a small set of
 well-instrumented research platforms. Reproducing those results on a new, custom, imperfectly
 known robot is a different problem, and it is the problem most robot builders actually face.
-On such a robot the plant parameters are uncertain, the actuators hide undocumented internal
+On such a robot the plant parameters are uncertain, the actuators hide internal
 control loops, the sensors are commodity parts, and the computer is a single board. The gap
 between ``RL walks in simulation'' and ``RL walks on this robot'' is dominated by modelling
 fidelity, actuation bandwidth, calibration and instrumentation, not by learning algorithms.
 
 DASH-01 is a two-legged, six-motor robot with a parallel-linkage knee and a passive ankle,
 designed around the ambition of high running speed. This thesis takes the robot from a partially
-finished mechanical design to a measured, simulated, trained and instrumented platform. It
-reports what each stage cost and what each stage revealed, and it includes the negative results
-deliberately.
+finished mechanical design to a measured, simulated, trained and instrumented platform.
 
 \subsection{Objectives of the Project}
 
@@ -42,8 +40,7 @@ Fourth, a toy problem — a single-joint inverted pendulum — to exercise the c
 train--export--deploy chain at minimum stakes. Fifth, three generations of RL policy design,
 trained on an HPC cluster. Last, the deployment stack on the robot, driven by a measurement
 campaign that fed corrections back into the simulation. \Cref{sec:overall-method} details the
-sequence. The single most consequential methodological finding is that \emph{every} assumed plant
-parameter that was later measured moved in the pessimistic direction (\cref{tab:plant-id}).
+sequence.
 
 \subsection{Contributions}
 
@@ -73,16 +70,11 @@ parameter that was later measured moved in the pessimistic direction (\cref{tab:
         It outperforms RL on the constrained plant and fails identically on the free plant, which
         is evidence that the wall is physical.
   \item Deployment infrastructure on the robot: a 200\,Hz daemon on stock Linux, a web bring-up
-        instrument that carried most of the measurement campaign, and a three-tier flight recorder
-        with a pre-move safety guard. The recorder was built in response to a hardware failure and
-        validated by reproducing that failure.
+        instrument that carried most of the measurement campaign, and a flight recorder. 
   \item Two published, reusable component databases, each with figure-of-merit tooling. The
         actuator explorer holds 140 commercial actuators, 121 motors, 121 gearboxes and 9 drives
         across eight vendors, and is built on the winding-invariant motor constant
         $K_m = K_t/\sqrt{R}$ with explicit electrical reference frames. The cell and pack explorer
         holds roughly 430 cells, 54 BMS modules and 110 packs, and is built on duration-stamped
-        current tiers and a pack synthesiser. Both audited this robot's own hardware choices after
-        the fact (\cref{sec:hw-motor-critique}). The audit vindicates the actuator selection as
-        the Pareto-optimal choice in its class. It also shows that the battery was selected
-        against a peak current rating quoted without a duration.
+        current tiers and a pack synthesiser.
 \end{itemize}
