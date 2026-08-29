@@ -97,199 +97,91 @@ Control decomposes into thrust at bottom of stance, foot placement about a neutr
   x_f \;=\; \tfrac{1}{2}\,\dot x\,T_s \;+\; k\,(\dot x - \dot x_d),
   \label{eq:neutral-point}
 \end{equation}
-Here $x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres. $\dot x$
-is the current forward speed and $\dot x_d$ the commanded one, both in metres per second. $T_s$ is
-the stance duration in seconds, and $k$ is a velocity feedback gain, also in seconds. The first
-term is the neutral point, where the body sweeps symmetrically over the foot and stance returns no
-net fore-aft impulse. The second term corrects speed: running faster than commanded places the foot
-further forward, so stance decelerates the body.
 
-The lineage runs through BigDog~\cite{raibert2008bigdog} to Atlas, and \cref{eq:neutral-point} appears directly in the
-scripted baseline of \cref{sec:scripted-baseline}. Individual loops were later proved in simplified
-models~\cite{koditschek1991,pratt2006capture}, but never their composition on a physical machine.
+$x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres. \\
+$\dot x$ is the current forward speed in metres per second. \\
+$\dot x_d$ is the commanded forward speed, in metres per second.  \\
+$T_s$ is the stance duration in seconds. \\
+$k$ is a velocity feedback gain, also in seconds.  \\
+This equation give the foot placement that will bring the robot back to the commanded speed in one step. 
+The first term is the neutral point, which yield no net fore-aft impulse. 
+The second term corrects for the speed : running faster than commanded places the foot further forward, so stance decelerates the body.
+The lineage runs through BigDog~\cite{raibert2008bigdog} to Atlas.
+This equation made the early Boston dynamics possible.
 
-\textbf{A provable limit cycle.} Hybrid zero dynamics enforces virtual constraints indexed by the
-robot's own progress through the step rather than by time. That collapses the closed-loop dynamics
-onto a low-dimensional surface, whose orbital stability a Poincar\'e map can
-certify~\cite{westervelt2003hzd,westervelt2007book}. RABBIT demonstrated it on an underactuated
-biped with point feet~\cite{chevallereau2003rabbit}, and Grizzle et al.\ set out the
-control-theoretic structure for the 3D case~\cite{grizzle2014}. The hybrid-systems foundation,
-including impacts and periodic-orbit stability, is due to Hurmuzlu et al.~\cite{hurmuzlu2004}. The
-family also supplies the idea of indexing a gait by phase rather than by time, which every modern
-learned architecture reuses.
+\textbf{Re-solving online. (MPC)} Wieber recycled zero-moment-point walking as model-predictive
+control~\cite{wieber2006mpc} by doing on line. Kuindersma et al.\ built the whole-body version that ran Atlas at the
+DARPA Robotics Challenge~\cite{kuindersma2016atlas}.
 
-\textbf{Re-solving online.} Wieber recast zero-moment-point walking as model-predictive
-control~\cite{wieber2006mpc}. Kuindersma et al.\ built the whole-body version that ran Atlas at the
-DARPA Robotics Challenge~\cite{kuindersma2016atlas}, and Di Carlo et al.\ produced the convex
-formulation now underlying most classical legged stacks~\cite{dicarlo2018mpc}. Decisively for this
-thesis, the output is a force command that must reach the ground essentially unfiltered, so the
-family demands high-bandwidth torque control.
-
-\textbf{Experience.} A policy, typically a small network, is optimised by reinforcement learning to
-maximise a reward over millions of simulated episodes. Planner, whole-body controller and joint
-tracker collapse into one evaluation. Heess et al.\ showed that rich terrain and a simple reward
-produce running gaits with no gait prior~\cite{heess2017emergence}. PPO~\cite{schulman2017ppo}
-became the workhorse, MuJoCo~\cite{todorov2012mujoco} made the sample cost affordable, and
-massively parallel simulation cut wall-clock further~\cite{rudin2021}. Transfer is the hard part,
-and the toolkit is domain randomisation~\cite{tobin2017dr,tan2018sim2real}, learned actuator
-models~\cite{hwangbo2019anymal} and teacher--student
-distillation~\cite{lee2020terrain,miki2022perceptive}. On bipeds, Xie et al.\ carried iterative
-sim-to-real design onto Cassie~\cite{xie2019}, Siekmann et al.\ demonstrated the full gait range
-through periodic reward composition~\cite{siekmann2021}, Radosavovic et al.\ carried the approach
-to a full humanoid~\cite{radosavovic2024humanoid}, and Crowley et al.\ set the current 100\,m
-record~\cite{crowley2024cassie}.
-
-\begin{table}[tbp]
-\centering
-\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{1.9cm}p{2.3cm}p{4.2cm}p{4.9cm}}
-\toprule
-\textbf{Family} & \textbf{Stability from} & \textbf{What it buys} & \textbf{What it costs, and demands of the hardware} \\
-\midrule
-Static / ZMP & geometry & transparent, checkable, tolerant of model error & walking only; flat feet and flat ground; CoT $\approx$1.6. Position-controlled joints suffice. \\
-\addlinespace
-Passive dynamics & the mechanism & CoT $\approx$0.2 & tiny basin, fixed speed. Demands a proportioned, low-inertia leg. \\
-\addlinespace
-SLIP / series elasticity & elastic storage & correct running template; passive rejection & spring rate fixed in hardware; caps force bandwidth. Demands a physical spring, sized correctly. \\
-\addlinespace
-Foot placement & one decision per step & running with point feet; near model-free & no composed proof. Demands actuators that execute a placement within one swing. \\
-\addlinespace
-Hybrid zero dynamics & a certified limit cycle & a genuine proof under underactuation & proof is against the model; one optimisation per gait. Demands accurate torque tracking. \\
-\addlinespace
-MPC / whole-body & re-solving online & constraints first-class; commandable & model accuracy over the horizon; fast solver. \textbf{Demands high-bandwidth torque control.} \\
-\addlinespace
-Deep RL & experience over a distribution & no contact model; robust by construction; cheap inference & no proof; reward is gamed; $10^8$--$10^9$ samples. Demands a faithful plant model in software. \\
-\bottomrule
-\end{tabular}
-\caption{The six families as answers to ``where does the stability come from''. The last column
-governs the choice in practice, because a family is available only if the actuation meets its
-demand.}
-\label{tab:bg-approaches}
-\end{table}
-
-Two observations close the survey. The families are complementary rather than sequential, and most
-working systems combine them. A typical modern system is a learned policy over a phase variable
-borrowed from hybrid zero dynamics, with a spring borrowed from SLIP, on hardware descended from
-Raibert's. This thesis is no exception. And across fifty years the stability burden transfers from
-the controller to the robot and to the model. That is what makes measurement, rather than control
-design, the critical path for a project like this one.
+\textbf{Reinforcement learning.} A neural network learn a policy by reinforcement learning to
+maximise a reward over millions of simulated episodes.
+PPO~\cite{schulman2017ppo} became the workhorse, MuJoCo~\cite{todorov2012mujoco} made it computationally affordable, and
+massively parallel simulation cut wall-clock further as demonstrated by Rudin et al. by training a walking policy under 4 minutes~\cite{rudin2021}. 
+What used to be stability margin now show up in the form of a sim2real gap.
+Previous approach yielded a fixed mathematical law that matched a specific plant (aka robot)
+The RL approach allow to train against a multitude of variation of the plant to make it robust to unknown at the expense of some peak performance and more training steps.
+This is called domain randomisation~\cite{tobin2017dr,tan2018sim2real}.
+Teacher--student distillation~\cite{lee2020terrain,miki2022perceptive} allow to reduce the size of the final network for online inference.
 
 \subsection{Approach comparison}
 \label{sec:bg-axes}
 
-The axes below are the analysis, and a system takes a position on
-each independently. \Cref{tab:bg-eras} sorts the families by row and axis by column.
+The main difference stem between the RL approach and the rest.
+Previous approach yielded a fixed mathematical law that could be analysed with the classical control toolkit.
+The RL approach is more like a black box where most of the classical tool for stability analysis do not apply.
 
-\begin{enumerate}[leftmargin=*,itemsep=1pt]
-  \item \textbf{Dynamic model complexity}, from kinematics through centroidal and full rigid-body
-        to learned. The trade-off is fidelity against tractability.
-  \item \textbf{Stability concept}, from \cref{sec:bg-defs}.
-  \item \textbf{Where the intelligence sits}: fully model-based, model-based plus online
-        optimisation, hierarchical, or end-to-end learned. Learning has not replaced model-based
-        control in the systems cited above. Atlas~\cite{kuindersma2016atlas} and MIT
-        Cheetah~\cite{dicarlo2018mpc} are optimisation-based, and
-        Cassie~\cite{siekmann2021,crowley2024cassie} pairs a learned policy with an authored clock.
-  \item \textbf{Actuation interface}: position, velocity, torque or impedance. A position servo is
-        simple and robust, but it folds the actuator dynamics into the plant and gives poor
-        contact-force authority. Torque is the prerequisite for momentum and force control.
-        Impedance is the intermediate category, and the one this thesis ends up wanting
-        (\cref{sec:rl-impedance}).
-  \item \textbf{Bandwidth and temporal hierarchy}: task planning at 1 to 10\,Hz, gait and
-        model-predictive layers at 10 to 100\,Hz, whole-body control at 100 to 1000\,Hz, and the
-        current loop at 1 to 20\,kHz. \emph{Command-loop rate is not actuator bandwidth}, and the
-        two are routinely conflated. This project runs a 200\,Hz policy against a measured 0.8\,Hz
-        drive pole (\cref{sec:plant-id-drive}), and that ratio is where the central finding sits.
-  \item \textbf{Contact treatment}, from a fixed contact assumption to learned contact behaviour.
-        Relevance rises from flat walking to running.
-  \item \textbf{Source of the gait}: hand-authored, analytic, trajectory optimisation, motion
-        imitation~\cite{peng2018deepmimic}, learning with a reference, or reference-free learning.
-\end{enumerate}
 
-\begin{table}[tbp]
-\centering
-\small
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{p{1.9cm}p{1.9cm}p{2.05cm}p{1.85cm}p{1.85cm}p{1.65cm}p{2.05cm}}
-\toprule
-\textbf{Approach} & \textbf{Model} & \textbf{Stability} & \textbf{Gait source} & \textbf{Contact} & \textbf{Interface} & \textbf{Bandwidth need} \\
-\midrule
-Early humanoid & kinematics & static & authored & fixed & position & low \\
-ZMP / LIPM & LIPM & zero moment point & analytic & planned & position & low \\
-Passive & full & orbital & the mechanism & impacts & none & none \\
-HZD & full rigid-body & orbital & trajectory optimisation & planned & torque & high \\
-Raibert & SLIP & capturability & analytic & planned & torque & medium \\
-MPC / WBC & centroidal & viability & optimisation & friction cones & torque & very high \\
-RL $+$ WBC & learned $+$ centroidal & robustness & learned task & learned & torque & high \\
-End-to-end RL & learned & robustness & learned & learned & position or torque & set by the action space \\
-\midrule
-\textbf{DASH-01} & full rigid-body, measured & robustness & learned, in a Fourier basis & learned & position servo & \textbf{0.8\,Hz available} \\
-\bottomrule
-\end{tabular}
-\caption{The families by axis. DASH-01 sits in the end-to-end learned row on every column except
-the last. There, the available actuation bandwidth is an order of magnitude below what the row
-normally assumes. \Cref{sec:bg-gap} turns that mismatch into the research question.}
-\label{tab:bg-eras}
-\end{table}
-
-\subsection{Learning for locomotion: lineage and trade-offs}
+\subsection{Reinforcement learning for locomotion}
 \label{sec:bg-rl-loco}
 
-Within the learned family, the relevant lineage is \emph{periodically parameterised} action spaces,
-in which the policy shapes a periodic generator rather than emitting joint targets. Policies
-Modulating Trajectory Generators established the pattern~\cite{pmtg2018}. Oscillator-based CPG-RL
-instantiated it with coupled phase oscillators~\cite{ijspeert2008,cpgrl2022}, and the clock and
-phase-reward methods of Siekmann et al.~\cite{siekmann2021} carried Cassie to the 100\,m
-record~\cite{crowley2024cassie}. The network no longer has to discover that locomotion is periodic,
-only which periodic signal it wants.
+\subsubsection{Control architecture}
 
-\textbf{The basis is not the contribution.} A band-limited periodic gait parameterisation predates
-this work by more than a decade. Truncated Fourier series ran on RoboCup humanoids from 2009, with
-coefficients fixed offline by particle swarm optimisation~\cite{shafii2010tfs}, and Yang et
-al.~\cite{yang2010tfs} combined the same formulation with reinforcement learning. Rhythmic dynamic
-movement primitives carry a Fourier-type basis over phase~\cite{ijspeert2013dmp}, Fourier Latent
-Dynamics parameterises periodic motion in a Fourier latent~\cite{fld2024}, Wang et
-al.~\cite{wang2023fourier} plan a Fourier gait offline, and Ates and Morg\"ul learn a
-frequency-domain generator from motion capture~\cite{ates2025freqgait}. The nearest neighbour is
-Castillo et al.~\cite{castillo2020hzdrl}, whose policy emits the B\'ezier coefficients of
-hybrid-zero-dynamics virtual constraints directly. \textbf{Emitting basis coefficients as the
-action is therefore theirs, not this thesis's.} What is added here is three narrower things. The
-mid-cycle rewrite is explicitly priced rather than free. The gait channel and the fast-feedback
-channel are separated and billed differently (\cref{sec:rl-cpg}). And the choice of basis is
-settled by a measured A/B on identical plants and rewards (\cref{sec:cpg-ab}).
+Several actuator-level control architectures have been used by the literature.
 
-\textbf{The periodicity prior is close to universal, and systems differ in where they put it.} It
-can go in the \emph{reward}~\cite{siekmann2021}, in a \emph{reference}~\cite{peng2018deepmimic}, in
-an authored \emph{generator} the policy modulates~\cite{pmtg2018,cpgrl2022}, or in the \emph{action
-space} itself~\cite{castillo2020hzdrl}. Only the last makes the shape of one cycle a decision
-variable at run time. \Cref{tab:prior-axes} sorts on placement, and separates two axes a single
-label hides: the \emph{intra-limb} trajectory one leg follows, and the \emph{inter-limb} phase
-relation between legs.
+\textbf{Direct torque control} provides the policy with the highest level of control authority, but also imposes the most demanding communication and control-loop requirements. It is the mode the quasi-direct-drive actuator lineage was designed for~\cite{seok2015design,wensing2017proprioceptive}, and the one MIT Cheetah commands through~\cite{dicarlo2018mpc}. In simulation, the policy can directly command joint torques at a high frequency. On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimation to operate with sufficiently low latency. In the present hardware architecture, this approach was not practical through the CAN communication bus at the required frequency.
 
-\begin{table}[tbp]
-\centering
-\small
-\begin{tabular}{p{3.2cm}p{5.0cm}p{5.0cm}}
-\toprule
-& \textbf{Intra-limb trajectory} & \textbf{Inter-limb coordination} \\
-\midrule
-Raibert~\cite{raibert1986} & authored & authored \\
-\addlinespace
-TFS generators~\cite{shafii2010tfs,yang2010tfs} & free within a truncated Fourier band; coefficients fixed offline & authored: fixed phase offset \\
-\addlinespace
-PMTG~\cite{pmtg2018} & authored generator, plus a residual channel that can leave the authored family & authored \\
-\addlinespace
-CPG-RL~\cite{cpgrl2022} & authored curve, three parameters per leg & free: uncoupled oscillators, phasing discovered \\
-\addlinespace
-HZD-RL~\cite{castillo2020hzdrl} & free: B\'ezier coefficients emitted by the policy & authored: alternation fixed by the hybrid model \\
-\addlinespace
-DASH-01 (\cref{sec:rl-cpg}) & free: 14 Fourier coefficients, re-emitted every control step & authored: mirrored at half a cycle \\
-\bottomrule
-\end{tabular}
-\caption{Two axes of gait prior. A system can be prior-free on one axis and fully authored on the
-other, and CPG-RL and DASH-01 sit at opposite corners.}
-\label{tab:prior-axes}
-\end{table}
+\textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the motor controller. Position targets over a joint-level PD loop are what most learned locomotion uses~\cite{hwangbo2019anymal,tan2018sim2real,rudin2021}. Two variants were investigated: conventional smart-servo position control and the MIT control mode with fixed compliance parameters~\cite{katz2019minicheetah}. Both allow the RL policy to operate at a lower frequency while the actuator controller handles the fast inner loop.
+
+\textbf{Impedance control} provides an intermediate level of control authority. Instead of directly specifying the actuator torque or position response, the policy can influence the desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters. The $[q_d, \dot q_d, K_p, K_d, \tau_{\text{ff}}]$ command frame established by the Cheetah lineage is the standard realisation~\cite{katz2019minicheetah,wensing2017proprioceptive}, and \cref{eq:impedance} is the form this thesis uses. This allows the low-level controller to preserve fast and stabilising actuator dynamics while giving the policy greater freedom than pure position control.
+
+\subsubsection{Gait prior}
+
+The second major design dimension is the amount and location of prior structure imposed on the gait.
+
+A strong prior can be introduced through a \textbf{reference trajectory}. In this case, the policy is primarily trained to track or adapt an authored motion. DeepMimic tracks motion-capture clips this way~\cite{peng2018deepmimic}, and the Cassie line tracked authored reference motions~\cite{xie2019}. This strongly restricts the reachable set of motions and can substantially simplify learning. However, the quality of the resulting behaviour is bounded by the choice of reference: there is no guarantee that the selected trajectory is optimal for the particular robot morphology and dynamics.
+
+A weaker prior can instead be introduced through a \textbf{trajectory generator} whose parameters are modulated by the policy~\cite{pmtg2018}. This preserves the assumption that locomotion should have a structured, periodic form while allowing the learned controller to search for a gait adapted to the plant. Trajectory generators can themselves provide different levels of freedom.
+
+At the stronger end of this generator-based formulation, the policy only modifies a small number of \textbf{high-level gait parameters}, such as phase, frequency, stride length, or amplitude~\cite{pmtg2018,cpgrl2022}. Central pattern generators are the classical form of that prior~\cite{ijspeert2008}, and dynamical movement primitives the classical form for non-periodic motions~\cite{ijspeert2013dmp}. The shape of the individual joint trajectories remains largely prescribed. This provides a relatively small search space but limits the set of gaits that can be represented.
+
+A weaker prior allows the policy to modify the \textbf{complete trajectory}. Rather than predicting every trajectory sample independently, the possible trajectories can be represented using a low-dimensional basis, such as Fourier series~\cite{shafii2010tfs,yang2010tfs,wang2023fourier,fld2024} or Bézier curves~\cite{westervelt2007book,castillo2020hzdrl}. The policy then modifies the coefficients of this representation. This retains useful structural assumptions, most importantly periodicity and smoothness, while allowing the shape of the gait itself to become a learned variable.
+
+At the extreme, \textbf{no explicit gait prior} is imposed and the policy directly learns the complete joint trajectory~\cite{heess2017emergence,radosavovic2024humanoid}. Periodic locomotion can still be encouraged through reward shaping, but periodicity then becomes an emergent property rather than a constraint. Such an approach provides a large reachable set but considerably increases the exploration and learning problem, and there is no guarantee that the learned solution will converge to a periodic gait.
+
+This distinction is important because the periodicity prior is not unique to the present framework. It can be introduced at different levels: through the \textbf{reward}~\cite{siekmann2021}, through a \textbf{reference motion}~\cite{peng2018deepmimic}, through an authored \textbf{trajectory generator}~\cite{pmtg2018,cpgrl2022}, or directly through the \textbf{action space} by parameterising the trajectory itself~\cite{fld2024,ates2025freqgait}. These choices determine how much of the gait is fixed and how much is available to the policy at run time.
+
+\subsubsection{Choice for DASH-01}
+
+For DASH-01, a fully unconstrained joint-level policy was considered undesirable because it would require reinforcement learning to simultaneously discover both the appropriate periodic structure of the gait and the stabilising behaviour of the robot. Conversely, imposing a fixed reference trajectory would strongly constrain the solution and assume that a sufficiently good gait was already known.
+
+DASH-01 also does not correspond closely to a particular biological morphology. Consequently, transferring a reference trajectory derived from human or animal locomotion would introduce a potentially unjustified assumption about the optimal gait. A trajectory generator therefore provides a useful intermediate solution: the existence of a periodic gait is used as a prior, while its detailed shape remains a decision variable for the policy.
+
+The framework consequently investigates a \textbf{Fourier-based gait parameterisation}, in which the joint trajectories over a gait cycle are represented by Fourier coefficients. The policy can modify these coefficients to search for a gait adapted to the specific morphology and dynamics of DASH-01. This reduces the dimensionality and imposes smooth periodic structure compared with a fully free trajectory representation, while retaining substantially more freedom than tracking a fixed reference trajectory.
+
+The use of a Fourier representation should not itself be interpreted as the contribution of this work. Fourier-based periodic trajectory representations and the use of basis coefficients for locomotion predate this framework. The contribution of the framework instead lies in how the gait parameterisation is integrated with reinforcement learning and fast feedback control, and in the experimental comparison of alternative parameterisations under equivalent conditions.
+
+In particular, the framework distinguishes between the \textbf{slow gait-generation channel} and the \textbf{fast feedback channel}. The gait parameters determine the underlying periodic motion, while the feedback component is responsible for reacting to disturbances and short-timescale deviations from that nominal gait. This separation allows the learned policy to modify the gait without requiring it to reconstruct the complete high-frequency actuator behaviour at every timestep.
+
+The choice of this architecture was therefore motivated by a trade-off between \textbf{reachable gait space and learning complexity}. A fixed reference trajectory provides a strong prior but may exclude the optimal gait. A completely free policy provides a very weak prior but greatly increases the search space. A parameterised trajectory generator occupies an intermediate position: it constrains the search to smooth periodic motions while allowing the gait itself to be discovered by reinforcement learning.
+
+\subsubsection{Architectures investigated}
+
+Because the original objective of the thesis was to develop an RL framework capable of producing high-speed bipedal locomotion, these architectural choices were treated as experimental design variables rather than assumptions fixed from the outset.
+
+Multiple actuator and gait-control architectures were therefore implemented and evaluated during framework development. These included direct position control, MIT-mode control with fixed compliance parameters, impedance-based control, gait-generator approaches with different levels of policy authority, and architectures incorporating a hand-tuned reflex controller alongside the learned component.
+
+The final architecture was selected based on the resulting trade-off between actuator controllability, communication and bandwidth requirements, exploration complexity, and the freedom available to discover a gait adapted to DASH-01. The Fourier gait representation should consequently be understood as the selected design point within this broader architectural investigation, rather than as a novel gait representation in itself.
+
 
 A \textbf{shape prior} fixes the trajectory and exposes its timing, so tuning does not enlarge the
 reachable set. A \textbf{structural prior} constrains the class and leaves the member free, so the
@@ -361,29 +253,3 @@ What separates this platform from its neighbours is not any single choice. It is
 electronics were bought as a bundle with the actuator. That put the robot in the third group's
 actuation interface, while its mechanics belong to the second. \Cref{sec:plant-id-drive} measures
 what it costs.
-
-\subsection{The gap, and three hypotheses}
-\label{sec:bg-gap}
-
-Published structured-action-space results come from platforms with high-bandwidth torque control.
-What survives on a low-bandwidth, position-servo, low-cost plant is not documented, and that is the
-gap this work sits in. The question is therefore not why to use reinforcement learning. It is
-\textbf{at what level learning should sit, given this robot's actuator dynamics and available
-control bandwidth}. Learning to joint targets through a servo, and learning to torque through an
-actuator, are different learning problems, because the first forces the policy through the
-closed-loop servo dynamics.
-
-Three hypotheses follow. \Cref{sec:results} tests them, and \cref{sec:discussion} revisits them.
-
-\begin{itemize}[leftmargin=*,itemsep=1pt]
-  \item \textbf{H1, dimensionality reduction.} A Fourier gait-morphology action space converges in
-        fewer environment steps than joint-level action spaces on this plant.
-  \item \textbf{H2, control authority.} Gait morphology plus phase-dependent impedance gives a
-        sufficient basin of attraction, without direct per-step residual joint control.
-  \item \textbf{H3, robustness.} The structured controller degrades less across the sim-to-real
-        boundary than an unconstrained one.
-\end{itemize}
-
-The scoping is uneven, and is stated as such. H1 is answered by the attempt sequence of
-\cref{sec:rl-ladder}. H2 is answered only partially, because the impedance interface was never
-available on the hardware. H3 is answered only in simulation, since no policy has run on the robot.
