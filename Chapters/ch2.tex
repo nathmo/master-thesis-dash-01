@@ -28,55 +28,60 @@ The reference timescale is the free-topple time of the inverted pendulum, $\sqrt
 \centering
 \small
 \setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{L{2.1cm}L{3.8cm}L{2.75cm}L{2.9cm}L{2.9cm}}
+\begin{tabular}{L{2.1cm}L{4.2cm}L{2.55cm}L{2.85cm}L{2.8cm}}
 \toprule
-\textbf{Concept} & \textbf{Condition} & \textbf{Assumes} & \textbf{Cost} & \textbf{Locomotion} \\
+\textbf{Concept} & \textbf{Condition} & \textbf{Assumes} & \textbf{Cost of the assumption} &
+\textbf{Gait admitted} \\
 \midrule
 Static
-& centre-of-mass ground projection inside support polygon
+& centre-of-mass ground projection inside the support polygon
 & quasi-static motion, flat feet, flat ground
-& excludes all dynamic gaits
-& one foot always on ground; slow enough to neglect inertia \\
+& excludes every dynamic gait
+& at least one foot down, inertia negligible \\
 \addlinespace
 Zero moment point
-& zero moment point inside support polygon~\cite{vukobratovic1969}
-& non-degenerate contact patch
-& undefined for point feet, flight phases
-& one foot always on ground; ``normal walking'' \\
+& zero moment point inside the support polygon~\cite{vukobratovic1969}
+& a non-degenerate contact patch
+& undefined for point feet and for flight phases
+& dynamic walking, no flight phase \\
 \addlinespace
 Orbital
-& spectral radius of linearised Poincar\'e map below one
-& exactly known model, periodic gait
+& spectral radius of the linearised Poincar\'e map below one
+& an exactly known model, and a periodic gait
 & one offline optimisation per gait~\cite{westervelt2003hzd}
-& periodic gaits with possible flight phases; recovers from perturbations \\
+& any periodic gait, flight phases allowed \\
 \addlinespace
 Capturability
-& reachable foothold exists bringing reduced model to rest~\cite{pratt2006capture}
-& reduced model, reachable footholds
-& silent when workspace saturates
-& can transition to rest from any state if foothold reachable \\
+& a reachable foothold exists that brings the reduced model to rest~\cite{pratt2006capture}
+& a reduced model, and reachable footholds
+& silent when the workspace saturates
+& any gait that can still stop \\
 \addlinespace
 Viability
-& state lies in set from which locomotion can continue
-& only that failure set is known
-& not computable in closed form for 12-DOF plant
-& can continue locomotion if in viable region \\
-\addlinespace
+& the state lies in the set from which locomotion can continue
+& only that the failure set is known
+& not computable in closed form for a 12-DOF plant
+& any gait that avoids the failure set \\
+\midrule
 Robustness
-& size of disturbance set tolerated
-& disturbance distribution
+& the size of the disturbance set tolerated
+& a disturbance distribution
 & measured by sampling, never certified
-& quantifies magnitude of perturbations survivable \\
+& -- \\
 \addlinespace
 Task performance
 & speed, cost of transport, terrain range
 & nothing about balance
 & not a stability statement at all
-& achieves task objectives; stability is emergent \\
+& -- \\
 \bottomrule
 \end{tabular}
 \caption{The stability ladder. The rungs are ordered by how much each assumes, and the field has
-drifted downward over fifty years.}
+drifted downward over fifty years. The first two certify an instant, the third certifies an orbit,
+and the next two certify a state's future options. The last two sit below the rule because neither
+is a rung: robustness is a margin on whichever of the five is chosen, and task performance is not a
+stability statement, so neither admits a gait class. DASH-01 carries a 2.5\,cm spherical toe, which
+removes the first two rungs, and no exactly known model, which removes the third.}
 \label{tab:bg-stability}
 \end{table}
 
