@@ -23,6 +23,11 @@
 \usepackage{tabu} % Adds additional customization for tables
 \usepackage{booktabs} % For generally nicer looking tables
 
+% Left-aligned fixed-width column. Narrow p{} columns justify badly: the
+% interword stretch produces large ragged gaps. L{<width>} sets them ragged
+% right instead, which is the convention for narrow table cells.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
 \usepackage{siunitx}
 \usepackage{adjustbox}
 

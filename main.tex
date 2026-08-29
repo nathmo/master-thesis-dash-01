@@ -18,8 +18,8 @@
     \HRule \\[0.4cm]
     {\huge \bfseries DASH-01 :\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
     \HRule \\[0.5cm]
-    \LARGE{\textsc{REHAssist} \\
-    \text{13.04.2025 - 04.09.2025}}\\[0.5cm]
+    \includegraphics[trim=80 441 78 443, clip, width=5cm]{Figures/LABlogo.png}\\[0.3cm]
+    \LARGE{\text{13.04.2025 - 04.09.2025}}\\[0.5cm]
 
     \vspace{5mm}
     %\includegraphics[scale=0.6]{images/pageDeGarde.png}\\
@@ -47,27 +47,18 @@
 \addcontentsline{toc}{section}{Abstract}
 
 DASH-01 is a 15\,kg biped with six quasi-direct-drive actuators, a parallel 4-bar knee and a
-passive ankle. It was built at REHAssist on a student budget, around one question: how fast can a
-cheap custom biped run? This thesis takes the platform from a partially finished mechanical design
-to a measured, simulated, trained and instrumented machine. It then reports the distance between
-what a learned controller achieves in simulation and what the hardware can deliver.
+passive ankle. It was built at REHAssist to answer one question: how fast can a
+cheap custom biped run? This thesis, altough RL oriented in the title, takes the platform from a partially finished mechanical design
+to a modelled machine that can be simulated and for which RL policy can be trainied against. 
+Finally, this thesis asses the performance envelope of the platform and the policy.
 
 The work covers the whole chain. A CAD-to-MJCF pipeline closes the kinematic loop that URDF cannot
-express. A measurement campaign replaces every load-bearing plant parameter with a measured one. A
-first-principles feasibility sweep bounds the running speed the mechanism admits, before any
-controller exists. Five action-space designs are trained with PPO, under a curriculum that releases
-the base degrees of freedom one at a time. A deployment stack closes a 200\,Hz control loop on a
-non-realtime Raspberry Pi, with a web bring-up instrument and an always-on flight recorder.
+express. A measurement campaign to model the plant parameter. 
+A first-principles feasibility sweep bounds the running speed the mechanism admits.
 
-Two measurements carry the argument. Every assumed plant parameter that was later measured moved in
-the pessimistic direction. Mass moved by $+18\,\%$ and peak joint torque by $-15\,\%$. The drive's
-internal position loop moved by a factor of 16, from an assumed 13\,Hz to a measured 0.8\,Hz,
-against a 310\,ms divergence timescale. On the corrected plant the mechanism admits about 2.7\,m/s
-in burst and about 1.3\,m/s thermally. The bipedal 100\,m record pace is near 4\,m/s.
+The curriculum has been shown to converge to a running policy within literrature reported training steps.
 
-The best learned policy runs 60\,s without falling at 2.6\,m/s, on the fully free simulated plant.
-A 21-gain scripted controller with no learning in it hits the same pitch-balance wall at the same
-1\,s. On this platform the binding constraint is the plant rather than the algorithm. The thesis
+On this platform the binding constraint is the plant rather than the algorithm. The thesis
 therefore ends in a ranked set of mechanical changes rather than in a controller.
 
 \newpage

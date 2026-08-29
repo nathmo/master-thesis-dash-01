@@ -141,3 +141,18 @@ follows from them, then validation.
   verbs and article slips.
 - No label, `\cref` target or citation key lost.
 - `latexmk -pdf main.tex` exits clean, and the page count is reported.
+
+## 7. Committing
+
+Commit after every change, without waiting to be asked. This is standing authorisation: do not ask
+first, just commit once the build is clean.
+
+- Commit the author's own uncommitted edits too. They work in the editor between turns, so the
+  working tree usually holds their changes as well as mine. Sweep them into the same commit rather
+  than leaving them stranded.
+- Commit only after `latexmk -pdf main.tex` exits clean. A broken build is not committed.
+- Do not commit `main.pdf`. CI rebuilds it on every push to `main` and commits it back, so a hand
+  committed PDF is overwritten and only creates merge conflicts. It stays modified in the working
+  tree, and that is expected.
+- Do not push unless asked. Committing is automatic, publishing is not.
+- One commit per logical change, with a subject line that names what changed and why.

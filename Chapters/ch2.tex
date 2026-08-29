@@ -1,84 +1,84 @@
 \section{Background and literature review}
 \label{sec:bg}
 
-This chapter supplies the frame in which the choices of \cref{sec:robot,sec:rl} are a position
-rather than an opinion. It fixes the vocabulary first, because ``stable'' carries at least six
-inequivalent meanings in this field. It then reads fifty years of walking machines as six answers
-to one question, and sorts those answers on seven analytical axes. It narrows to the
-reinforcement-learning lineage this architecture belongs to, and closes by naming the gap this work
-sits in and three hypotheses. The axis that decides the outcome here is actuation bandwidth, so it
-is developed with more care than the others.
+This chapter supplies the frame in which the choices of \cref{sec:robot,sec:rl} are positionned. 
+It also fixes the vocabulary, because ``stable'' carries different meanings in this field. 
+It present the historical context of bipedal locomotion and sorts theses approaches on seven analytical axes. 
+Finally, it narrows to the reinforcement-learning lineage this architecture belongs to.
 
 \subsection{Definitions}
 \label{sec:bg-defs}
 
-Each historical family below answers ``where does the stability come from''. Each answers it with a
-different stability concept. \Cref{tab:bg-stability} is the ladder of those concepts, from the one
-that assumes most to the one that assumes least.
+Each historical family attempt to achieve bipedal locomotion using different strategies. 
+\Cref{tab:bg-stability} is the ladder of those concepts with the assumption they each requires.
 
-\begin{table}[tbp]
+
+A few terms recur :
+\textbf{Underactuation} is the excess of degrees of freedom over actuators. 
+\textbf{Unilateral contact} means a foot can push but not pull, and only inside the \textbf{friction cone}. 
+The point where the push applies is the \textbf{centre of pressure}, confined to the contact patch. 
+\textbf{Duty factor} is the fraction of a stride each foot spends in stance, and a \textbf{flight phase} is the interval with no foot down. 
+The \textbf{sim-to-real gap} is the performance loss on transfer from a simulated plant to the physical one.
+In the context of this thesis, \textbf{Failure} is episode termination on body contact, or on leaving the measured workspace. 
+\textbf{Stability margin} is reported as a survivor count and a seed variance rather than as a scalar reward, for the reason given in \cref{sec:margin-analysis}.
+The reference timescale is the free-topple time of the inverted pendulum, $\sqrt{h/g} \approx 310$\,ms for this robot.
+\textbf{Stability} is the ability to continue locomotion when subjected to disturbances. 
+
+\begin{table}[H]
 \centering
 \small
-\begin{tabular}{p{2.6cm}p{5.1cm}p{3.0cm}p{3.6cm}}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{L{2.1cm}L{3.8cm}L{2.75cm}L{2.9cm}L{2.9cm}}
 \toprule
-\textbf{Concept} & \textbf{Condition} & \textbf{Assumes} & \textbf{Cost of the assumption} \\
+\textbf{Concept} & \textbf{Condition} & \textbf{Assumes} & \textbf{Cost} & \textbf{Locomotion} \\
 \midrule
 Static
-& centre-of-mass ground projection inside the support polygon
+& centre-of-mass ground projection inside support polygon
 & quasi-static motion, flat feet, flat ground
-& excludes every dynamic gait \\
+& excludes all dynamic gaits
+& one foot always on ground; slow enough to neglect inertia \\
 \addlinespace
 Zero moment point
-& zero moment point inside the support polygon~\cite{vukobratovic1969}
-& a non-degenerate contact patch
-& undefined for point feet and for flight phases \\
+& zero moment point inside support polygon~\cite{vukobratovic1969}
+& non-degenerate contact patch
+& undefined for point feet, flight phases
+& one foot always on ground; ``normal walking'' \\
 \addlinespace
 Orbital
-& spectral radius of the linearised Poincar\'e map below one
-& an exactly known model, and a periodic gait
-& one offline optimisation per gait~\cite{westervelt2003hzd} \\
+& spectral radius of linearised Poincar\'e map below one
+& exactly known model, periodic gait
+& one offline optimisation per gait~\cite{westervelt2003hzd}
+& periodic gaits with possible flight phases; recovers from perturbations \\
 \addlinespace
 Capturability
-& a reachable foothold exists that brings the reduced model to rest~\cite{pratt2006capture}
-& a reduced model, and reachable footholds
-& silent when the workspace saturates \\
+& reachable foothold exists bringing reduced model to rest~\cite{pratt2006capture}
+& reduced model, reachable footholds
+& silent when workspace saturates
+& can transition to rest from any state if foothold reachable \\
 \addlinespace
 Viability
-& the state lies in the set from which locomotion can continue
-& only that the failure set is known
-& not computable in closed form for a 12-DOF plant \\
+& state lies in set from which locomotion can continue
+& only that failure set is known
+& not computable in closed form for 12-DOF plant
+& can continue locomotion if in viable region \\
 \addlinespace
 Robustness
-& the size of the disturbance set tolerated
-& a disturbance distribution
-& measured by sampling, never certified \\
+& size of disturbance set tolerated
+& disturbance distribution
+& measured by sampling, never certified
+& quantifies magnitude of perturbations survivable \\
 \addlinespace
 Task performance
 & speed, cost of transport, terrain range
 & nothing about balance
-& not a stability statement at all \\
+& not a stability statement at all
+& achieves task objectives; stability is emergent \\
 \bottomrule
 \end{tabular}
 \caption{The stability ladder. The rungs are ordered by how much each assumes, and the field has
-drifted downward over fifty years. This thesis measures the robustness rung and the task rung. It
-uses free-topple time from the inverted-pendulum reduced model as its reference timescale.}
+drifted downward over fifty years.}
 \label{tab:bg-stability}
 \end{table}
-
-Six further terms recur with fixed meanings. \textbf{Underactuation} is the excess of degrees of
-freedom over motors. \textbf{Unilateral contact} means a foot can push but not pull, and only
-inside the \textbf{friction cone}. The point where the push applies is the \textbf{centre of
-pressure}, confined to the contact patch. \textbf{Duty factor} is the fraction of a stride each
-foot spends in stance, and a \textbf{flight phase} is the interval with no foot down. A
-\textbf{reduced model} or \textbf{template} is the smallest system that reproduces the behaviour of
-interest~\cite{full1999templates}. The \textbf{sim-to-real gap} is the performance loss on transfer
-from a simulated plant to the physical one.
-
-This thesis fixes three of its own conventions. Failure is episode termination on body contact, or
-on leaving the measured workspace. Stability margin is reported as a survivor count and a seed
-variance rather than as a scalar reward, for the reason given in \cref{sec:margin-analysis}. The
-reference timescale is the free-topple time of the inverted pendulum, $\sqrt{h/g} \approx 310$\,ms
-for this robot.
 
 \subsection{What makes bipedal locomotion hard}
 \label{sec:bg-hard}
@@ -114,7 +114,7 @@ models running. The \textbf{capture point}~\cite{pratt2006capture} is the footho
 inverted pendulum to rest, and it underlies both the pitch reflex of \cref{sec:rl-reflexes} and the
 scripted baseline of \cref{sec:scripted-baseline}.
 
-\subsection{Six answers to one question}
+\subsection{Historical context}
 \label{sec:bg-history}
 
 The history is more legible read as a sequence of answers to ``where does the stability come
@@ -220,10 +220,10 @@ Raibert's. This thesis is no exception. And across fifty years the stability bur
 the controller to the robot and to the model. That is what makes measurement, rather than control
 design, the critical path for a project like this one.
 
-\subsection{Seven axes, and where the systems land}
+\subsection{Approach comparison}
 \label{sec:bg-axes}
 
-The history is the narrative. The axes below are the analysis, and a system takes a position on
+The axes below are the analysis, and a system takes a position on
 each independently. \Cref{tab:bg-eras} sorts the families by row and axis by column.
 
 \begin{enumerate}[leftmargin=*,itemsep=1pt]
