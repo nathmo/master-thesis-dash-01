@@ -582,10 +582,129 @@
 % Humanoid robot speed records
 % ---------------------------------------------------------------------------
 
-@online{apnews2026chinese,
-  title     = {Chinese humanoid robot breaks speed record at world games},
-  author    = {{Associated Press}},
-  organization = {AP News},
-  year      = {2026},
-  url       = {https://apnews.com/article/chinese-humanoid-robot-beijing-world-games-record-069b76ee6748154fd67bec39fa927cf6}
+% Entry type is misc, not online: the plain style defines no online type.
+% Never write an at-sign in a .bib comment, BibTeX reads it as an entry start.
+@misc{apnews2026chinese,
+  author       = {{Associated Press}},
+  title        = {Chinese humanoid robot breaks speed record at world games},
+  howpublished = {AP News},
+  year         = {2026},
+  note         = {\url{https://apnews.com/article/chinese-humanoid-robot-beijing-world-games-record-069b76ee6748154fd67bec39fa927cf6}}
+}
+
+% ---------------------------------------------------------------------------
+% Taxonomies of the stability notions, and the assumptions each one carries
+% ---------------------------------------------------------------------------
+
+@incollection{wieber2016handbook,
+  author    = {Wieber, Pierre-Brice and Tedrake, Russ and Kuindersma, Scott},
+  title     = {Modeling and Control of Legged Robots},
+  booktitle = {Springer Handbook of Robotics},
+  editor    = {Siciliano, Bruno and Khatib, Oussama},
+  edition   = {2},
+  chapter   = {48},
+  pages     = {1203--1234},
+  publisher = {Springer},
+  address   = {Cham},
+  year      = {2016},
+  doi       = {10.1007/978-3-319-32552-1_48}
+}
+
+@incollection{pratt2006margins,
+  author    = {Pratt, Jerry E. and Tedrake, Russ},
+  title     = {Velocity-Based Stability Margins for Fast Bipedal Walking},
+  booktitle = {Fast Motions in Biomechanics and Robotics: Optimization and
+               Feedback Control},
+  editor    = {Diehl, Moritz and Mombaur, Katja},
+  series    = {Lecture Notes in Control and Information Sciences},
+  volume    = {340},
+  pages     = {299--324},
+  publisher = {Springer},
+  address   = {Berlin},
+  year      = {2006},
+  doi       = {10.1007/978-3-540-36119-0_14}
+}
+
+@incollection{hobbelen2007lcw,
+  author    = {Hobbelen, Daan G. E. and Wisse, Martijn},
+  title     = {Limit Cycle Walking},
+  booktitle = {Humanoid Robots: Human-like Machines},
+  editor    = {Hackel, Matthias},
+  chapter   = {14},
+  pages     = {277--296},
+  publisher = {I-Tech Education and Publishing},
+  address   = {Vienna},
+  year      = {2007},
+  doi       = {10.5772/4808}
+}
+
+@article{koolen2012capturability,
+  author  = {Koolen, Twan and de Boer, Tomas and Rebula, John and
+             Goswami, Ambarish and Pratt, Jerry},
+  title   = {Capturability-Based Analysis and Control of Legged Locomotion,
+             Part 1: Theory and Application to Three Simple Gait Models},
+  journal = {The International Journal of Robotics Research},
+  volume  = {31},
+  number  = {9},
+  pages   = {1094--1113},
+  year    = {2012},
+  doi     = {10.1177/0278364912452673}
+}
+
+@article{zaytsev2018boundaries,
+  author  = {Zaytsev, Petr and Wolfslag, Wouter and Ruina, Andy},
+  title   = {The Boundaries of Walking Stability: Viability and Controllability
+             of Simple Models},
+  journal = {IEEE Transactions on Robotics},
+  volume  = {34},
+  number  = {2},
+  pages   = {336--352},
+  year    = {2018},
+  doi     = {10.1109/TRO.2017.2782818}
+}
+
+@inproceedings{wieber2008viability,
+  author    = {Wieber, Pierre-Brice},
+  title     = {Viability and Predictive Control for Safe Locomotion},
+  booktitle = {IEEE/RSJ International Conference on Intelligent Robots and
+               Systems (IROS)},
+  pages     = {1103--1108},
+  year      = {2008},
+  doi       = {10.1109/IROS.2008.4651022}
+}
+
+@article{bretl2008static,
+  author  = {Bretl, Timothy and Lall, Sanjay},
+  title   = {Testing Static Equilibrium for Legged Robots},
+  journal = {IEEE Transactions on Robotics},
+  volume  = {24},
+  number  = {4},
+  pages   = {794--807},
+  year    = {2008},
+  doi     = {10.1109/TRO.2008.2001360}
+}
+
+@article{arena2024certificates,
+  author  = {Arena, Paolo and Li Noce, Alessia and Patan{\`e}, Luca},
+  title   = {Stability and Safety Learning Methods for Legged Robots},
+  journal = {Robotics},
+  volume  = {13},
+  number  = {1},
+  pages   = {17},
+  year    = {2024},
+  doi     = {10.3390/robotics13010017}
+}
+
+% Not cited yet. Pits viability against task performance directly, by finding
+% that viability rather than energetics explains learned gait transitions.
+% EPFL BioRob. Candidate for the discussion chapter.
+@article{shafiee2024viability,
+  author  = {Shafiee, Milad and Bellegarda, Guillaume and Ijspeert, Auke},
+  title   = {Viability Leads to the Emergence of Gait Transitions in Learning
+             Agile Quadrupedal Locomotion on Challenging Terrains},
+  journal = {Nature Communications},
+  volume  = {15},
+  pages   = {3073},
+  year    = {2024},
+  doi     = {10.1038/s41467-024-47443-w}
 }
