@@ -25,10 +25,6 @@ In the context of this thesis, \textbf{Failure} is episode termination on body c
 The reference timescale is the free-topple time of the inverted pendulum, $\sqrt{h/g} \approx 310$\,ms for this robot.
 \textbf{Stability} is the ability to continue locomotion when subjected to disturbances. 
 
-Four concepts share that word, and they differ in how much each one assumes. The field has moved
-down the order below over fifty years, releasing constraints to buy
-performance~\cite{wieber2016handbook,pratt2006margins,hobbelen2007lcw}.
-
 \textbf{Static stability} holds when the ground projection of the centre of mass stays inside the
 support polygon. It assumes quasi-static motion, flat feet and flat ground. The flat-ground
 assumption is the fragile one, because on uneven terrain the support-polygon test can be arbitrarily
@@ -42,21 +38,21 @@ ASIMO~\cite{hirai1998honda}. It still assumes a contact patch of finite area, an
 flight phase. The test also stays conservative, because it reduces the dynamics to a force balance
 and so admits slow motions rather than fully dynamic ones~\cite{chevallereau2003rabbit}. For a point
 foot the support polygon degenerates to a point, and the test then never passes while the robot
-moves. DASH-01 carries a 2.5\,cm spherical toe, so neither of the first two concepts applies to it.
+moves. DASH-01 carries a spherical toe, so neither this nor the previous concepts applies to it.
 
-\textbf{Orbital stability} holds when the spectral radius of the linearised Poincar\'e map falls
-below one. What it certifies is a whole periodic gait rather than a single instant. A flight phase is
-therefore admissible, and a running biped can be analysed under it. It buys that by assuming an
-exactly known model and a fixed periodic gait, and each new gait costs one offline
+\textbf{Orbital stability} holds when the spectral radius of the linearised Poincar\'e map falls below one.
+If the point is outside the stable radius, the gait might work but is unstable to any tiny perturbation. 
+It certifies a whole period of the gait instead of a single instant. 
+A flight phase is admissible. It work only by assuming an
+exactly known model and a fixed periodic gait, and each new gait need one offline
 optimisation~\cite{westervelt2003hzd}. The map is linearised, so the certificate covers small
-perturbations only. RABBIT is the point-foot biped the framework was built
-for~\cite{chevallereau2003rabbit}.
+perturbations only. RABBIT is the point-foot biped the framework was built for~\cite{chevallereau2003rabbit}.
 
-\textbf{Capturability} holds when a reachable foothold exists that brings the reduced model to
-rest~\cite{pratt2006capture,koolen2012capturability}. It asks a different question from the three
-above. Those ask whether the present state is admissible, whereas capturability asks whether a
-stopping option still exists in the future. It assumes a reduced model and reachable footholds, and
-it goes silent once the leg workspace saturates.
+\textbf{Capturability} holds when a reachable foothold exists that brings the reduced model to a stop~\cite{pratt2006capture,koolen2012capturability}. 
+Unlike the three previous concepts, which care about whether the present state is valid, what capturability care about is whether a
+stopping option exists in the future. It need a reduced model and reachable footholds.
+
+The field has moved down the order of the previous list over the last fifty years, releasing constraints to buy performance~\cite{wieber2016handbook,pratt2006margins,hobbelen2007lcw}.
 
 \subsection{What makes bipedal locomotion hard}
 \label{sec:bg-hard}
@@ -65,69 +61,50 @@ A legged robot touches the world only through intermittent unilateral contacts. 
 follow.
 
 \textbf{It is underactuated.} Six leg motors against twelve degrees of freedom leaves six base
-degrees with no motor attached. Those six can be influenced only through the ground. A flight phase
+degrees with no motor attached. The spring angle are not considered as DoF. Those six can be influenced only through the ground. A flight phase
 has no ground, so the centre of mass follows a ballistic arc no actuation can alter, and the robot
-chooses only the posture it will land in. \Cref{sec:rl-curriculum} makes that structural: the
-curriculum releases the base degrees one at a time, and the milestone that fails names the
-uncontrolled mode.
+chooses only the posture it will land in.
 
 \textbf{The inputs are unilateral and saturating.} The centre of pressure moves only within the
-contact patch, and for a point foot the patch is a point. That leaves foot placement as the
-principal input. It is chosen once per step, and bounded by the leg's reachable workspace, so the
-controller holds a small number of discrete bounded opportunities to act.
+contact patch, and since the robot has a point foot, the patch is a point. That leaves foot placement as the
+only input. It is chosen once per step, and bounded by the leg's reachable workspace.
 
 \textbf{The timescales are short.} An inverted pendulum of leg length $h$ diverges with time
-constant $\sqrt{h/g}$, about 310\,ms here, and running contacts last tens of milliseconds. A
-correction must therefore be planned, commanded and mechanically executed inside a few tenths of a
-second, which makes actuator bandwidth a first-class constraint. \Cref{sec:plant-id-drive} measures
-this robot's drive at a 0.8\,Hz pole with $\tau = 199$\,ms, against that 310\,ms divergence.
-
-Running differs from walking in kind rather than in degree. In walking the centre of mass vaults
-over a stiff support leg and rises at mid-stance. In running it bounces: it falls at mid-stance as
-the leg compresses, rises as the leg rebounds, and passes through a flight phase. A different
-reduced model therefore applies, which is why frameworks built for walking do not extend to running
-when the commanded speed is raised. Three reduced models recur below. The \textbf{inverted
-pendulum} gives the divergence time above. The \textbf{spring-loaded inverted pendulum} (SLIP)
-models running. The \textbf{capture point}~\cite{pratt2006capture} is the foothold that brings the
-inverted pendulum to rest, and it underlies both the pitch reflex of \cref{sec:rl-reflexes} and the
-scripted baseline of \cref{sec:scripted-baseline}.
+constant $\sqrt{h/g}$, about 310\,ms in this case, and running contacts last tens of milliseconds. A
+correction are time critical, which makes actuator bandwidth a major constraint since we can only react trough foot placement. \Cref{sec:plant-id-drive} measures
+this robot's drive at a 0.8\,Hz pole in servo mode and 12 \,Hz in MIT mode. Attentive reader will notice the traquenard that will come back later.
 
 \subsection{Historical context}
 \label{sec:bg-history}
 
-The history is more legible read as a sequence of answers to ``where does the stability come
-from''. The six families are in active use simultaneously, and the choice among them is governed by
-what the hardware can physically do. \Cref{tab:bg-approaches} carries what each buys and costs, so
-the text below states only the mechanism and the anchor systems.
+As explained in the Definitions section, the families below are sorted by where they get their stability from.
 
 \textbf{Geometry.} WABOT-1 (1973) moved slowly enough for its own momentum to be
 neglected~\cite{lim2007waseda}. The dynamic generalisation is the zero moment
 point~\cite{vukobratovic1969,vukobratovic2004}, which carried the field for three decades through
-Honda's P2 and ASIMO~\cite{hirai1998honda}. The linear inverted pendulum model and preview control
-made it cheap to compute~\cite{kajita2001lipm,kajita2003preview}.
+Honda's P2 and ASIMO~\cite{hirai1998honda}. The linear inverted pendulum model made it cheap to compute~\cite{kajita2001lipm,kajita2003preview}.
 
-\textbf{The mechanism.} McGeer's passive dynamic walkers descend a ramp on gravity alone, with no
-motors and no computer~\cite{mcgeer1990}. The gait is a limit cycle set by linkage geometry and
-mass distribution. Collins et al.\ added the minimum actuation needed to walk level, and measured a
-cost of transport near 0.20, comparable to a human~\cite{collins2005}.
-
-\textbf{Elasticity.} Blickhan showed that one spring-mass model describes running across animals
-spanning orders of magnitude in body mass~\cite{blickhan1989}, and Full and Koditschek framed such
-models as templates with the physical machine as their anchor~\cite{full1999templates}. Series
-elastic actuation~\cite{pratt1995sea} makes the template buildable, and ATRIAS is the most literal
-instantiation~\cite{hubicki2016atrias}, with Cassie and Digit as its descendants. DASH-01's passive
-ankle is a spring-rate commitment of the same kind, and \cref{sec:ankle-build} is what happens when
-one is sized wrong.
+\textbf{The mechanism.} McGeer's passive dynamic walkers descend a ramp passively using gravity alone ~\cite{mcgeer1990}. 
+The gait is a limit cycle set by linkage geometry and mass distribution. 
+Collins et al.\ added a motor to walk on a flat ground, 
+and measured a cost of transport near 0.20, which is similar to humans~\cite{collins2005}.
 
 \textbf{Foot placement.} Raibert's hoppers reframed the problem: a running robot has to be balanced
-once per step rather than continuously~\cite{raibert1986}. Control decomposes into thrust at bottom
-of stance, foot placement about a neutral point,
+only during the stance phase rather than continuously~\cite{raibert1986}. 
+Control decomposes into thrust at bottom of stance, foot placement about a neutral point, and hip torque applied during stance only.
+
 \begin{equation}
   x_f \;=\; \tfrac{1}{2}\,\dot x\,T_s \;+\; k\,(\dot x - \dot x_d),
   \label{eq:neutral-point}
 \end{equation}
-and hip torque applied during stance only. The lineage runs through
-BigDog~\cite{raibert2008bigdog} to Atlas, and \cref{eq:neutral-point} appears directly in the
+Here $x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres. $\dot x$
+is the current forward speed and $\dot x_d$ the commanded one, both in metres per second. $T_s$ is
+the stance duration in seconds, and $k$ is a velocity feedback gain, also in seconds. The first
+term is the neutral point, where the body sweeps symmetrically over the foot and stance returns no
+net fore-aft impulse. The second term corrects speed: running faster than commanded places the foot
+further forward, so stance decelerates the body.
+
+The lineage runs through BigDog~\cite{raibert2008bigdog} to Atlas, and \cref{eq:neutral-point} appears directly in the
 scripted baseline of \cref{sec:scripted-baseline}. Individual loops were later proved in simplified
 models~\cite{koditschek1991,pratt2006capture}, but never their composition on a physical machine.
 
