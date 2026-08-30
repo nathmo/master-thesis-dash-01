@@ -57,13 +57,8 @@ The field has moved down the order of the previous list over the last fifty year
 \subsection{What makes bipedal locomotion hard}
 \label{sec:bg-hard}
 
-A legged robot touches the world only through intermittent unilateral contacts. Three consequences
-follow.
-
-\textbf{It is underactuated.} Six leg motors against twelve degrees of freedom leaves six base
-degrees with no motor attached. The spring angle are not considered as DoF. Those six can be influenced only through the ground. A flight phase
-has no ground, so the centre of mass follows a ballistic arc no actuation can alter, and the robot
-chooses only the posture it will land in.
+A legged robot touches the world only through intermittent unilateral contacts.
+The following consequences follow.
 
 \textbf{The inputs are unilateral and saturating.} The centre of pressure moves only within the
 contact patch, and since the robot has a point foot, the patch is a point. That leaves foot placement as the
@@ -73,6 +68,11 @@ only input. It is chosen once per step, and bounded by the leg's reachable works
 constant $\sqrt{h/g}$, about 310\,ms in this case, and running contacts last tens of milliseconds. A
 correction are time critical, which makes actuator bandwidth a major constraint since we can only react trough foot placement. \Cref{sec:plant-id-drive} measures
 this robot's drive at a 0.8\,Hz pole in servo mode and 12 \,Hz in MIT mode. Attentive reader will notice the traquenard that will come back later.
+
+\textbf{It is underactuated.} Six leg motors against twelve degrees of freedom leaves six base
+degrees with no motor attached. The spring angle are not considered as DoF. Those six can be influenced only through the ground. A flight phase
+has no ground, so the centre of mass follows a ballistic arc no actuation can alter, and the robot
+chooses only the posture it will land in.
 
 \subsection{Historical context}
 \label{sec:bg-history}
@@ -110,12 +110,12 @@ The lineage runs through BigDog~\cite{raibert2008bigdog} to Atlas.
 This equation made the early Boston dynamics possible.
 
 \textbf{Re-solving online. (MPC)} Wieber recycled zero-moment-point walking as model-predictive
-control~\cite{wieber2006mpc} by doing on line. Kuindersma et al.\ built the whole-body version that ran Atlas at the
+control~\cite{wieber2006mpc} by doing it on line. Kuindersma et al.\ built the whole-body version that ran Atlas at the
 DARPA Robotics Challenge~\cite{kuindersma2016atlas}.
 
 \textbf{Reinforcement learning.} A neural network learn a policy by reinforcement learning to
 maximise a reward over millions of simulated episodes.
-PPO~\cite{schulman2017ppo} became the workhorse, MuJoCo~\cite{todorov2012mujoco} made it computationally affordable, and
+PPO~\cite{schulman2017ppo} (Proximal Policy Optimization) became the standard actor critic, MuJoCo~\cite{todorov2012mujoco} made it computationally affordable, and
 massively parallel simulation cut wall-clock further as demonstrated by Rudin et al. by training a walking policy under 4 minutes~\cite{rudin2021}. 
 What used to be stability margin now show up in the form of a sim2real gap.
 Previous approach yielded a fixed mathematical law that matched a specific plant (aka robot)
@@ -136,121 +136,74 @@ The RL approach is more like a black box where most of the classical tool for st
 
 \subsubsection{Control architecture}
 
-Several actuator-level control architectures have been used by the literature. The choice is not neutral. Peng and van de Panne compared torque, position-target, velocity and muscle-activation action spaces on simulated planar characters, and found that the spaces carrying low-level feedback learn faster, reach better final performance, and tolerate lower policy rates~\cite{peng2017actionspace}. Their study is in simulation and planar, so it bounds expectations rather than settling the question, and the authors themselves note that impedance-style tasks may favour the lower-level spaces.
+Several actuator-level control architectures have been used by the literature. 
+The main one are Direct torque control, Direct position control, Impedance control.
+Direct torque control let the policy command the actuator torque directly, which gives the policy the highest level of control authority.
+Direct position control let the policy command a position target, which is then tracked by a low-level controller.
+Impedance control let the policy command a desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters.
+The last one a good compromise between control authority and need on the hardware in term of latency and bandwidth.
 
-\textbf{Direct torque control} provides the policy with the highest level of control authority, but also imposes the most demanding communication and control-loop requirements. It is the mode the quasi-direct-drive actuator lineage was designed for~\cite{seok2015design,wensing2017proprioceptive}, and the one MIT Cheetah commands through~\cite{dicarlo2018mpc}. It was also the weakest of the four action spaces in that comparison, and the one that degraded fastest as the policy rate dropped~\cite{peng2017actionspace}. In simulation, the policy can directly command joint torques at a high frequency. On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimation to operate with sufficiently low latency. In the present hardware architecture, this approach was not practical through the CAN communication bus at the required frequency.
+\textbf{Direct torque control} provides the policy with the highest level of control authority, but also imposes the most demanding communication and control-loop requirements. 
+It is is the weakest of the four action spaces, and the one that degraded fastest as the policy rate dropped~\cite{peng2017actionspace}. 
+In simulation, the policy can directly command joint torques at a high frequency. 
+On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimation to operate with sufficiently low latency. 
+In the present hardware architecture, this approach was not practical through the CAN communication bus at the required frequency.
 
-\textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the motor controller. Position targets over a joint-level PD loop are what most learned locomotion uses~\cite{hwangbo2019anymal,tan2018sim2real,rudin2021}. Two variants were investigated: conventional smart-servo position control and the MIT control mode with fixed compliance parameters~\cite{katz2019minicheetah}. Both allow the RL policy to operate at a lower frequency while the actuator controller handles the fast inner loop.
+\textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the motor controller.
+Position targets over a joint-level PD loop are what many learned locomotion uses~\cite{hwangbo2019anymal,tan2018sim2real,rudin2021}.
+Two variants were investigated: conventional smart-servo position control and the MIT control mode with fixed compliance parameters~\cite{katz2019minicheetah}.
+Both allow the RL policy to operate at a lower frequency while the actuator controller handles the fast inner loop.
 
-\textbf{Impedance control} provides an intermediate level of control authority. Instead of directly specifying the actuator torque or being restricted to only position, the policy can influence the desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters. The $[q_d, \dot q_d, K_p, K_d, \tau_{\text{ff}}]$ command frame established by the Cheetah lineage is the standard realisation~\cite{katz2018actuator,katz2019minicheetah}, and \cref{eq:impedance} is the form this thesis uses. It is also the ancestor of the CAN protocol the CubeMars drives accept, which is why the mode is available on this robot at all. Learning the compliance terms rather than fixing them is established on manipulators and demonstrated on a legged hopper in hardware~\cite{bogdanovic2020impedance}, but I have found no prior work that learns the full five-term frame on a walking robot.
+\textbf{Impedance control} provides an intermediate level of control authority.
+Instead of directly specifying the actuator torque or being restricted to only position, the policy can influence the desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters.
+The $[q_d, \dot q_d, K_p, K_d, \tau_{\text{ff}}]$ command frame established by the Cheetah lineage is the standard realisation~\cite{katz2018actuator,katz2019minicheetah}.
+Learning the compliance terms rather than fixing them is established on manipulators and demonstrated on a legged hopper in hardware~\cite{bogdanovic2020impedance}.
 This allows the low-level controller to preserve fast and stabilising actuator dynamics while giving the policy greater freedom than pure position control.
+It also expose the actuator dynamics to the policy and reduce sim2real gap as smart servo mode dont always expose the frequency and parameters of their inner loop.
 
 \subsubsection{Gait prior}
 
-The second major design dimension is the amount and location of prior structure imposed on the gait. The families below are ordered by how much they constrain the gait. No published study benchmarks them against each other under a common protocol: the field's synthesis is narrative~\cite{ha2025survey}, and the head-to-head comparisons that exist sit inside method papers and cover two arms at a time~\cite{cpgrl2022}. The ordering is therefore mine, and it ranks constraint, not performance.
+The second major design dimension is the amount and location of prior structure imposed on the gait.
 
-A strong prior can be introduced through a \textbf{reference trajectory}. In this case, the policy is primarily trained to track or adapt an authored motion. DeepMimic tracks motion-capture clips this way~\cite{peng2018deepmimic}, and the Cassie line tracked authored reference motions~\cite{xie2019}. This strongly restricts the reachable set of motions and can substantially simplify learning. However, the quality of the resulting behaviour is bounded by the choice of reference: there is no guarantee that the selected trajectory is optimal for the particular robot morphology and dynamics.
+A strong prior can be introduced through a \textbf{reference trajectory}.
+In this case, the policy is primarily trained to track or adapt an authored motion.
+DeepMimic tracks motion-capture clips this way~\cite{peng2018deepmimic}, and the Cassie line tracked authored reference motions~\cite{xie2019}.
+This strongly restricts the reachable set of motions and can substantially simplify learning.
+However, the quality of the resulting behaviour is bounded by the choice of reference: there is no guarantee that the selected trajectory is optimal for the particular robot morphology and dynamics.
 
-A weaker prior can instead be introduced through a \textbf{trajectory generator} whose parameters are modulated by the policy~\cite{pmtg2018}. This preserves the assumption that locomotion should have a structured, periodic form while allowing the learned controller to search for a gait adapted to the plant. Trajectory generators can themselves provide different levels of freedom.
+A weaker prior can instead be introduced through a \textbf{trajectory generator} whose parameters are modulated by the policy~\cite{pmtg2018}.
+This preserves the assumption that locomotion should have a structured, periodic form while allowing the learned controller to search for a gait adapted to the plant.
+Trajectory generators can themselves provide different levels of freedom.
 
-At the stronger end of this generator-based formulation, the policy only modifies a small number of \textbf{high-level gait parameters}, such as phase, frequency, stride length, or amplitude~\cite{pmtg2018,cpgrl2022}. Central pattern generators are the classical form of that prior~\cite{ijspeert2008}, and dynamical movement primitives the classical form for non-periodic motions~\cite{ijspeert2013dmp}. The shape of the individual joint trajectories remains largely prescribed. This provides a relatively small search space but limits the set of gaits that can be represented.
+At the stronger end of this generator-based formulation, the policy only modifies a small number of \textbf{high-level gait parameters}, such as phase, frequency, stride length, or amplitude~\cite{pmtg2018,cpgrl2022}.
+Central pattern generators are the classical form of that prior~\cite{ijspeert2008}, and dynamical movement primitives the classical form for non-periodic motions~\cite{ijspeert2013dmp}.
+This is similar the strong prior in the sense of tracking a referece trajectory but instead that trajectory is parameterised and the parameters are learned rather than fixed.
+This provides a relatively small search space but limits the set of gaits that can be represented.
 
-A weaker prior allows the policy to modify the \textbf{complete trajectory}. Rather than predicting every trajectory sample independently, the possible trajectories can be represented using a low-dimensional basis, such as Fourier series~\cite{shafii2010tfs,yang2010tfs,wang2023fourier,fld2024} or Bézier curves~\cite{westervelt2007book,castillo2020hzdrl}. The policy then modifies the coefficients of this representation. This retains useful structural assumptions, most importantly periodicity and smoothness, while allowing the shape of the gait itself to become a learned variable.
+A weaker prior allows the policy to modify the \textbf{complete trajectory}. Rather than predicting every trajectory sample independently, the possible trajectories can be represented using a low-dimensional basis, such as Fourier series~\cite{shafii2010tfs,yang2010tfs,wang2023fourier,fld2024} or Bézier curves~\cite{westervelt2007book,castillo2020hzdrl}.
+The policy then modifies the coefficients of this representation. This retains useful structural assumptions like periodicity and smoothness, while allowing the shape of the gait itself to become a learned variable.
 
-At the extreme, \textbf{no explicit gait prior} is imposed and the policy directly learns the complete joint trajectory~\cite{heess2017emergence,radosavovic2024humanoid}. Periodic locomotion can still be encouraged through reward shaping, but periodicity then becomes an emergent property rather than a constraint. Such an approach provides a large reachable set but considerably increases the exploration and learning problem, and there is no guarantee that the learned solution will converge to a periodic gait.
+It is also possible to do withouth a trajectory generator \textbf{nor an explicit gait prior}. 
+The policy learns the complete joint trajectory~\cite{heess2017emergence,radosavovic2024humanoid}. 
+Periodic locomotion can still be encouraged through reward shaping, but periodicity then becomes an emergent property rather than a constraint.
+Such an approach provides a large reachable set but considerably increases the exploration and learning cost, and there is no guarantee that the learned solution will converge to a periodic gait.
 
-This distinction is important because the periodicity prior is not unique to the present framework. It can be introduced at different levels: through the \textbf{reward}~\cite{siekmann2021}, through a \textbf{reference motion}~\cite{peng2018deepmimic}, through an authored \textbf{trajectory generator}~\cite{pmtg2018,cpgrl2022}, or directly through the \textbf{action space} by parameterising the trajectory itself~\cite{fld2024,ates2025freqgait}. These choices determine how much of the gait is fixed and how much is available to the policy at run time.
+Finaly, one should note that the prior, if any, can be introduced at different levels: through the \textbf{reward}~\cite{siekmann2021}, through a \textbf{reference motion}~\cite{peng2018deepmimic} or through an authored \textbf{trajectory generator}~\cite{pmtg2018,cpgrl2022}.
+These choices determine how much of the gait is fixed and how much is available to the policy at run time at the expense of reward cost.
 
-\subsubsection{Choice for DASH-01}
+\subsubsection{Curriculum design} The third major design dimension is the curriculum used to train the policy.
+To help the policy converge, the training environment can be modified to make the task easier at the start and gradually increase difficulty as the policy improves.
+The literature has explored a variety of curriculum design choices, including the order in which different tasks are presented, the rate at which difficulty is increased, and the specific parameters that are modified to create the curriculum.
 
-For DASH-01, a fully unconstrained joint-level policy was considered undesirable because it would require reinforcement learning to simultaneously discover both the appropriate periodic structure of the gait and the stabilising behaviour of the robot. Conversely, imposing a fixed reference trajectory would strongly constrain the solution and assume that a sufficiently good gait was already known.
+\textbf{Terrain and command curricula.} A common scheme starts every agent on flat ground with a narrow command range.
+As its performance clears a threshold, the agent is promoted to rougher terrain or a wider velocity range, and demoted otherwise~\cite{rudin2021,lee2020terrain,miki2022perceptive}.
+Difficulty then tracks each agent's competence instead of a fixed schedule.
+This approach is well suited for massively parrallel training, where each agent can be promoted or demoted independently.
 
-DASH-01 also does not correspond closely to a particular biological morphology. Consequently, transferring a reference trajectory derived from human or animal locomotion would introduce a potentially unjustified assumption about the optimal gait. A trajectory generator therefore provides a useful intermediate solution: the existence of a periodic gait is used as a prior, while its detailed shape remains a decision variable for the policy.
+\textbf{Automatic domain randomisation.} Rather than fixing the domain-randomisation range~\cite{tobin2017dr} before training, the range can widen automatically once the policy clears a performance threshold at its current extremes~\cite{akkaya2019rubiks}.
+The randomisation range itself becomes the curriculum parameter, expanding only as fast as the policy can tolerate.
+The approach needs a reliable in-training performance signal.
+A noisy signal lets the range grow faster than the policy can track, destabilising training.
 
-The framework consequently investigates a \textbf{Fourier-based gait parameterisation}, in which the joint trajectories over a gait cycle are represented by Fourier coefficients. The policy can modify these coefficients to search for a gait adapted to the specific morphology and dynamics of DASH-01. This reduces the dimensionality and imposes smooth periodic structure compared with a fully free trajectory representation, while retaining substantially more freedom than tracking a fixed reference trajectory.
-
-The use of a Fourier representation should not itself be interpreted as the contribution of this work. Fourier-based periodic trajectory representations and the use of basis coefficients for locomotion predate this framework. The contribution of the framework instead lies in how the gait parameterisation is integrated with reinforcement learning and fast feedback control, and in the experimental comparison of alternative parameterisations under equivalent conditions.
-
-In particular, the framework distinguishes between the \textbf{slow gait-generation channel} and the \textbf{fast feedback channel}. The gait parameters determine the underlying periodic motion, while the feedback component is responsible for reacting to disturbances and short-timescale deviations from that nominal gait. This separation allows the learned policy to modify the gait without requiring it to reconstruct the complete high-frequency actuator behaviour at every timestep.
-
-The choice of this architecture was therefore motivated by a trade-off between \textbf{reachable gait space and learning complexity}. A fixed reference trajectory provides a strong prior but may exclude the optimal gait. A completely free policy provides a very weak prior but greatly increases the search space. A parameterised trajectory generator occupies an intermediate position: it constrains the search to smooth periodic motions while allowing the gait itself to be discovered by reinforcement learning.
-
-\subsubsection{Architectures investigated}
-
-Because the original objective of the thesis was to develop an RL framework capable of producing high-speed bipedal locomotion, these architectural choices were treated as experimental design variables rather than assumptions fixed from the outset.
-
-Multiple actuator and gait-control architectures were therefore implemented and evaluated during framework development. These included direct position control, MIT-mode control with fixed compliance parameters, impedance-based control, gait-generator approaches with different levels of policy authority, and architectures incorporating a hand-tuned reflex controller alongside the learned component.
-
-The final architecture was selected based on the resulting trade-off between actuator controllability, communication and bandwidth requirements, exploration complexity, and the freedom available to discover a gait adapted to DASH-01. The Fourier gait representation should consequently be understood as the selected design point within this broader architectural investigation, rather than as a novel gait representation in itself.
-
-
-A \textbf{shape prior} fixes the trajectory and exposes its timing, so tuning does not enlarge the
-reachable set. A \textbf{structural prior} constrains the class and leaves the member free, so the
-reachable set grows with the parameterisation. DASH-01 frees the intra-limb axis because it has no
-template to copy. Hardware calibration established that the cam is a full crank, sweeping about
-$245^{\circ}$ against a CAD-guessed $\pm86^{\circ}$ (\cref{sec:hw-experiments}), and the 4-bar's
-transmission ratio varies strongly with posture (\cref{sec:hw-force-map}). No animal offers a gait
-for that morphology. The mirror on the inter-limb axis is a shape prior, taken because the task is
-a straight-line dash and because it halves the emitted specification to 14 coefficients. Its cost
-was paid later: a mirror-symmetric gait travels only in a straight line, so steering had to be
-added as two explicit asymmetry channels.
-
-Three trade-offs follow from the lineage, and the thesis lives on all three.
-
-\textbf{Sim-to-real gap.} Ranked as measured on this robot rather than as usually listed, the
-sources are actuator dynamics and drive bandwidth, mass and inertia error, the contact and friction
-model, latency, sensor noise, and unmodelled compliance. The standard toolkit is domain
-randomisation with curricula, observation history in place of privileged state, explicit sensor and
-delay models, and actuator networks~\cite{hwangbo2019anymal}. The useful framing is randomisation
-as robustness training over a distribution of plants, rather than as noise injection. This thesis
-measures first, and randomises around the measurement (\cref{sec:sim2real-lineage}). The
-counter-lesson is that randomising around an optimistic plant does not recover the plant error. No
-policy has run on the hardware, so that is an inference from the plant-correction table rather than
-a transfer result.
-
-\textbf{Learning efficiency and dimensionality reduction.} The raw problem is a torque sequence in
-$\mathbb{R}^{n_{\text{joint}} \times T}$, and the structured problem is 10 to 50 gait-morphology
-parameters. The prior asserted is that successful locomotion is approximately periodic,
-band-limited and bounded. The reduction removes exploration rather than imposing answers. It costs
-a reachable set bounded by the harmonic count, no stability guarantee from smoothness, and the need
-for a fast feedback channel outside the generator. Modern results use $10^8$ to $10^9$ transitions,
-with thousands of parallel environments~\cite{rudin2021}. A curriculum optimal at that budget is
-not necessarily optimal at this project's, so sample efficiency is the actual research variable
-here.
-
-\textbf{Curriculum design.} Published curricula range over command, terrain, disturbance and
-randomisation, usually on an already fully dynamic robot, and the recent shift is toward
-performance-adaptive schedules. This thesis instead applies difficulty to the
-\emph{controllability of the plant} (\cref{sec:rl-curriculum}), by releasing base degrees of
-freedom one at a time. It is weaker than the state of the art on every other axis: binary rather
-than continuous release, hand-scheduled rather than performance-gated advance, and a single
-difficulty axis rather than a vector. The known danger is that a strongly constrained plant lets
-the policy learn that a suppressed mode does not exist, so release then produces immediate failure.
-
-\subsection{Platforms, and where DASH-01 sits}
-\label{sec:bg-platforms}
-
-The bipeds producing the results above fall into three groups, separated more by actuation and
-budget than by control philosophy. \textbf{Series-elastic research bipeds} such as
-ATRIAS~\cite{hubicki2016atrias} and its descendants Cassie and Digit carry leaf springs in series
-with the drives, and a high-voltage bus. They hold the speed record~\cite{crowley2024cassie}, and
-they are the product of a decade of institutional effort. \textbf{Quasi-direct-drive robots in the
-MIT Cheetah lineage}~\cite{seok2015design,wensing2017proprioceptive,katz2019minicheetah} are
-predominantly quadrupeds, and architecturally the most influential group. Their pattern is
-quasi-direct-drive actuation commanded in torque mode, adopted by essentially every recent legged
-platform. \textbf{Hobby-class humanoids} are built from position-controlled smart servos, and are
-confined to the static-walking regime for a structural reason rather than a budget one. A servo
-closing its own position loop cannot deliver a commanded ground force, so the dynamic families stay
-unavailable whatever controller sits above them.
-
-DASH-01 sits deliberately between the second and third groups: quasi-direct-drive actuators and a
-running-oriented morphology, on a student budget and a single-board computer. Three bets define it.
-A parallel 4-bar knee moves the knee actuator's mass proximally. A passive ankle spring replaces a
-seventh and eighth motor. Six motors do the work of ten. \Cref{tab:speed-ceiling} confirms the
-first bet, at $-0.93$\,(m/s)/kg for distal mass against $-0.11$ for the torso.
-\Cref{sec:hw-force-map} shows the second bet was wrong by a factor of eight. The third stands.
-
-What separates this platform from its neighbours is not any single choice. It is that the drive
-electronics were bought as a bundle with the actuator. That put the robot in the third group's
-actuation interface, while its mechanics belong to the second. \Cref{sec:plant-id-drive} measures
-what it costs.
+Whether the curriculum targets terrain, command range or randomisation range, an adaptive schedule removes a manually tuned progression rate.
+In its place, the design now needs a performance threshold, and a metric to compute it. Which come with the same set of issue as the design of the reward function where agent can learn to game it instead of the intended behaviour.
