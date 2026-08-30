@@ -86,91 +86,41 @@ Each leg carries three motors. Hip roll sits at the base, and a cam and a thigh 
 sagittal plane. The knee is passive and follows through the 4-bar. The ankle is passive and follows
 through a spring (not rendered).
 
-
-\begin{figure}[H]
-\centering
-\begin{minipage}[c]{0.40\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{Figures/fig_leg.pdf}
-\end{minipage}
-\caption{Kinematic of the robot leg}
-\label{fig:robotlegkinematic}
-\end{figure}
-
-
-
-The sagittal pair dominates the capability envelope. The low reduction ratios also keep reflected
-inertia low enough to backdrive the legs by hand. The teach-and-replay workflow of
-\cref{sec:hw-experiments} depends on that property.
-
-\subsection{Selecting the non-mechanical hardware}
+\subsection{Selecting hardware}
 \label{sec:hw-selection}
 
-\subsubsection{Actuators: the right part, bought with the wrong question unasked}
+\subsubsection{Actuators choice}
 \label{sec:hw-motor}
 
-Actuator datasheets are not comparable as published. The choice was therefore made against a
-purpose-built database rather than against vendor headline figures. It holds 140 integrated
-actuators, 121 motors, 121 gearboxes and 9 standalone drives, as four joined tables
-(\cref{sec:app-db}).
+I assembled a database to select the actuator. I scraped the major robotic actuator manufacturers and used a large language model to parse each datasheet. The resulting database holds 140 entries across 11 suppliers, listed in \cref{tab:manufacturers}.
+\begin{table}[h]
+\centering
+\caption{Actuator manufacturers represented in the database}
+\label{tab:manufacturers}
+\begin{tabular}{lr}
+\toprule
+Manufacturer & Actuator count \\
+\midrule
+ZeroErr       & 32 \\
+MyActuator    & 29 \\
+CubeMars      & 22 \\
+SteadyWin     & 21 \\
+Maxon         & 12 \\
+MAB Robotics  & 8  \\
+RobStride     & 7  \\
+HEBI Robotics & 6  \\
+Soceboz       & 1  \\
+RSL-ETH       & 1  \\
+mjbots        & 1  \\
+\midrule
+Total         & 140 \\
+\bottomrule
+\end{tabular}
+\end{table}
+I compiled the database into an interactive dashboard, \emph{motormap} \cite{morand2026motormap}, built from the \texttt{actuatorReview} code \cite{morand2026actuatorreview}.
 
-Two of its conventions are load-bearing here. The motor constant $K_m = K_t/\sqrt{R}$ is the only
-portable figure of merit. Rewinding $n$ turns gives $K_t \propto n$ while $R \propto n^2$, so $K_m$
-is invariant to the winding. The second convention is that every electrical constant is meaningless
-without its reference frame. The same motor differs by up to a factor of 3, depending on whether a
-value is quoted phase, line-to-line, q-axis or bus. That convention lands on this project's own
-$K_t$ measurement (\cref{sec:plant-id-torque}).
+The choice of the actuator itself is detailed in the master's thesis of M. Aebi \cite{aebi2025dash01}.
 
-Filtering to the cam and thigh requirement leaves 36 candidates from eight vendors. The requirement
-is a single actuator above 100\,N$\cdot$m of peak output torque. Ranked on mass-specific peak
-mechanical power $\tau_{\text{pk}}\omega_0/4m$, the chosen AKE90-8 leads that class at 668\,W/kg,
-against 442 for the next two entries. It also holds the highest no-load speed and the lowest mass
-in its class. At EUR\,0.45 per watt of peak power it ties the cheapest entry.
-
-The pattern rather than the winner is the design lesson. Peak mechanical power per kilogram
-saturates near 450 to 670\,W/kg, whatever the vendor or the price. What varies is where on the
-torque--speed line a product places that power, and the reduction ratio is the knob. One surveyed
-strain-wave unit carries comparable peak torque. It costs three times as much, weighs 1.8 times as
-much, and delivers one twelfth the mass-specific power. The cause is its 50:1 reduction, which puts
-no-load speed at 6.3\,rad/s. For a running leg that is fatal, and it is the trade most of the
-actuator market is built around. \Cref{sec:speed-ceiling} independently confirms that $\tau\omega$
-is what binds, so the part was chosen on the axis that mattered.
-
-\paragraph{The drive was the mistake, and it was a separable purchase.} The largest sim-to-real gap
-in the project is the drive's proportional-only 0.8\,Hz position loop with unwritable gains
-(\cref{sec:plant-id-drive}). The database records the AKE90-8 as a bare module, sold with no
-encoder and no drive board, so the drive electronics were an independent decision. Two surveyed
-alternatives would have removed the problem. The mjbots moteus-n1 offers 100\,A peak, 10 to 54\,V,
-EUR\,137, open firmware and an integrated encoder. The MAB MD80 v3.0 offers 80\,A peak, 48 or
-60\,V, EUR\,220, and torque and impedance modes with writable gains. Either would have cost less
-than the bundled electronics. The 60\,V variant would also have raised the bus, for a 25\,\% gain
-on no-load speed.
-
-The counter-argument is real. A bare module needs an encoder mount, firmware commissioning and a
-commutation loop tuned per joint, six times over. The integrated option bought perhaps three weeks
-of schedule against a nine-month project. What is not defensible is that the trade was made without
-asking the question. No vendor publishes a servo-loop bandwidth, so it could not have been looked
-up. It could have been measured on one unit in an afternoon, with the rig that eventually measured
-it a year later. The database captures peak torque, rated torque, speed, mass, price, IP rating and
-communications. \textbf{It has no column for control-loop bandwidth or gain writability}, because
-nobody knew to ask when it was built. In my view that missing field is the most useful thing this
-project learned about buying actuators.
-
-\paragraph{Two smaller criticisms.} The hip-roll actuator was chosen for torque density, at
-96\,N$\cdot$m/kg, and ranks 10th of 18 in its class on mass-specific power. Hip roll is not
-propulsive, so the low speed costs nothing measurable. The unanticipated cost lies elsewhere. Its
-39:1 reduction gives 0.046\,kg$\cdot$m$^2$ of reflected armature inertia, more than double the
-sagittal pair's, plus 1.4\,N$\cdot$m of back-drive torque. Hip roll is consequently the axis that
-resists backdriving by hand. A 16:1 part at 78\,N$\cdot$m would have cut the ratio-squared
-amplification by about 6, for EUR\,132 more per side.
-
-The second criticism concerns the measured torque constant. The 85\,\% ``gearbox efficiency'' of
-\cref{sec:plant-id-torque} may be a reference-frame artefact rather than a loss. If the drive
-reports q-axis current, the correct comparator is $K_t^q = \sqrt{3/2}\,K_t^{ll} = 0.333$. The
-measured constant is then 69\,\% of datasheet, which no planetary gearbox explains. One experiment
-separates the hypotheses. Command a known current into a stalled motor, and measure the DC bus
-current with a clamp meter. Until that is run, the measured peak torques carry an unquantified
-frame risk, and the correction, if it is one, is pessimistic.
 
 \subsubsection{Battery, compute and sensing}
 \label{sec:hw-battery}
