@@ -95,10 +95,10 @@ through a spring (not rendered).
 A database to select the actuator was assembled.
 Major robotic actuator manufacturers website was scraped for datasheet and a large language model was used to parse each datasheet.
 The resulting database holds 140 entries across 11 suppliers, listed in \cref{tab:manufacturers}.
-\begin{table}[H]
+\begin{figure}[htbp]
 \centering
-\caption{Actuator manufacturers represented in the database}
-\label{tab:manufacturers}
+\begin{minipage}[t]{0.4\textwidth}
+\centering
 \begin{tabular}{lr}
 \toprule
 Manufacturer & Actuator count \\
@@ -118,13 +118,15 @@ mjbots        & 1  \\
 Total         & 140 \\
 \bottomrule
 \end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
+\captionof{table}{Actuator manufacturers represented in the database}
+\label{tab:manufacturers}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.56\textwidth}
 \centering
-\includegraphics[width=0.9\textwidth]{Figures/ScreenshotActuatorMap.png}
-\caption{The \emph{motormap} dashboard, showing the actuator database used to select the drive.}
+\includegraphics[width=\linewidth]{Figures/ScreenshotActuatorMap.png}
+\captionof{figure}{Excerpt of the \emph{motormap} dashboard, showing the actuator database used to select the drive.}
 \label{fig:motormap}
+\end{minipage}
 \end{figure}
 
 The database was complied into an interactive dashboard, \emph{motormap} \cite{morand2026motormap}, built from the \texttt{actuatorReview} code \cite{morand2026actuatorreview}.
