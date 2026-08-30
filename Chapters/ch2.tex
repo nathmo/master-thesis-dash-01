@@ -1,136 +1,212 @@
 \section{Background and literature review}
+
 \label{sec:bg}
 
-This chapter attempt to give a brief context behind bipedal locomotion and more specifically the Reinforcement Learning framework that are used in the literature to solve this problem.
+This chapter provides a brief context for bipedal locomotion and, more specifically, for the Reinforcement Learning framework used in the literature to address this problem.
 
 \subsection{Definitions}
+
 \label{sec:bg-defs}
 
-First a few definition as the following term will recur :
-\textbf{Underactuation} is the excess of degrees of freedom over actuators. 
-\textbf{Unilateral contact} means a foot can push but not pull, and only inside the \textbf{friction cone}. 
-The point where the push applies is the \textbf{centre of pressure}, confined to the contact patch. 
-\textbf{Duty factor} is the fraction of a step each foot spends in contact with the floor, and a \textbf{flight phase} is the interval with no foot down. 
-The \textbf{sim-to-real gap} is the performance missmatch on transfer from a simulated plant to the physical one. Generally because the real plant is out of the distribution the policy was trained against.
-In the context of this thesis, \textbf{Failure} is episode termination on body contact, or on leaving the measured workspace. 
-\textbf{Stability margin}, in the context of reinforcement learning, is reported as a survivor count and a seed variance rather.
-\textbf{Plant}, borrowed from control theory, this refer to the robot to be controlled.
+First, a few definitions are provided, as the following terms will recur throughout this thesis.
+
+\textbf{Underactuation} is the presence of more degrees of freedom than independently actuated degrees of freedom.
+
+\textbf{Unilateral contact} means that a foot can push against the ground but cannot pull it, and that the resulting contact force must lie within the \textbf{friction cone}.
+
+The point at which the resultant contact force acts on the ground is the \textbf{centre of pressure}, which is confined to the contact patch.
+
+\textbf{Duty factor} is the fraction of a gait cycle during which a given foot remains in contact with the ground. A \textbf{flight phase} is an interval during which neither foot is in contact with the ground.
+
+The \textbf{sim-to-real gap} is the performance mismatch observed when transferring a policy from a simulated plant to the physical robot. This mismatch generally arises because the real plant lies outside the distribution of plants and disturbances encountered during training.
+
+In the context of this thesis, \textbf{failure} refers to the termination of an episode following body contact with the ground or leaving the measured workspace.
+
+\textbf{Stability margin}, in the context of Reinforcement Learning, is not necessarily expressed as a classical analytical stability margin. In this thesis, robustness is instead assessed through quantities such as the number of surviving episodes and the variance across random seeds.
+
+\textbf{Plant}, borrowed from control theory, refers to the physical system to be controlled, in this case the robot.
 
 \subsection{Abbreviations}
 
-\textbf{RL} Reinforcement Learning
-\textbf{CoM} Center of Mass
+\textbf{RL} : Reinforcement Learning
 
+\textbf{CoM} : Centre of Mass
+
+\textbf{ZMP} : Zero Moment Point
 
 \subsection{Bipedal locomotion approach}
+
 \label{sec:bg-hard}
 
-The problem can be approached in different way.
-The simplest case is for a robot with flat feet on a flat terrain that move slowly enough that the innertia can be neglected. This is what was done for the WABOT-1 in (1973) \cite{waseda2026wabot1}
-It this case, making it stable boils down to keeping the projection of it's CoM inside the feet Polygon.
+Bipedal locomotion can be approached in different ways, depending in particular on the speed of motion and on the assumptions made about contact and dynamics.
 
-If one want to go faster, The second step is to account for the innertia and now, its not the CoM but the Zero Momement point that must be inside the feet Polygon. This was done by Asimo (2000) \cite{whatimakethis2020asimo}.
-Running involve a flight phase which is not compatible with the previous approach as it need one feet on the floor at anytime.
-To enable running, Raibert\cite{raibert1986} propose a foot placement method that satisfy the following equation :
+The simplest case is a robot with flat feet walking on flat terrain at sufficiently low speed that inertial effects can be neglected. This was the approach used for WABOT-1 in 1973 \cite{waseda2026wabot1}.
+
+In this case, maintaining stability can be reduced to keeping the projection of the CoM inside the support polygon formed by the feet.
+
+As the robot moves faster, inertial effects can no longer be neglected. The relevant quantity is then not simply the projection of the CoM, but the Zero Moment Point (ZMP), which must remain within the support polygon. This approach was used, for example, in ASIMO \cite{whatimakethis2020asimo}.
+
+Running introduces a flight phase, which is incompatible with the previous approaches that require at least one foot to remain in contact with the ground at all times.
+
+To enable running, Raibert \cite{raibert1986} proposed a foot-placement method based on the following relation:
 
 \begin{equation}
-  x_f \;=\; \tfrac{1}{2}\,\dot x\,T_s \;+\; k\,(\dot x - \dot x_d),
+x_f = \tfrac{1}{2},\dot{x},T_s
+
+* k,(\dot{x} - \dot{x}_d),
   \label{eq:neutral-point}
+  \end{equation}
+
+where $x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres; $\dot{x}$ is the current forward speed in metres per second; $\dot{x}_d$ is the commanded forward speed, in metres per second; $T_s$ is the stance duration, in seconds; and $k$ is a velocity feedback gain, also expressed in seconds.
+
+The first term corresponds to the neutral point, which produces no net fore-aft impulse. The second term provides velocity feedback: when the robot is moving faster than commanded, the foot is placed further forward, producing a decelerating effect during stance.
+
+This lineage runs through systems such as BigDog \cite{raibert2008bigdog} and later Atlas.
+
+The underlying idea is that the gait can be stabilised, to a significant extent, by placing the feet at the appropriate location and time.
+
+This also makes it possible to build running robots with point-contact feet, rather than requiring the large flat feet used by earlier approaches.
+
+The approach was subsequently refined by solving the foot-placement and whole-body motion problem online, leading to what is commonly formulated as a Model Predictive Control approach \cite{kuindersma2016atlas}.
+
+This approach was central to the development of the early dynamic legged robots developed by Boston Dynamics.
+
+These approaches rely on a sufficiently accurate model of the plant.
+
+In practice, however, the plant parameters are only partially known and may vary with configuration, load, contact conditions, and hardware.
+
+Classical model-based controllers are therefore designed around a particular model and possess a finite robustness margin with respect to modelling errors and disturbances. Beyond this margin, the controller may no longer be able to stabilise the system.
+
+Reinforcement Learning provides an alternative way of obtaining this robustness. Rather than explicitly deriving a controller from a single plant model, RL trains a policy over a distribution of simulated plants. The policy can therefore be exposed to variations in plant parameters during training, for example through domain randomisation, with the objective of improving its robustness to model mismatch.
+
+The problem is further complicated by the unilateral and saturating nature of ground contact. A foot can only push against the ground, not pull it, and the tangential component of the contact force is bounded by the friction cone. Exceeding this bound results in slipping.
+
+A second complication is the timescale of the dynamics. A legged robot can, to a first approximation, be considered as an inverted pendulum with characteristic length $h$.
+
+In the absence of corrective input, the characteristic timescale of the inverted pendulum is on the order of
+
+\begin{equation}
+\tau \sim \sqrt{\frac{h}{g}},
 \end{equation}
 
-$x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres. \\
-$\dot x$ is the current forward speed in metres per second. \\
-$\dot x_d$ is the commanded forward speed, in metres per second.  \\
-$T_s$ is the stance duration in seconds. \\
-$k$ is a velocity feedback gain, also in seconds.  \\
-The first term is the neutral point, which yield no net fore-aft impulse. 
-The second term corrects for the speed : running faster than commanded places the foot further forward, so stance decelerates the body.
-The lineage runs through BigDog~\cite{raibert2008bigdog} to Atlas.
-The trick there is to realise that the gait can be stabilized just by plancing the feet at the right place and the right time. 
-It allowed to make walking robot using point contact feet unlike the previous need for large flat feet.
-It was further refined by being solved online and rebranded as Model predictive control approach. \cite{kuindersma2016atlas}
-This is what made the early Boston dynamics possible.
-This approach and the previous one require a complete and accurate model of the plant. 
-But in practice the plant parameters are only partially known. 
-Controller using classical control theory are only good for one plant and have an intrasec stability margin which related to how much variance from that optimal plant can be tolerated before the control is unable to stabilize it.
-To solve that, RL instead train a neural network to act as the policy. One of the advantage is that the policy can be made arbitrarely robust to plant missmatch by variying the plant parameters during training (aka domain randomization).
+which corresponds to approximately $310,\mathrm{ms}$ for a characteristic length of $1,\mathrm{m}$.
 
-To complicate it all, the contact with the ground are said to be unilated and saturating. This mean that the foot can only push against the ground and only within the friction cone otherwise, it slip.
-The second factor that complexify it are the timescale. A legged robot can be seen as an inverted pendulum of leg length $h$.
-If no command is applied, it will tend to diverges with a time constant of $\sqrt{h/g}$ or about 310\,ms for a 1 meter tall robot like ours. When running, the contact with the ground only last a few dozen ms.
-In that timeframe, the robot must be able to get the feedback from the foot, compute the required command and apply it. This required actuator with decent bandwith.
-In the spirit of foretelling, the robot which this thesis are about have a bandiwith of 0.8\,Hz pole in servo mode and 12 \,Hz in MIT mode. 
-Attentive reader will thus notice the traquenard that will come back later.
+During running, however, contact with the ground may last only a few tens of milliseconds. Within this timescale, the robot must measure the state of the system, estimate the relevant dynamics, compute a corrective command, communicate it to the actuator, and physically produce the required motion.
 
+This places significant requirements on sensing, computation, communication latency, and actuator bandwidth.
+
+The robot considered in this thesis has a measured actuator bandwidth corresponding to a $0.8,\mathrm{Hz}$ pole in servo mode and approximately $12,\mathrm{Hz}$ in MIT mode.
+
+This limitation will become relevant again when discussing the control architecture and the sim-to-real problem later in this thesis.
 
 \subsection{Reinforcement learning for locomotion}
+
 \label{sec:bg-rl-loco}
 
 \subsubsection{Actuator control architecture}
 
-Several actuator-level control architectures have been used by the literature. 
-The main one are Direct torque control, Direct position control, Impedance control.
-Direct torque control let the policy command the actuator torque directly, which gives the policy the highest level of control authority.
-Direct position control let the policy command a position target, which is then tracked by a low-level controller.
-Impedance control let the policy command a desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters.
-The last one a good compromise between control authority and need on the hardware in term of latency and bandwidth.
+Several actuator-level control architectures have been used in the literature. The main ones considered here are direct torque control, direct position control, and impedance control.
 
-\textbf{Direct torque control} provides the policy with the highest level of flexibility, but also imposes the most demanding communication and control-loop timing requirements. 
-In simulation, the policy can directly command joint torques at a high frequency.  ~\cite{hwangbo2019anymal}
-On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimation to operate with sufficiently low latency. 
+Direct torque control allows the policy to command the actuator torque directly, giving it the highest level of control authority.
+
+Direct position control allows the policy to command a position target, which is then tracked by a low-level controller.
+
+Impedance control allows the policy to command a desired mechanical behaviour through parameters such as position, stiffness, damping, and, depending on the implementation, torque-related terms.
+
+The latter provides a compromise between control authority and the requirements imposed on the hardware in terms of latency and bandwidth.
+
+\textbf{Direct torque control} provides the policy with the highest level of flexibility, but also imposes demanding communication and control-loop timing requirements.
+
+In simulation, the policy can directly command joint torques at a high frequency \cite{hwangbo2019anymal}.
+
+On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimator to operate with sufficiently low latency.
+
 In the present hardware architecture, this approach was not practical through the CAN communication bus at the required frequency.
 
 \textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the motor controller.
-Position targets passed to the joint controller are what many learned locomotion uses~\cite{tan2018sim2real,rudin2021}.
-Two variants were investigated: conventional smart-servo position control and the MIT control mode with fixed compliance parameters~\cite{katz2019minicheetah}.
-Both allow the RL policy to operate at a lower frequency while the actuator controller handles the fast inner loop.
 
-\textbf{Impedance control} provides an intermediate level of control authority.\cite{bogdanovic2020impedance}
-Instead of directly specifying the actuator torque or being restricted to only position, the policy can influence the desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters.
-This avoid the issue of needing to close the torque loop at high speed over the communication bus while giving the policy greater freedom than pure position control.
-It also expose the actuator dynamics to the policy and reduce sim2real gap as smart servo mode dont always expose the frequency and parameters of their inner loop.
+Position targets passed to the joint controller are used by several learned locomotion approaches \cite{tan2018sim2real,rudin2021}.
+
+Two variants were investigated in this thesis: conventional smart-servo position control and the MIT control mode with fixed compliance parameters \cite{katz2019minicheetah}.
+
+Both allow the RL policy to operate at a lower frequency while the actuator controller handles the faster inner control loop.
+
+\textbf{Impedance control} provides an intermediate level of control authority \cite{bogdanovic2020impedance}.
+
+Instead of directly specifying actuator torque, or being restricted to position targets, the policy can influence the desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters.
+
+This avoids the need to close the torque loop at high speed over the communication bus while providing the policy with greater freedom than pure position control.
+
+It also exposes more of the actuator dynamics to the policy and can reduce the sim-to-real gap compared with a smart-servo interface when the frequency and parameters of the inner control loop are not fully exposed.
 
 \subsubsection{Gait prior}
 
-The second major design dimension is the amount and location of prior structure imposed on the gait.
+For the purpose of comparing these approaches, the literature can be organised along a second dimension: the amount and location of prior structure imposed on the gait.
 
 A strong prior can be introduced through a \textbf{reference trajectory}.
-In this case, the policy is primarily trained to track an authored motion.This is one the thing that was attempted on the Cassie robot~\cite{xie2019}.
+
+In this case, the policy is primarily trained to track an authored motion. This approach was, for example, explored on the Cassie robot \cite{xie2019}.
+
 This strongly restricts the reachable set of motions and can substantially simplify learning.
-However, the quality of the resulting behaviour is bounded by the choice of reference: there is no guarantee that the selected trajectory is optimal for the particular robot morphology and dynamics.
 
-A less strict prior can instead be introduced through a \textbf{trajectory generator} whose parameters are modulated by the policy~\cite{pmtg2018}.
+However, the quality of the resulting behaviour is bounded by the choice of reference trajectory: there is no guarantee that the selected trajectory is optimal for the particular robot morphology and dynamics.
+
+A less restrictive prior can instead be introduced through a \textbf{trajectory generator} whose parameters are modulated by the policy \cite{pmtg2018}.
+
 This preserves the assumption that locomotion should have a structured, periodic form while allowing the learned controller to search for a gait adapted to the plant.
-Trajectory generators can themselves provide different levels of freedom about the gait parameters.
 
-At the stricter end of this generator-based formulation, the policy only modifies a small number of \textbf{high-level gait parameters}, such as phase, frequency, stride length, or amplitude. ~\cite{cpgrl2022}
-This is similar the first approach in the sense of tracking a referece trajectory but instead that trajectory is parameterised and the high level parameters are learned instead of letting the policy learn the low level joint command needed to mimmick the reference gait.
+Trajectory generators can themselves provide different levels of freedom over the gait parameters.
+
+At the stricter end of this generator-based formulation, the policy only modifies a small number of \textbf{high-level gait parameters}, such as phase, frequency, stride length, or amplitude \cite{cpgrl2022}.
+
+This is similar to the reference-trajectory approach in the sense that the policy operates within a predefined family of trajectories. However, instead of learning the low-level joint commands required to reproduce a reference gait, the policy learns the high-level parameters that generate it.
+
 This provides a relatively small search space but limits the set of gaits that can be represented.
 
-A more moderate prior allows the policy to modify the \textbf{complete trajectory}. Rather than predicting every trajectory sample independently, the possible trajectories can be represented using a low-dimensional basis, such as Fourier series~\cite{shafii2010tfs} or Bézier curves.
-The policy then modifies the coefficients of this representation. This retains useful structural assumptions like periodicity and smoothness, while allowing the shape of the gait itself to become a learned variable.
+A more moderate prior allows the policy to modify the \textbf{complete trajectory}. Rather than predicting every trajectory sample independently, the possible trajectories can be represented using a low-dimensional basis, such as Fourier series \cite{shafii2010tfs} or Bézier curves.
 
-It is also possible to do withouth a trajectory generator \textbf{nor an explicit gait shape prior}. 
-The policy learns the complete joint trajectory~\cite{heess2017emergence}. 
-Periodic locomotion can still be encouraged through reward shaping, but periodicity then becomes an emergent property rather than a constraint.
-Such an approach provides a large reachable set but considerably increases the exploration and learning cost, and there is no guarantee that the learned solution will converge to a periodic gait.
+The policy then modifies the coefficients of this representation.
 
-Finaly, one should note that the prior, if any, can be introduced at different levels: through the \textbf{reward}~\cite{siekmann2021}, through a \textbf{reference motion}~\cite{peng2018deepmimic} or through an authored \textbf{trajectory generator}~\cite{pmtg2018,cpgrl2022}.
-These choices determine how much of the gait is fixed and how much is available to the policy at run time at the expense of reward cost.
+This retains useful structural assumptions such as periodicity and smoothness, while allowing the shape of the gait itself to become a learned variable.
 
-\subsubsection{Curriculum design} The third major design dimension is the curriculum used to train the policy.
-To help the policy converge, the training environment can be modified to make the task easier at the start and gradually increase difficulty as the policy improves.
-The literature has explored a variety of curriculum design choices, including the order in which different tasks are presented, the rate at which difficulty is increased, and the specific parameters that are modified to create the curriculum.
+It is also possible to use \textbf{neither a trajectory generator nor an explicit gait-shape prior}.
+
+In this case, the policy learns the complete joint trajectory directly \cite{heess2017emergence}.
+
+Periodic locomotion can still be encouraged through reward shaping, but periodicity then becomes an emergent property rather than an explicit constraint.
+
+Such an approach provides a larger reachable set, but considerably increases the exploration and learning problem. There is also no guarantee that the learned solution will converge to a periodic gait.
+
+Finally, the prior, when present, can be introduced at different levels: through the \textbf{reward} \cite{siekmann2021}, through a \textbf{reference motion} \cite{peng2018deepmimic}, or through an authored \textbf{trajectory generator} \cite{pmtg2018,cpgrl2022}.
+
+These choices determine how much of the gait is fixed and how much remains available to the policy at run time, at the expense of increasing or reducing the complexity of the learning problem.
+
+\subsubsection{Curriculum design}
+
+The third major design dimension is the curriculum used to train the policy.
+
+To help the policy converge, the training environment can be modified to make the task easier at the beginning and gradually increase its difficulty as the policy improves.
+
+The literature has explored a variety of curriculum-design choices, including the order in which different tasks are presented, the rate at which difficulty is increased, and the specific parameters that are modified to create the curriculum.
 
 \textbf{Terrain and command curricula.} A common scheme starts every agent on flat ground with a narrow command range.
-As its performance clears a threshold, the agent is promoted to rougher terrain or a wider velocity range, and demoted otherwise~\cite{rudin2021}.
-Difficulty then tracks each agent's competence instead of a fixed schedule.
-This approach is well suited for massively parrallel training, where each agent can be promoted or demoted independently.
 
-\textbf{Automatic domain randomisation.} Rather than fixing the domain-randomisation range before training, the range can widen automatically once the policy clears a performance threshold at its current extremes~\cite{akkaya2019rubiks}.
+As its performance exceeds a predefined threshold, the agent is promoted to rougher terrain or a wider velocity range, and can be demoted otherwise \cite{rudin2021}.
+
+Difficulty therefore tracks each agent's competence rather than following a fixed schedule.
+
+This approach is well suited to massively parallel training, where each agent can be promoted or demoted independently.
+
+\textbf{Automatic domain randomisation.} Rather than fixing the domain-randomisation range before training, the range can be widened automatically once the policy exceeds a performance threshold at its current extremes \cite{akkaya2019rubiks}.
+
 The randomisation range itself becomes the curriculum parameter, expanding only as fast as the policy can tolerate.
-The approach needs a reliable in-training performance signal.
-A noisy signal lets the range grow faster than the policy can track, destabilising training.
 
-Whether the curriculum targets terrain, command range or randomisation range, an adaptive schedule removes a manually tuned progression rate.
-In its place, the design now needs a performance threshold, and a metric to compute it. Which come with the same set of issue as the design of the reward function where agent can learn to game it instead of the intended behaviour.
+This approach requires a reliable in-training performance signal.
+
+A noisy signal can cause the range to grow faster than the policy can adapt, destabilising training.
+
+Whether the curriculum targets terrain, command range, or randomisation range, an adaptive schedule removes the need to manually tune a progression rate.
+
+In its place, the design requires a performance threshold and a metric with which to evaluate it.
+
+This introduces a problem similar to that encountered in reward design: if the metric does not accurately represent the intended notion of competence, the agent may optimise the metric rather than the desired behaviour.
