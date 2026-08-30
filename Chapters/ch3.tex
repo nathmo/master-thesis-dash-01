@@ -6,40 +6,35 @@ This implied to choose the computer, its actuator and the communication bus.
 It also needed a battery.
 
 Once that was done, its digital twin was develop from the CAD data and validated against measured value from the assembled robot.
-Finally the model was validated to ensure its validity against the real robot.
+Finally the model what could not be derived from the cad was measured on the real robot (like actuator bandwidth) to limit the sim2real risk.
 
 
-\subsection{The machine as built}
+\subsection{Dash-01}
 \label{sec:machine}
 
 \begin{figure}[htbp]
 \centering
-\begin{minipage}[c]{0.55\textwidth}
+\begin{minipage}[c]{0.32\textwidth}
   \centering
   \includegraphics[width=\linewidth]{Figures/fig_robot.png}
 \end{minipage}\hfill
-\begin{minipage}[c]{0.40\textwidth}
+\begin{minipage}[c]{0.35\textwidth}
   \centering
   \includegraphics[width=\linewidth]{Figures/fig_leg.pdf}
 \end{minipage}
-\caption{DASH-01 in its stance keyframe, rendered from the simulated model (left), and the sagittal
-kinematic schematic of one leg (right). The cam motor drives a pushrod that ties to the shin below
-the knee, so hip, cam, pushrod, shin and thigh form a planar 4-bar. Every point in the schematic is
-a joint anchor read out of the model, so the proportions are the simulated robot's: 0.35\,m thigh,
-0.50\,m shin, 0.25\,m between the two sagittal motor axes, and 0.99\,m of standing hip height.}
+\begin{minipage}[c]{0.22\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/dash01-realife.jpg}
+\end{minipage}
+\caption{DASH-01, from the simulated model and in picture.}
 \label{fig:robot}
 \end{figure}
 
-Each leg carries three motors. Hip roll sits at the base, and a cam and a thigh axis drive the
-sagittal plane. The knee is passive and follows through the 4-bar. The ankle is passive and follows
-through a spring. Six motors therefore produce the motion that ten would otherwise take, and
-\cref{sec:hw-force-map} measures the cost of that choice.
-
-\begin{table}[htbp]
+\begin{table}[H]
 \centering
 \small
 \setlength{\tabcolsep}{3.5pt}
-\begin{minipage}[t]{0.55\textwidth}
+\begin{minipage}[t]{0.45\textwidth}
 \centering
 \begin{tabular}{lcc}
 \toprule
@@ -86,6 +81,23 @@ is therefore 18\,\% heavier than the model its early policies trained against, a
 as $80 \times 48 / 39$ and $35 \times 48 / 8$\,rpm at the joint.}
 \label{tab:motors}
 \end{table}
+
+Each leg carries three motors. Hip roll sits at the base, and a cam and a thigh axis drive the
+sagittal plane. The knee is passive and follows through the 4-bar. The ankle is passive and follows
+through a spring (not rendered).
+
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[c]{0.40\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{Figures/fig_leg.pdf}
+\end{minipage}
+\caption{Kinematic of the robot leg}
+\label{fig:robotlegkinematic}
+\end{figure}
+
+
 
 The sagittal pair dominates the capability envelope. The low reduction ratios also keep reflected
 inertia low enough to backdrive the legs by hand. The teach-and-replay workflow of
@@ -162,6 +174,48 @@ frame risk, and the correction, if it is one, is pessimistic.
 
 \subsubsection{Battery, compute and sensing}
 \label{sec:hw-battery}
+
+The non-mechanical hardware splits into four subsystems: the battery, the compute board, the
+proprioceptive sensing and the CAN network bus. \Cref{tab:architecture} summarises them, and the
+rest of this section derives and measures the entries.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lp{9.3cm}}
+\toprule
+\multicolumn{2}{l}{\textbf{Battery}} \\
+\midrule
+Cell & EVE INR21700-50PL, 5.0\,Ah \\
+Configuration & 13S2P \\
+Nominal voltage, capacity & 48.1\,V, 10\,Ah (468\,Wh) \\
+Continuous rating & 100\,A, cell-limited \\
+BMS limit & 200\,A \\
+Software cap, burst & 250\,A, 2\,s tier \\
+\addlinespace
+\multicolumn{2}{l}{\textbf{Compute}} \\
+\midrule
+Board & Raspberry Pi 3B+, stock non-real-time Linux \\
+Control loop & 200\,Hz, 50\,\% of the frame budget \\
+\addlinespace
+\multicolumn{2}{l}{\textbf{Sensing}} \\
+\midrule
+IMU & ICM-20948, 10-axis, on a Waveshare Sense HAT\,(B) \\
+IMU interface & I2C, $\pm4$\,g, $\pm1000$\,dps, 200\,Hz sampling \\
+Analog input & 4-channel ADC on the same HAT \\
+\addlinespace
+\multicolumn{2}{l}{\textbf{Network bus}} \\
+\midrule
+Controller & \texttt{mcp251xfd} over SPI, dual-channel CAN HAT \\
+Topology & two independent 1\,Mbit buses, one per leg \\
+Measured load & 26\,\% of one bus \\
+\bottomrule
+\end{tabular}
+\caption{The robot's non-mechanical architecture: battery, compute, sensing and the CAN network
+bus. The battery figures are derived in this section, the control-loop and CAN-load figures are
+measured in \cref{sec:plant-id-timing}.}
+\label{tab:architecture}
+\end{table}
 
 Six drives on a 48\,V bus with short violent current peaks is a sprint duty cycle. The pack is
 therefore optimised for power density. The choice was again made against a purpose-built database,
