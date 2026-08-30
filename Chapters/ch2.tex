@@ -51,11 +51,9 @@ Running introduces a flight phase, which is incompatible with the previous appro
 To enable running, Raibert \cite{raibert1986} proposed a foot-placement method based on the following relation:
 
 \begin{equation}
-x_f = \tfrac{1}{2},\dot{x},T_s
-
-* k,(\dot{x} - \dot{x}_d),
+  x_f = \tfrac{1}{2} \cdot \dot{x} \cdot T_s + k \cdot (\dot{x} - \dot{x}_d)
   \label{eq:neutral-point}
-  \end{equation}
+\end{equation}
 
 where $x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres; $\dot{x}$ is the current forward speed in metres per second; $\dot{x}_d$ is the commanded forward speed, in metres per second; $T_s$ is the stance duration, in seconds; and $k$ is a velocity feedback gain, also expressed in seconds.
 

@@ -1,15 +1,13 @@
 \section{The robot and its digital twin}
 \label{sec:robot}
 
-This chapter finishes the robot, builds the model that policies train against, and replaces every
-assumed plant parameter with a measured one. It follows \cref{sec:bg} because each control family
-there makes a demand of the hardware. Only measurement establishes which demands this hardware
-meets. It hands \cref{sec:rl} three things: a simulable model with the kinematic loop closed, a
-measured plant table, and a speed ceiling computed from physics.
+This thesis needed to first finish the Dash-01 robot.
+This implied to choose the computer, its actuator and the communication bus.
+It also needed a battery.
 
-The organising result is stated once, at the front. \textbf{Every assumed plant parameter that was
-later measured moved in the pessimistic direction} (\cref{tab:plant-id}). The robot is heavier,
-weaker, slower and softer than the model its early policies trained against.
+Once that was done, its digital twin was develop from the CAD data and validated against measured value from the assembled robot.
+Finally the model was validated to ensure its validity against the real robot.
+
 
 \subsection{The machine as built}
 \label{sec:machine}
