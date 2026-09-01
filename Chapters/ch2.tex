@@ -119,7 +119,7 @@ In the present hardware architecture, this approach was not practical through th
 
 Position targets passed to the joint controller are used by several learned locomotion approaches \cite{tan2018sim2real,rudin2021}.
 
-Two variants were investigated in this thesis: conventional smart-servo position control and the MIT control mode with fixed compliance parameters \cite{katz2019minicheetah}.
+Two variants were investigated in this thesis: conventional smart-servo position control and the MIT control mode \cite{katz2019minicheetah}.
 
 Both allow the RL policy to operate at a lower frequency while the actuator controller handles the faster inner control loop.
 
@@ -206,13 +206,15 @@ This introduces a problem similar to that encountered in reward design: if the m
 \subsection{Platforms, and where DASH-01 sits}
 \label{sec:bg-platforms}
 
-The bipeds that hold speed records are purpose-built spring-mass machines with institutional budgets. Cassie, which held the 100\,m record before this project started, runs on series-elastic legs~\cite{crowley2024cassie,xie2019}.
+The published platforms fall into three families.
 
-A second family descends from the MIT Mini Cheetah~\cite{katz2019minicheetah}. It combines low-cost quasi-direct-drive actuators, light legs and a commodity computer, with the drives commanded in torque mode.
+The first is the series-elastic research biped. Cassie, which held the 100\,m record at the start of this project, is a purpose-built spring-mass machine with an institutional budget~\cite{crowley2024cassie,xie2019}.
 
-A third family is the hobby-class humanoid built from position-controlled smart servos. The servo interface hides the actuator dynamics from the controller, and these machines remain confined to quasi-static walking.
+The second family descends from the MIT Mini Cheetah~\cite{katz2019minicheetah}: a high-torque-density motor behind a small reduction, commanded in torque mode. This quasi-direct-drive pattern now dominates new legged platforms. The humanoids that took the sprint record from Cassie in 2026 carry the same family of joints~\cite{apnews2026chinese}.
 
-DASH-01 stands closest to the Mini Cheetah family in principle and in cost structure: quasi-direct-drive actuators, light legs and a commodity computer. It differs in the command interface, since its drives are commanded through their internal position loop rather than in torque. \Cref{sec:plant-id-drive} measures the cost of that difference.
+The third family is the hobby-class humanoid built from position-controlled smart servos. The servo interface hides the actuator dynamics from the controller, and these machines remain confined to quasi-static walking.
+
+DASH-01 stands in the second family by principle and by cost structure: quasi-direct-drive actuators, light legs and a commodity computer. It differs in the command interface, since its drives are commanded through their internal position loop rather than in torque. \Cref{sec:plant-id-drive} measures the cost of that difference.
 
 \subsection{The gap}
 \label{sec:bg-gap}
