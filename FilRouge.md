@@ -1,6 +1,6 @@
 # Fil rouge, DASH-01
 
-Purpose of this file: the thread of the argument, chapter by chapter. Ideas to string together, not prose.
+Purpose of this file: the thread of the argument, chapter by chapter. Ideas to string together.
 Style rules for the thesis itself: nominal sentences where possible, no editorializing, no em dashes, no reader address.
 Two further bans, added after the aphorism sweep. No gnomic maxims: a general truth in the present tense with no number, scope or citation attached.
 No essentialist predication: "X is what Y is made of", "pays for itself", "is a deliverable". Test: delete the sentence, and check whether anything downstream loses an input.

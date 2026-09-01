@@ -6,58 +6,16 @@ This section is a recap of what this thesis achieved along with the result to ca
 \subsection{Hardware delivered}
 
 Firstly, this thesis was quite involved in term of hardware and altough the mechanical design was aldready done and provided, a lot of work was required to bring it from a fancy paper weight to a robot that could be controlled.
-The platform is a biped weighed at 15\,kg. It carries four AKE90-8 QDD actuators (\cref{tab:motors}) and two AK60-39 for the hips abduction.
+The platform is a biped weighed at 15\,kg. It carries four AKE90-8 QDD actuators (\cref{tab:motors}) and two AK60-39 for the hip roll.
 Its 13S2P pack holds 468\,Wh and is rated 100\,A continuous and 360\,A for 2\,s (\cref{sec:hw-battery}).
-A Raspberry Pi 3B run the control loop at 200\,Hz on a stock Linux. The platform can be backdriven and playback a recorded gait.
+A Raspberry Pi 3B run the control loop at 200\,Hz on a stock Linux. The platform can be backdriven and playback a recorded gait along with running the inference for a given policy.
 The platform was caracterized to bound the performance envelope and to inform the training.
-The measured plant is reported in \cref{tab:plant-id}.
 
 \subsection{Running speed ceiling estimation}
-\label{sec:speed-ceiling}
 
-The physical speed ceiling was established independently of reinforcement learning by applying progressively stricter physical constraints to the same robot model.
-First,  the body was fixed and ground interaction removed with the leg free to move.
-This was used to determine the maximum feasible fore-aft foot sweep over the empirically verified workspace.
-The resulting speed was evaluated first from joint-speed limits alone, then with the measured torque-speed envelope and leg inertia, 
-and finally with the measured actuator command latency.
-This progressively reduced the theoretical ceiling from $14.5,\mathrm{m/s}$ to $7.4,\mathrm{m/s}$ and ultimately $6.55,\mathrm{m/s}$, showing that actuator torque and leg innertia are the dominant limitations.
-The result is an optimistic upperbound because the leg carries no body load and balance and contact constraints are ignored.
-
-A second analysis extends the bound to gaits involving a flight phase, where the rail argument no longer applies because ballistic flight can increase stride length.
-The maximum speed was instead constrained using an impulse balance: the available vertical foot force, obtained from the leg's force capability, was combined with the minimum time required to execute a stroke.
-As speed increases, stance duration decreases while the leg's minimum cycling period remains finite, eventually leaving insufficient stance impulse to support the robot's weight.
-This gives a slightly lower upper bound of approximately $6.2,\mathrm{m/s}$.
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{lrrl}
-\toprule
-\textbf{Model} & \textbf{Bound} & \textbf{Cost} & \textbf{Binding mechanism} \\
-\midrule
-Kinematic (no-load speed only)        & 14.5\,m/s  & --      & joint speed through path Jacobian \\
-+ torque--speed envelope, inertia     & 7.4\,m/s   & $-49$\,\% & stroke reversals, torque at speed \\
-+ 7\,ms MIT-mode latency              & \textbf{6.55\,m/s} & $-12$\,\% & delay caps usable stiffness \\
-\midrule
-Flight-phase closure (any gait)       & \textbf{6.2\,m/s} & -- & vertical-impulse starvation \\
-\bottomrule
-\end{tabular}
-\caption{The speed-ceiling with refined modeling incorporating more realistic physical constraints.}
-\label{tab:speed-ceiling}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\linewidth]{Figures/rail_sweep_extent.png}
-\caption{Workspace of the leg used to infer an optimistic upper bound on the running speed.}
-\label{fig:speed-ceiling}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\linewidth]{Figures/fig_force_map.png}
-\caption{Map of the leg's maximum vertical force capability over its workspace, used to infer a more realistic upper bound on the running speed.}
-\label{fig:force-map}
-\end{figure}
+The physical speed ceiling was established independently of reinforcement learning and bounded to 6\,m/s (\cref{sec:speed-ceiling}).
+The bound was established by first principles and validated in simulation.
+The bound is a function of the leg workspace, the impulse it can deliver and the mass distribution of the robot.
 
 \subsection{Reinforcement learning results}
 \label{sec:rl-results}

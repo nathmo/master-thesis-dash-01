@@ -90,6 +90,16 @@ basis to prefer one, so the question was measured. Sixteen cluster jobs shared o
 reward and one schedule, with only the generator swapped. \Cref{fig:experiments}(a) shows the cold
 start on the pitch-free plant.
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{Figures/fig_experiments.pdf}
+\caption{Learning curves of three controlled comparisons, episode length in seconds against
+environment steps: (a) generator family from a cold start on m3, oscillator against Fourier;
+(b) drive bandwidth from a cold start on m2, as built (0.8\,Hz), retuned (3\,Hz) and idealised
+(12\,Hz); (c) ankle variants from a cold start on m3.}
+\label{fig:experiments}
+\end{figure}
+
 Building the oscillator arm forced a foot-space formulation with a measured inverse-kinematics
 lookup table. Constructing that table surfaced four plant facts. From the stance pose, \emph{both}
 cam and thigh move the toe mostly fore--aft, and either sign of cam \emph{shortens} the
@@ -116,8 +126,8 @@ The oscillator result was used as tiebreak evidence that the action-space \emph{
 One ablation refutes a hypothesis stated earlier in this chapter. Removing the per-step residual
 channel, leaving a pure oscillator, produced \textbf{stability without locomotion}. It survived
 9700 of 12\,000 steps, but travelled 15\,m of 72 at 0.25\,m/s, with the worst cadence of all
-sixteen arms. The residual channel was the suspected fast open path behind the 6\,Hz footfall
-chatter of \cref{sec:rl-cadence}. Removing it made the chatter worse, so that explanation is wrong.
+sixteen arms. The residual channel was the suspected fast open path behind a persistent
+6\,Hz footfall chatter. Removing it made the chatter worse, so that explanation is wrong.
 It is also the empirical form of the literature's verdict that a per-step channel is mandatory. No
 equivalent arm was run on the Fourier generator, so the result constrains the family rather than
 this exact controller.
@@ -161,7 +171,7 @@ Lowering the simulated centre of mass by 6--12\,cm & slightly worse & rules out 
 \addlinespace
 Hard velocity, acceleration and cadence limits & collapsed the warm-started policy & they were fighting a broken internal default, not the gait \\
 \addlinespace
-Centre-of-mass identification from excitation runs (\cref{sec:plant-id-sysid}) & rejected: explains $\leq$11--19\,\% of the gravity residual, 10 of 18 directions in the null space & the CAD centres of mass stand, and the experiment cannot resolve them \\
+Centre-of-mass identification from excitation runs (\cref{sec:inertia-validation}) & rejected: explains $\leq$11--19\,\% of the gravity residual, 10 of 18 directions in the null space & the CAD centres of mass stand, and the experiment cannot resolve them \\
 \addlinespace
 Per-body mass, load-dependent stiction, base tilt, pivot friction & all rejected as explanations of the same residual & the residual is conservative and gravity-correlated, so no friction model produces it \\
 \addlinespace
