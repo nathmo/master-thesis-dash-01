@@ -14,10 +14,6 @@ First, a few definitions are provided, as the following terms will recur through
 
 \textbf{Unilateral contact} means that a foot can push against the ground but cannot pull it, and that the resulting contact force must lie within the \textbf{friction cone}.
 
-The point at which the resultant contact force acts on the ground is the \textbf{centre of pressure}, which is confined to the contact patch.
-
-\textbf{Duty factor} is the fraction of a gait cycle during which a given foot remains in contact with the ground. A \textbf{flight phase} is an interval during which neither foot is in contact with the ground.
-
 The \textbf{sim-to-real gap} is the performance mismatch observed when transferring a policy from a simulated plant to the physical robot. This mismatch generally arises because the real plant lies outside the distribution of plants and disturbances encountered during training.
 
 In the context of this thesis, \textbf{failure} refers to the termination of an episode following body contact with the ground or leaving the measured workspace.
@@ -31,8 +27,6 @@ In the context of this thesis, \textbf{failure} refers to the termination of an 
 \textbf{RL} : Reinforcement Learning
 
 \textbf{CoM} : Centre of Mass
-
-\textbf{ZMP} : Zero Moment Point
 
 \subsection{Bipedal locomotion approach}
 
@@ -87,13 +81,13 @@ In the absence of corrective input, the characteristic timescale of the inverted
 \tau \sim \sqrt{\frac{h}{g}},
 \end{equation}
 
-which corresponds to approximately $310\,\mathrm{ms}$ for a characteristic length of $1\,\mathrm{m}$.
+which corresponds to approximately $300\,\mathrm{ms}$ for a characteristic length of $1\,\mathrm{m}$.
 
 During running, however, contact with the ground may last only a few tens of milliseconds. Within this timescale, the robot must measure the state of the system, estimate the relevant dynamics, compute a corrective command, communicate it to the actuator, and physically produce the required motion.
 
 This places significant requirements on sensing, computation, communication latency, and actuator bandwidth.
 
-The robot considered in this thesis has a measured actuator bandwidth corresponding to a $2\,\mathrm{Hz}$ pole in servo mode and approximately $20\,\mathrm{Hz}$ in MIT mode.
+The robot considered in this thesis has a measured actuator bandwidth corresponding to a $2\,\mathrm{Hz}$ pole in servo mode, and up to $20\,\mathrm{Hz}$ in MIT mode depending on the position-loop gains.
 
 This limitation will become relevant again when discussing the control architecture and the sim-to-real problem later in this thesis.
 
@@ -208,3 +202,23 @@ Whether the curriculum targets terrain, command range, or randomisation range, a
 In its place, the design requires a performance threshold and a metric with which to evaluate it.
 
 This introduces a problem similar to that encountered in reward design: if the metric does not accurately represent the intended notion of competence, the agent may optimise the metric rather than the desired behaviour.
+
+\subsection{Platforms, and where DASH-01 sits}
+\label{sec:bg-platforms}
+
+The bipeds that hold speed records are purpose-built spring-mass machines with institutional budgets. Cassie, which held the 100\,m record before this project started, runs on series-elastic legs~\cite{crowley2024cassie,xie2019}.
+
+A second family descends from the MIT Mini Cheetah~\cite{katz2019minicheetah}. It combines low-cost quasi-direct-drive actuators, light legs and a commodity computer, with the drives commanded in torque mode.
+
+A third family is the hobby-class humanoid built from position-controlled smart servos. The servo interface hides the actuator dynamics from the controller, and these machines remain confined to quasi-static walking.
+
+DASH-01 stands closest to the Mini Cheetah family in principle and in cost structure: quasi-direct-drive actuators, light legs and a commodity computer. It differs in the command interface, since its drives are commanded through their internal position loop rather than in torque. \Cref{sec:plant-id-drive} measures the cost of that difference.
+
+\subsection{The gap}
+\label{sec:bg-gap}
+
+The learned-locomotion results above share a hardware assumption: the platform offers high-bandwidth torque or impedance control at the joint~\cite{hwangbo2019anymal,katz2019minicheetah,xie2019}.
+
+How much of this methodology survives on a low-cost plant, commanded through a position-servo interface of limited bandwidth, is not documented.
+
+This thesis explores that gap on DASH-01. \Cref{sec:robot} therefore starts by finishing and measuring the plant, so that the training and its results are judged against the machine as built rather than as designed.

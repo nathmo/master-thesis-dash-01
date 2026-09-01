@@ -190,11 +190,6 @@ Closing section of the chapter, so chapter 4 has something to test.
 
 - The gap: published structured-action-space results come from platforms with high-bandwidth torque control. What survives on a low-bandwidth, position-servo, low-cost plant is not documented.
 - The reframed research question, stronger than "why RL": **at what level should learning sit, given this robot's actuator dynamics and available control bandwidth?** `RL -> q_d -> servo` and `RL -> tau -> actuator` are different learning problems, because the first forces the policy through the closed-loop servo dynamics.
-- Hypotheses, to be answered in chapter 5 and revisited in chapter 6:
-  - H1, dimensionality reduction: Fourier gait morphology converges in fewer environment steps than joint-level action spaces.
-  - H2, control authority: gait morphology plus phase-dependent impedance gives a sufficient basin of attraction without direct residual joint control.
-  - H3, robustness: the structured controller degrades less across the sim2real boundary than an unconstrained one.
-- Honest scoping sentence: H1 answered by the attempt sequence, H2 answered partially, H3 answered only in simulation, since no policy has run on the hardware.
 
 ---
 
@@ -295,7 +290,7 @@ Present as a ladder, with the same plant and reward wherever possible, so it rea
 - Only a 12x ankle stiffening breaks it in simulation.
 - Survives the drive retune to 3 Hz, so it is structural rather than bandwidth-limited.
 - The interpretation to state carefully: at the wall the comparison between methods is vacuous, since an empty feasible set makes every controller drawn from it identical. RL optimises over controllers, not over physics.
-- Consequence for H2: control authority is not the binding constraint at the wall, the plant is.
+- Consequence: control authority is not the binding constraint at the wall, the plant is.
 
 ## 4.5 Sim2real work in simulation
 
@@ -335,7 +330,6 @@ Goal: what exists, measured, with the video as a first-class artefact.
 Goal per the brief: what to change on the robot to reach the target. Ranked, with the measurement that ranks it.
 
 - Restate the distance: 1.3 m/s sustained against a 4 m/s record pace. The gap is mechanical and actuation-level: the 21-gain scripted controller hits the identical pitch wall, so no algorithm closes it on this plant.
-- **Verdict on the hypotheses.** H1 supported: the structural prior turned a non-converging problem into a trainable one, and the torque attempt is the control. H2 partially supported: reflex and residual channels were necessary, so gait morphology alone was not sufficient, and the impedance level was never tested. H3 untested on hardware.
 - **Ranked levers for a successor robot**, each with its number:
   1. Bus voltage before torque. 87 percent of gaits limited at the peak-power corner. Over that 87 percent, speed scales with no-load speed and is insensitive to peak torque. Scope is the sweep as run. Cost: pack mass plus a drive rated for the voltage.
   2. Distal mass. -0.93 (m/s)/kg, nine times the leverage of torso mass. Carbon shin plus a proximally mounted spring on a tendon recovers about 0.5 m/s. Cost: a composite part and a tendon route to design.
@@ -388,7 +382,7 @@ Classic recap, scientific register, no new material.
 - `[new]` Write 2.0 definitions block, and sweep all chapters so every use of "stable" points at one definition from it.
 - `[new]` Write 2.3 axes and the era-by-axis table.
 - `[new]` Extend 2.4 with the three trade-off subsections.
-- `[new]` Write 2.6 gap and hypotheses, then close them in 6.
+- `[done]` 2.6 gap written, without hypotheses (dropped by decision, 2026-09-01).
 - `[todo]` Split `ch3.tex` at line 1149 into the robot chapter and the RL chapter, renumber the files, fix `\cref` labels.
 - `[todo]` Record and embed the run video, plus the still strip.
 - `[todo]` Rewrite the 2.1 intro paragraph flagged as weak.

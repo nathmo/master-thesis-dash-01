@@ -1,7 +1,7 @@
 \section{Introduction and context}
 \label{sec:intro}
 
-This chapter states the objective, the platform, and the scope. It closes with the contributions.
+This chapter states the objective, the platform, and the scope. It closes with the contributions and a reading map.
 
 \subsection{The platform and the objective}
 \label{sec:intro-objective}
@@ -11,29 +11,28 @@ actuators, a parallel 4-bar knee, a passive ankle spring and a single-board comp
 budget was roughly CHF\,5000. \Cref{fig:robot} shows the machine as modelled.
 
 The objective at kickoff was maximum running speed, with the bipedal 100\,m record as the ambition. 
-That record have moved a few time in the last months and now stands at 8.86\,s, or about an average of 40.63\,km/h.\cite{apnews2026chinese} Faster than Usan Bolt's 9.58\,s.
-Before the begining of this thesis the record was held by Cassie in 2022~\cite{crowley2024cassie} at 24.73 s for the 100m dash.
+That record has moved several times during the project. It now stands at 8.86\,s, set by Tiangong Ultra in Beijing on August 25, 2026~\cite{apnews2026chinese}. That is an average of about 40.6\,km/h, faster than Usain Bolt's 9.58\,s.
+Before this thesis started, the record was Cassie's 24.73\,s over the same distance, set in 2022~\cite{crowley2024cassie}.
 
 The project inherited a partially finished robot. The work reported here therefore
 starts at modelling, and at the selection of the non-mechanical subsystems. It then runs through
 characterisation and the training of a policy. 
 
 
-\subsection{Change over the year about the objective}
+\subsection{The objective moved from record pace to a measured demonstrator}
 \label{sec:intro-reframe}
 
 \textbf{The record moved faster than the thesis.} New bipedal speed marks now appear at roughly a
 monthly cadence, from teams with institutional budgets. 
 
 \textbf{The measured plant does not admit record pace.} \Cref{sec:speed-ceiling} bounds this
-mechanism at about 6\,m/s. The bound comes from
-first principles, by using the workspace of the leg and the impulse it can deliver. 
+mechanism at about 6\,m/s. The bound comes from first principles, by using the workspace of the leg and the impulse it can deliver. 
 
-The objective of this thesis therefore restated as a measured demonstrator plus a reusable method. The
+The objective of this thesis was therefore restated as a measured demonstrator plus a reusable method. The
 deliverable is the chain from CAD to a trained policy. 
 
 \textbf{The problem this addresses.} Reinforcement learning has produced legged-locomotion results
-on research platforms. Reproducing them on a new, custom, imperfectly known robot is non trivial. The plant parameters are uncertain. The actuators hide undocumented internal control
+on research platforms. Reproducing them on a new, custom, imperfectly known robot is non-trivial. The plant parameters are uncertain. The actuators hide undocumented internal control
 loops. The sensors are commodity parts. The gap between ``reinforcement learning walks in simulation'' and ``reinforcement learning walks on this robot'' is
 dominated by modelling fidelity, actuator bandwidth and calibration.
 
@@ -53,13 +52,21 @@ helps convergence is therefore untested here.
         gravity, the Bode response of the drive's internal position loop, inertial-sensor noise
         characteristics, loop timing and the CAN protocol.
   \item \textbf{A first-principles capability analysis} of running speed on that plant, validated
-        against MuJoCo. A mass-distribution sensitivity analysis is also performed to rank the design levers
-        (\cref{sec:speed-ceiling}).
+        against MuJoCo (\cref{sec:speed-ceiling}).
   \item \textbf{An action-space and curriculum design} for the learned controller. 
         Multiple action spaces were tested, and a curriculum was built to converge to a running policy on the measured plant (\cref{sec:rl-cpg,sec:rl-curriculum}).
   \item \textbf{A deployment stack on the robot.} It is a 200\,Hz daemon on stock Linux, a web
         bring-up instrument that was used to perform the measurement of the robot characteristics.
         The deployment stack also includes safety mechanisms to prevent the robot from exiting the safe operating envelope (\cref{sec:deploy}).
-  \item \textbf{Two component databases}, covering 140 commercial actuators and roughly 430 battery cells. 
-        They where used to validate the validity of the choice of the robot part. (\cref{sec:hw-selection}, \cref{sec:app-db}).
+  \item \textbf{Two component databases}, covering 140 commercial actuators and roughly 430 battery cells.
+        They were used to validate the choice of the actuators and the battery pack (\cref{sec:hw-selection}, \cref{sec:app-db}).
 \end{itemize}
+
+\subsection{Reading map}
+\label{sec:intro-map}
+
+\Cref{sec:bg} places the control approach among the published families and names the gap this work sits in.
+\Cref{sec:robot} finishes the robot, builds its digital twin, and replaces the assumed plant parameters with measurements. It closes with the running speed the measured plant admits.
+\Cref{sec:rl} develops the learned controller on that plant, one action space at a time.
+\Cref{sec:results} reports what the robot and the policies deliver.
+\Cref{sec:discussion} ranks the changes that would close the remaining gap, and \cref{sec:conclusion} concludes.
