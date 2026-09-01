@@ -1,189 +1,31 @@
 \section{Results}
 \label{sec:results}
 
-This chapter reports what exists, measured. It separates four things: what the hardware delivers,
-what the policies do in simulation, what the three controlled comparisons say, and which of those
-results survive the plant correction of \cref{sec:plant-id}. That last separation is the
-sim-to-real argument, so it gets its own table rather than being left implicit.
+This section is a recap of what this thesis achieved along with the result to caracterize the deliverable.
 
 \subsection{Hardware delivered}
 
-The platform is a biped weighed at 15.14\,kg, or 14.72\,kg after the carbon-ankle rebuild. It
-carries six quasi-direct-drive actuators (\cref{tab:motors}). Its 13S2P pack holds 468\,Wh and is
-rated 100\,A continuous and 184\,A for 10\,s (\cref{sec:hw-battery}). A Raspberry Pi 3B closes a
-200\,Hz control loop on stock Linux, at 3\,\% late ticks with half its budget spare
-(\cref{tab:loop-timing}). Two 1\,Mbit CAN buses run at 26\,\% utilisation. The inertial sensor is
-characterised to provenance-labelled noise figures, and \cref{tab:plant-id} tabulates every
-correction in the measured plant model. The deployment stack runs under \texttt{systemd}, and it
-has diagnosed its first real incident (\cref{sec:deploy-blackbox}).
+Firstly, this thesis was quite involved in term of hardware and altough the mechanical design was aldready done and provided, a lot of work was required to bring it from a fancy paper weight to a robot that could be controlled.
+The platform is a biped weighed at 15\,kg. It carries four AKE90-8 QDD actuators (\cref{tab:motors}) and two AK60-39 for the hips abduction.
+Its 13S2P pack holds 468\,Wh and is rated 100\,A continuous and 360\,A for 2\,s (\cref{sec:hw-battery}).
+A Raspberry Pi 3B+ run the control loop at 200\,Hz on a stock Linux. The platform can be backdriven and playback a recorded gait.
+The platform was caracterized to bound the performance envelope and to inform the training.
+The measured plant is reported in \cref{tab:plant-id}.
 
-The capability analysis on the corrected plant places the mechanism at about \textbf{2.7\,m/s
-credible burst and 1.3\,m/s thermally sustained} (\cref{tab:speed-ceiling}). The static force map
-places the actuators at a median 4.30\,BW of vertical toe capacity over the running stance region.
-They clear the 3.5\,BW requirement over 77\,\% of that region. The passive ankle gives a median
-0.42\,BW, and clears the requirement over 0.0\,\% of it (\cref{sec:hw-force-map}).
+\subsection{Running speed ceiling estimation}
+\label{sec:speed-ceiling}
 
-At the time of writing the right leg is fully functional under the 200\,Hz stack, measured at
-188\,Hz. The left leg awaits repair of the joint lost on 2026-08-10. \textbf{No trained policy has
-run on the robot.} That statement is narrower than ``nothing has run on hardware''. The
-hand-authored fixed gait plays on the real motors. The web interface drives all six joints under
-safety limits. Every measurement in \cref{sec:plant-id} came off the machine. What has never
-happened is a learned controller closing a loop on the physical robot.
+Reinforcement learning demonstrates a lower bound on performance. This section supplies the upper
+bound that the kinematics, the mass distribution and the actuators impose.
 
-\subsection{Simulated locomotion}
+The analysis runs directly on the MuJoCo model, which keeps it consistent with
+the model used for training
+
+\subsubsection{Static end-effector force map}
+\label{sec:hw-force-map}
+
+\subsection{Reinforcement learning results}
 \label{sec:rl-results}
+The infrasctucture to train a policy on the measured plant was built and tested.
+Multiple policy where trained with varying result that described in this chapter.
 
-\begin{figure}[tbp]
-\centering
-\includegraphics[width=0.86\textwidth]{Figures/fig_ladder.pdf}
-\caption{The milestone ladder, one curve per rung, each warm-started from the previous rung's
-checkpoint. The line is the mean training episode length under the stochastic policy. The star is
-the deterministic evaluation of that rung's final checkpoint, which is the number
-\cref{tab:rl-results} reports. The gap between the two is exploration noise, and it is why training
-curves are not used here to certify a controller. Milestone m2 ran at a 50\,Hz control rate and the
-rest at 200\,Hz. The conversion from control steps to seconds uses each run's own decimation.}
-\label{fig:ladder}
-\end{figure}
-
-\begin{table}[tbp]
-\centering
-\small
-\begin{tabular}{llrrl}
-\toprule
-\textbf{Milestone} & \textbf{Free base DOF} & \textbf{Steps} & \textbf{Survival} & \textbf{Outcome} \\
-\midrule
-\texttt{m2} & $x$, $z$ & 180\,M & 53\,s & runs; the reliable working regime \\
-\texttt{m3} & $+$ pitch & 600\,M & 39\,s & completes the dash and stops, 2.6\,m/s \\
-\texttt{m4} & $+\,y$ & 600\,M & 38\,s & completes the dash and stops \\
-\texttt{m5} & $+$ roll & 600\,M & 26\,s & high variance: the weak link \\
-\texttt{m6} & all six & 600\,M & 60\,s & never falls; runs through the line \\
-\midrule
-\texttt{m7} & $+$ pitch, cadence fix & 163\,M & 37\,s & best controller: 2.71\,m/s, low variance \\
-\bottomrule
-\end{tabular}
-\caption{Deterministic evaluation of the milestone ladder. \texttt{m7} is not a new degree of
-freedom. It is the \texttt{m3} plant retrained after the gait-frequency fix of
-\cref{sec:rl-cadence}. Survival is capped at 60\,s by the episode limit, so \texttt{m6} is at the
-ceiling. \textbf{Plant epoch: CAD masses at 12.83\,kg, a $k = 350$\,N$\cdot$m/rad ankle with
-preload, datasheet peak torque, and an idealised drive near 35\,Hz.} None of those four match the
-measured robot; see \cref{tab:survives}.}
-\label{tab:rl-results}
-\end{table}
-
-\textbf{The fully free 6-DOF plant runs and does not fall.} That is 60 seconds of simulated
-running, at the episode limit, with zero variance across evaluation episodes, at 2.6\,m/s. Two
-caveats belong next to it. Milestone \texttt{m6} balances but runs \emph{through} the finish line
-without executing the stop, which is a task-completion defect rather than a balance one. And
-\texttt{m5} still topples on a fraction of episodes.
-
-Against the pre-correction ceiling of \cref{tab:speed-ceiling}, 2.6\,m/s is about 70\,\% of the
-credible-cadence figure, and already above the thermally sustainable one. On the corrected plant it
-sits essentially at the burst ceiling, and at twice the sustained figure.
-
-\Cref{fig:ladder} shows the shape behind those numbers, and one feature of it is a result in its
-own right. The training curves for \texttt{m3} to \texttt{m6} sit between 8 and 15\,s. The
-deterministic evaluations of the same checkpoints reach 26 to 60\,s. The exploration noise that
-separates them is why rule 1 of \cref{sec:rl-eval} exists. No claim in this thesis rests on a
-training curve alone.
-
-\paragraph{Action-space verdicts, one line each.} Direct torque never converged, and was abandoned
-on premises that measurement later overturned (\cref{sec:rl-torque}). Per-step position targets
-converged to standing but skated (\cref{sec:rl-position}). Impedance was designed and never run,
-because the drive mode it needs was never switched on the hardware (\cref{sec:rl-impedance}). The
-Fourier gait generator is the design that works (\cref{sec:rl-cpg}). Its reflex and residual
-channels are necessary rather than decorative, because removing the per-step channel produces
-stability without locomotion (\cref{sec:cpg-ab}).
-
-\subsection{Three controlled comparisons}
-
-\begin{figure}[tbp]
-\centering
-\includegraphics[width=\textwidth]{Figures/fig_experiments.pdf}
-\caption{Three comparisons, each run with one variable changed and everything else held fixed.
-\textbf{(a)} Generator A/B from a cold start on the pitch-free plant. The oscillator is more
-sample-efficient cold, at an asymptote near 2.0\,s against 1.2\,s. The Fourier arm is the more
-seed-reliable of the two on warm starts (\cref{sec:cpg-ab}). \textbf{(b)} Drive bandwidth on a cold
-start at m2, truncated to the shortest arm's budget. The robot as built, at 0.8\,Hz, is the outlier
-and never walks. The retuned 3\,Hz plant recovers most of the idealised 12\,Hz arm
-(\cref{sec:rebuilt-robot}). Episode length does not capture that the 12\,Hz arm folds a leg into
-the workspace kill. \textbf{(c)} Ankle variants on a cold start at m3 on the measured plant. The
-compression-capable carbon strut and the welded ankle climb. The tension-only rod and a spring at
-$k = 350$ stay pinned at the free-fall time of about 1\,s (\cref{sec:ankle-build}).}
-\label{fig:experiments}
-\end{figure}
-
-\paragraph{The pitch wall belongs to the plant.} Learning and a 21-gain scripted controller fail
-identically at about 1\,s. That equals the analytic free-topple time across a 5$\times$ gravity
-sweep (\cref{tab:freefall}). Only a 12$\times$ ankle stiffening breaks it in simulation. It
-survives the hardware drive retune to 3\,Hz, which makes it structural rather than
-bandwidth-limited. On m2, where a margin does exist, the scripted controller runs 60\,s on 5 of 5
-seeds against the learned reference's 20.3\,$\pm$\,21.6\,s. It wins on the variance rather than on
-the mean (\cref{sec:margin-analysis}).
-
-\paragraph{The rebuilt plant walks under command.} With the carbon ankle, the 3\,Hz drive and
-velocity caps, the scripted controller demonstrates the first full command-following mission. It
-stands, walks forward, walks backward and stands again, in one 35\,s episode on 3 of 3 seeds, at a
-drive-delivery ratio of 0.98.
-
-\paragraph{The measured plant is trainable if the drive is ramped.} The drivable lineage completes
-the descent to the real 0.8\,Hz drive, and stabilises at an episode length of 4938 and a reward of
-$+3271$, three times its parent's score (\cref{sec:sim2real-lineage}). Its diagnosis history is
-itself a result. It covers the steering asymmetry, the domain-randomisation ablation at
-19.8$\times$ mean time between falls, and the command-range fit.
-
-\subsection{What survives the plant correction}
-
-\Cref{sec:plant-id} invalidates the plant every number in \cref{tab:rl-results} was measured on.
-Stating which conclusions depend on the plant is more useful than deleting the table, because that
-distinction \emph{is} the sim-to-real argument.
-
-\begin{table}[tbp]
-\centering
-\small
-\begin{tabular}{p{7.0cm}p{7.0cm}}
-\toprule
-\textbf{Survives a plant change} & \textbf{Does not} \\
-\midrule
-The action-space comparison: torque, per-step position, and periodic generator with residuals, in that order of tractability. & Every absolute speed and survival time in \cref{tab:rl-results}. \\
-\addlinespace
-The reward-exploit register, and the finding that reward curves cannot certify a gait. & The claim that the fully free plant runs and does not fall. It ran, on an ankle that will not be built. \\
-\addlinespace
-The base-DOF curriculum, and warm-starting across stages with fixed observation and action widths. & The 350\,N$\cdot$m/rad ankle-stiffness recommendation, which \cref{sec:ankle-build} replaces. \\
-\addlinespace
-The gait-frequency bug, and its lesson about non-binding parameter ranges. & The 2.6\,m/s figure as evidence of hardware capability. \\
-\addlinespace
-The capture-step diagnostic, and the finding that foot placement lagged the centre of mass. & Any claim of readiness for deployment. \\
-\bottomrule
-\end{tabular}
-\caption{What the plant correction does and does not invalidate. The pattern is that the
-methodological results transfer and the performance results do not.}
-\label{tab:survives}
-\end{table}
-
-That pattern was expensive to learn. Roughly 3 billion environment steps of training were spent on
-a robot 18\,\% too light and 18\,\% too strong. Its ankle spring was an order of magnitude too
-stiff, and its actuator an order of magnitude too fast.
-
-\subsection{Recorded runs}
-\label{sec:results-media}
-
-Rendered rollouts accompany the results above. Each is named here, so that a claim can be checked
-against a specific recording rather than against a description. All of them are \emph{simulation}.
-No footage of a learned controller on the physical robot exists, for the reason given at the head
-of this chapter.
-
-\begin{itemize}[leftmargin=*]
-  \item \texttt{m4\_stiff\_600M}, \texttt{m5\_stiff\_600M}, \texttt{m6\_stiff\_600M}: the milestone
-        ladder of \cref{tab:rl-results}, greedy evaluation, one seed each.
-  \item \texttt{m3\_CPG}, \texttt{m4\_CPG}: the oscillator arm of the generator A/B
-        (\cref{sec:cpg-ab}), on identical plants and rewards.
-  \item \texttt{walk\_fwd\_easy\_s0}, \texttt{teleop\_easy\_m6}: the drivable lineage on the
-        measured 0.8\,Hz drive (\cref{sec:sim2real-lineage}).
-  \item \texttt{scripted\_m2}, \texttt{scripted\_m3\_fail}: the classical baseline succeeding at m2
-        and hitting the pitch wall at m3 (\cref{sec:scripted-baseline}).
-\end{itemize}
-
-% TODO(nathann): add the public link or QR code for the rendered set, and a still strip from
-% training/milestones/ladder_m2_s0.mp4 plus scripted_m3_fail.png, once the recordings are hosted.
-Each recording plays at real time unless its filename states otherwise. The plant epoch for each is
-the one stated in the corresponding table caption.

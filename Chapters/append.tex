@@ -34,8 +34,7 @@ repository holds the scripts and the exported files.\footnote{\url{https://githu
 \subsection{Component databases}
 \label{sec:app-db}
 
-Both databases are published as standalone tools, so their verdicts on this robot's hardware can be
-reproduced.
+Both databases are published as standalone tools.
 
 \textbf{Actuator review.}\footnote{\url{https://github.com/nathmo/actuatorReview}} It holds 140
 commercial integrated actuators, 121 motors, 121 gearboxes and 9 standalone drives, as four joined
@@ -43,70 +42,14 @@ tables. A candidate can therefore be composed rather than only looked up. Modell
 al., \emph{How to Model Brushless Electric Motors for the Design of Lightweight Robotic Systems}
 (arXiv:2310.00080).
 
-Two conventions carry the tool. The motor constant $K_m = K_t/\sqrt{R}$ is stored as the portable
-figure of merit. Rewinding $n$ turns gives $K_t \propto n$ and $R \propto n^2$, so $K_m$ is
-invariant to the winding. And every electrical constant carries an explicit reference-frame tag:
-phase, line-to-line, q-axis or bus, in wye or in delta. Under-determined conversions are flagged
-rather than guessed. The schema's first missing field is control-loop bandwidth and gain
-writability, for the reason given in \cref{sec:hw-motor}.
-
 \textbf{Battery review.}\footnote{\url{https://github.com/nathmo/batteryReview}} It holds roughly
 430 cell models, 54 BMS modules and 110 commercial packs, each row carrying a source URL. A
 synthesiser builds a pack from cell, BMS and series--parallel count. ``What I could build''
 therefore plots on the same axes as ``what I can buy''. Every current rating carries a duration
 stamp, and falls into a continuous, pulse-at-$t$ or fault tier. The pulse tier interpolates as
 $I(t) = \sqrt{I_{\text{cont}}^2 + (I_{\text{pulse}}^2 - I_{\text{cont}}^2)\,t_{\text{pulse}}/t}$.
-Fields inferred rather than read off a datasheet are written \texttt{ESTIMATED<n>}, so that they
+Fields inferred rather than read off a datasheet are written as ESTIMATED, so that they
 still parse and can be filtered out.
-
-\subsection{The CAN protocol, as measured}
-\label{sec:app-can}
-
-There are two 1\,Mbit buses, one per leg, with three motors each. The CAN ids are 104 for hip roll,
-105 for cam and 106 for thigh. The arbitration id encodes both node and command, as
-\texttt{id | (command << 8)}.
-
-Exactly two frame types exist per motor. Outbound is the command frame, of which only
-\texttt{SET\_POS} and \texttt{SET\_CURRENT} are writable. Inbound is a single feedback frame at
-command byte \texttt{0x29}. It free-runs at exactly 200.0\,Hz, with a p99 period of 5.03\,ms, and
-uses all eight bytes for position, speed, current, temperature and an error flag.
-
-No bus voltage and no duty cycle are reported. The electrical route to $K_t$ is therefore closed,
-and pack sag is unobservable from the drive side. Six motors, counting command plus reply, occupy
-about 26\,\% of one bus.
-
-\subsection{Training configuration}
-\label{sec:app-config}
-
-\textbf{Algorithm and budget.} PPO from Stable-Baselines3, with an actor--critic MLP on
-CPU-parallel MuJoCo environments. The policy network runs on a GPU for core-contention reasons
-rather than for matrix throughput. Throughput is about 2900 environment-steps per second on one
-cluster node. The physics step is 1\,ms. Control decimation is 5 (200\,Hz) for every lineage,
-except the early sprint milestone at decimation 20 (50\,Hz). The episode cap is 60\,s.
-
-\textbf{Action and observation.} \Cref{tab:action} gives the 24-dimensional action and the
-275-value stacked observation.
-
-\textbf{Reward groups.} A per-step clock cost prices time and the alive bonus is exactly zero, for
-the reason in \cref{sec:rl-common}; break-even pace 0.25\,m/s. Anti-skate terms: foot-slip penalty
-with a grounded predicate, one-sided capped air time, per-foot stance-time cap, swing clearance.
-Phase-gated contact schedule with the stance ratio ramping from 0.65 to 0.42. Efficiency terms on
-torque, motor velocity and positive mechanical power, ramped in over 60\,M steps. Gait-specification
-rewrite priced by $\sin^2(\varphi/2)$; residual magnitude penalised; residual rate not billed by the
-rewrite penalty.
-
-\textbf{Curriculum schema.} Each run writes a \texttt{curriculum.json} recording the live value of
-every ramped parameter. That file is ground truth on restore. Seven axes are ramped across the
-lineages: base degree-of-freedom release (\texttt{m1}--\texttt{m6}), stance ratio, efficiency
-scale, domain-randomisation width, control jitter and drop probability, command range, and drive
-bandwidth. The last is ramped logarithmically in hertz over 120\,M steps.
-
-\textbf{Domain randomisation, set from measurement where one exists.} Ground friction is sampled
-over 0.35 to 0.60, against a measured $\mu = 0.84$. That is deliberately below the real value,
-because the guarded failure mode is planting a foot that then slides. Joint homing error is sampled
-at $5^{\circ}$, against a calibration accurate to 1 or $2^{\circ}$. Linkage anchor asymmetry is
-sampled at $\pm1.5$\,mm. Link inertia tensors are sampled at $\pm25\,\%$, wide precisely because
-\cref{sec:plant-id-sysid} could not resolve the mass distribution.
 
 \newpage
 
