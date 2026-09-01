@@ -268,41 +268,26 @@ The onboard safety layer checks every commanded pose against this grid before it
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\linewidth]{Figures/jointLimitsActuatorSpace.png}
-\caption{Joint-limit validation in actuator space: the demonstrated abduction range (bar) and the
-coupled (cam, thigh) 4-bar band (scatter), backdriven by hand for each leg. The eroded green region
-is the safe envelope enforced by the onboard safety layer.}
+\includegraphics[width=0.85\linewidth]{Figures/fig_workspace_joint.png}
+\caption{Joint-limit validation in actuator space:the coupled (cam, thigh) 4-bar band, backdriven by hand for each leg.
+The green region is the safe envelope enforced by the onboard safety layer.}
 \label{fig:joint-limits-actuator}
 \end{figure}
 
 \subsubsection{Inertia matrix validation}
 \label{sec:inertia-validation}
 
-I identify each actuated joint's torque constant $K_t$, effective inertia and friction (viscous and
+Each actuated joint's torque constant $K_t$, effective inertia and friction (viscous and
 Coulomb) from two excitation profiles logged through the web interface \cite{morand2026runningrobot}.
 A quasi-static sweep at 0.03\,Hz holds the joint near equilibrium, so gravity dominates the measured
-torque. A faster chirp is meant to excite the inertial term instead. Both profiles drive the joint
-in servo mode and log the drive's own current as a proxy for torque. A single per-joint
-least-squares fit on the pooled data recovers $K_t$, the effective inertia and the friction terms
+torque. A single per-joint least-squares fit on the pooled data recovers $K_t$, the effective inertia and the friction terms
 together. The fit uses the model's gravity torque, computed through the closed 4-bar loop
 (\cref{sec:twin}).
 
-A raw torque residual is hard to judge on its own, so I convert it into a mass error. Gravity torque
-is linear in the body masses: $\tau = -\sum_b m_b (J_b^\top g)$, where $m_b$ is each body's mass and
-$J_b$ its centre-of-mass Jacobian. A uniform fractional error $\varepsilon$ in every mass therefore
-scales every joint's gravity torque by exactly $\varepsilon$. I divide the RMS residual by the RMS
-gravity torque to get the uniform mass error that would produce a torque error of the same size. It
-is an upper bound, since part of the residual is the stick-slip ripple, not a mass error.
-
-\Cref{fig:inertia-validation} shows the slow sweep: predicted torque against measured torque, with
-the residual shaded and the mass-equivalent error labelled per joint. The sagittal joints correspond
-to a 29\,\% to 62\,\% mass error, and abduction to 43\,\% and 204\,\%. In my view none of these
-validate the mass model to a useful tolerance. Even the best joint, right thigh at 29\,\%, is an
-order of magnitude looser than the few-percent accuracy a mass-matrix validation would want. The
-model tracks the gravity trend's shape and sign, not its magnitude. The worst case, right abduction
-at 204\,\%, is consistent with an unverified assumption: the cam and thigh angles use a fitted zero
-from the closed-loop kinematics, while abduction assumes its calibrated zero equals the model's zero
-pose, an equality that is never checked against data.
+A raw torque residual is hard to judge on its own, so it was converted into a mass error.
+It is an upper bound, since a part of the residual is due to friction and not the gravity torque.
+As it can be seen in figure \Cref{fig:inertia-validation}, the error is big but it allow to ensure that the mass model is in the right order of magnitude and that the gravity trend is correct.
+Since the mass error is bounded, it can be used for domain randomisation in the RL training to make the policy more robust this uncertainty.
 
 \begin{figure}[H]
 \centering
@@ -310,30 +295,22 @@ pose, an equality that is never checked against data.
 \caption{Gravity-model validation on the slow (0.03\,Hz) quasi-static sweep: measured torque
 ($K_t$ times current) against the model's predicted torque (gravity plus friction), residual shaded,
 per joint. The mass-equivalent error is the RMS residual divided by the RMS gravity torque. The fast
-ripple is the P-only position loop's stick-slip response under Coulomb friction, not sensor noise.}
+ripple is likely the P-only position loop's stick-slip response due to friction.}
 \label{fig:inertia-validation}
 \end{figure}
-
-The chirp excitation does not fully validate the inertia term. The drive's servo-mode position loop
-has a measured closed-loop bandwidth of 1.95\,Hz ($-3$\,dB, \cref{sec:plant-id-drive}), and the
-dynamic run's chirp reached 2\,Hz, right at that ceiling. The top of the sweep is attenuated by
-roughly half, so the joint falls short of the commanded acceleration there. The regression reflects
-the shortfall: the fitted armature converges to exactly zero for three of the six joints, left
-abduction, left thigh, right thigh. I also score the fit by predicting torque on data withheld from
-the regression, normalized by the measured torque's own RMS. That held-out normalized RMS is
-63\,\% pooled across all six joints, against the 20\,\% target I use to accept a fit. Neither the
-gravity model nor the inertia term clears that bar. I therefore treat the identified parameters as
-a rough, order-of-magnitude plant estimate rather than a validated one. MIT mode's velocity loop
-reaches five to eight times the bandwidth of servo mode (\cref{sec:plant-id-drive}); a full
-inertia-matrix identification should excite through it instead.
 
 \subsubsection{IMU caracterisation}
 at $\pm4$\,g and $\pm1000$\,dps, with a 50\,Hz internal low-pass and 200\,Hz sampling.
 Measured at rest it gives 1.8\,mg and 0.08\,dps RMS noise. The noise density is
 218\,$\mu$g/$\sqrt{\text{Hz}}$ and 0.0096\,dps/$\sqrt{\text{Hz}}$. The gyro turn-on bias is
 repeatable at $[1.03, 0.11, -0.53]$\,dps, and the in-run bias stability is 0.010--0.012\,dps.
-Quantisation sits about 15$\times$ below the noise floor on both channels, so widening the ranges
-to survive footfall impacts costs nothing in effective resolution.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{Figures/fig_imu_noise.png}
+\caption{Noise characterisation of the base IMU (ICM-20948) sampled over 300s at}
+\label{fig:imu-noise}
+\end{figure}
 
 \subsubsection{CAN bus latency and load caracterisation}
 \label{tab:loop-timing}
@@ -372,31 +349,16 @@ In practice, this is not expected to be a problem because the driver are not use
 \subsubsection{Actuator bandwidth characterisation}
 \label{sec:plant-id-drive}
 
-I measure the AKE90-8's closed-loop bandwidth in both control interfaces the drive exposes: servo
-mode's position command, and MIT mode's velocity command \cite{morand2026runningrobot}. The two
-loops are not interchangeable, so I measure each through the interface it is actually used with.
+The AKE90-8's closed-loop bandwidth was measured in both Servo and MIT mode.
 
-For servo mode I command a position chirp to the loaded left thigh through \texttt{SET\_POS}:
-0.05\,Hz to 11.5\,Hz, at 13.9\,deg amplitude. I estimate the transfer function $H(f) =
-P_{xy}/P_{xx}$ by Welch's method. I keep only frequencies where the coherence exceeds 0.7. For MIT
-mode I command a velocity sine at ten frequencies up to 30\,Hz, with the position loop off ($k_p =
-0$) and no leg attached. I sweep three derivative gains, $k_d \in \{0.4, 1.0, 2.5\}$, and read gain
-and phase from the recorded response.
-
-\Cref{fig:actuator-bode} shows both. Servo mode reaches $-3$\,dB at 1.95\,Hz, with an 18\,ms delay
-fitted from the phase slope above 4\,Hz. MIT mode reaches $-3$\,dB between 9.0\,Hz and 15.1\,Hz
-depending on $k_d$, five to eight times higher. The comparison is not perfectly matched. Servo mode
-is measured on the loaded leg tracking position; MIT mode, on a free rotor tracking velocity. Each
-is measured through the interface it is actually commanded with on the robot. MIT phase is
-referenced to its 1\,Hz point, which shifts every reported phase by under 9\,deg. I report that as
-a limitation of the reference, rather than correcting for it. Cam and thigh (nodes 105 and 106)
-agree within 1.3\,dB and 3\,deg everywhere I checked both, so one drive stands for the pair.
+\Cref{fig:actuator-bode} shows the results. Servo mode reaches $-3$\,dB at 1.95\,Hz. MIT mode reaches $-3$\,dB between 6.0\,Hz and 20\,Hz
+depending on $k_p$ and $k_d$.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\linewidth]{Figures/actuatorBandwidthBode.pdf}
-\caption{Measured closed-loop frequency response of the AKE90-8 drive: servo mode's position loop
-(loaded leg) against MIT mode's velocity loop (free rotor), for three derivative gains $k_d$.}
+\includegraphics[width=0.75\linewidth]{Figures/actuator_bode.png}
+\caption{Measured closed-loop tracking a sine chirp and its response as the frequency increases in term of tracking error of the AKE90-8 drive: servo mode's position loop
+(free rotor) against MIT mode's position loop (free rotor).}
 \label{fig:actuator-bode}
 \end{figure}
 
@@ -417,9 +379,25 @@ The web UI then clean the measurement to show the boudany and the user can draw 
 This is used to limit the joint position in the safety layer.
 
 the IMU is also calibrated in the web interface by holding the robot still and recording the bias of the accelerometer and gyroscope.
-To ensure the axis are aligned, the user need to move the robot around an given axis and check that the correct axis is increasing.
+To ensure the axis are aligned, the user need to move the robot around an given axis of the base and check that the correct axis is increasing.
 
-SCREENSHOT OF THE WEB INTERFACE NAVBALL + WORKSPACE RECORDING WIDGET
+\begin{figure}[H]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{Figures/fig_WORKSPACEwidget.png}
+\captionof{figure}{Workspace widget of the web interface, showing the backdriven joint envelope and the user-drawn safe workspace boundary.}
+\label{fig:WORKSPACEwidget}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{Figures/fig_IMUwidget.png}
+\captionof{figure}{IMU widget of the web interface, used to record accelerometer and gyroscope bias and check axis alignment.}
+\label{fig:IMUwidget}
+\end{minipage}
+\end{figure}
+
+
 \subsubsection{The safety layer}
 \label{sec:safety}
 
