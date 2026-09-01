@@ -46,20 +46,15 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-DASH-01 is a 15\,kg biped with six quasi-direct-drive actuators, a parallel 4-bar knee and a
-passive ankle. It was built at REHAssist to answer one question: how fast can a
-cheap custom biped run? This thesis, altough RL oriented in the title, takes the platform from a partially finished mechanical design
-to a modelled machine that can be simulated and for which RL policy can be trainied against. 
-Finally, this thesis asses the performance envelope of the platform and the policy.
+This thesis investigates the use of reinforcement learning to develop a high-speed running controller for DASH-01, a 15\,kg bipedal robot designed for high-speed locomotion. The objective was to determine how far reinforcement learning could push the running speed of a small, lightweight biped while accounting for the limitations of the physical platform.
 
-The work covers the whole chain. A CAD-to-MJCF pipeline closes the kinematic loop that URDF cannot
-express. A measurement campaign to model the plant parameter. 
-A first-principles feasibility sweep bounds the running speed the mechanism admits.
+The work follows the complete path from the robot model to a deployable controller. The robot was reconstructed in MuJoCo from the mechanical design, and the actuator, sensing and communication interfaces were characterised experimentally. These measurements were used to correct the simulation and to establish a first-principles upper bound on the achievable running speed. Under the measured kinematic, inertial and actuator constraints, this bound was estimated at approximately 6\,m/s.
 
-The curriculum has been shown to converge to a running policy within literrature reported training steps.
+Several reinforcement-learning formulations were then investigated. Direct torque control did not converge within the available training budget and was initially rejected because of an assumed communication-bandwidth limitation. Per-step position control converged to several non-locomotive solutions, including skating. The action space was consequently structured around a periodic gait generator. Fourier-series and explicit oscillator representations were compared, together with impedance parameters and fast balance reflexes. A curriculum progressively released the robot's base degrees of freedom, allowing locomotion to be learned before full-body balance was required.
 
-On this platform the binding constraint is the plant rather than the algorithm. The thesis
-therefore ends in a ranked set of mechanical changes rather than in a controller.
+The experiments show that the formulation of the learning problem was at least as important as the choice of learning algorithm. In particular, reward maximisation could produce apparently successful policies that exploited the simulation rather than running, while external balance assistance could produce policies dependent on the assistance. The final curriculum reached sustained running in simulation, with the best policies reaching approximately 3\,m/s. The main remaining limitation was the transition to a fully free pitch and roll plant, where the learned controllers encountered a stability wall associated with both the policy and the physical geometry of the leg.
+
+The resulting framework provides a measured and deployable RL pipeline for high-speed bipedal locomotion, together with an experimentally grounded estimate of the remaining gap between the current robot and its physical speed limit. The results indicate that further progress is likely to require changes to the mechanical plant and actuator capability rather than simply increasing the reinforcement-learning budget.
 
 \newpage
 }
