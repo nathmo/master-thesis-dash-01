@@ -25,10 +25,7 @@ repository holds the scripts and the exported files.\footnote{\url{https://githu
   \item \textbf{Re-settle the stance keyframe under gravity} after any plant change. A keyframe is
         an equilibrium of one particular ankle law, and re-settling is not idempotent: re-settling
         from an already crouched keyframe lands on the 4-bar's fold branch.
-  \item \textbf{Gate every change with self-tests.} Analytic Jacobians against central differences,
-        loop closure against the model's own keyframe, and an assertion that a plant matches what
-        its preset claims it is. A smoke suite builds and briefly runs all 123 training presets
-        before any long launch.
+
 \end{enumerate}
 
 \subsection{Component databases}
@@ -44,8 +41,8 @@ al., \emph{How to Model Brushless Electric Motors for the Design of Lightweight 
 
 \textbf{Battery review.}\footnote{\url{https://github.com/nathmo/batteryReview}} It holds roughly
 430 cell models, 54 BMS modules and 110 commercial packs, each row carrying a source URL. A
-synthesiser builds a pack from cell, BMS and series--parallel count. ``What I could build''
-therefore plots on the same axes as ``what I can buy''. Every current rating carries a duration
+synthesiser builds a pack from cell, BMS and series--parallel count. A synthesisable pack
+therefore plots on the same axes as a commercial one. Every current rating carries a duration
 stamp, and falls into a continuous, pulse-at-$t$ or fault tier. The pulse tier interpolates as
 $I(t) = \sqrt{I_{\text{cont}}^2 + (I_{\text{pulse}}^2 - I_{\text{cont}}^2)\,t_{\text{pulse}}/t}$.
 Fields inferred rather than read off a datasheet are written as ESTIMATED, so that they

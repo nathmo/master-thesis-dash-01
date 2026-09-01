@@ -70,10 +70,10 @@ sentences over 25 words.
 
 Three conventions standardised along the way:
 
-- **Voice.** First person singular for authorial decisions ("I changed the representation", "I
-  instrumented the controller"). Passive only where the agent is genuinely irrelevant ("the
-  measurement was recorded at 200\,Hz"). Do not write "we", "the author", or "one". Note: the
-  2024-25 semester report used "we" throughout. Do not copy that habit back in.
+- **Voice.** Passive voice. Never write a sentence with "I" or "we" (author decision, 2026-09-01,
+  reversing the earlier first-person convention; remaining first-person sentences are converted as
+  chapters get edited). "The author" and "one" stay banned too. Keep the agent recoverable where
+  it matters ("the workspace is recorded by backdriving the leg").
 - **Spelling.** British throughout.
 - **Terminology.** "drive" for the integrated CubeMars unit (not motor controller, board, driver,
   drive electronics). "robot" for the physical machine, "plant" for the model, and "machine" is not
