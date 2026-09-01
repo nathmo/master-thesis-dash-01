@@ -287,33 +287,45 @@ least-squares fit on the pooled data recovers $K_t$, the effective inertia and t
 together. The fit uses the model's gravity torque, computed through the closed 4-bar loop
 (\cref{sec:twin}).
 
-\Cref{fig:inertia-validation} shows the slow sweep only: predicted torque (gravity plus friction)
-against measured torque ($K_t$ times current), for all six joints. The sagittal pair tracks well,
-with an RMS residual of 0.48\,Nm to 1.53\,Nm. Abduction tracks worse, 1.57\,Nm on the left leg and
-3.29\,Nm on the right. In my view the gap comes from an unverified assumption. The cam and thigh
-angles use a fitted zero from the closed-loop kinematics. Abduction instead assumes its calibrated
-zero equals the model's zero pose, and that equality is never checked against data.
+A raw torque residual is hard to judge on its own, so I convert it into a mass error. Gravity torque
+is linear in the body masses: $\tau = -\sum_b m_b (J_b^\top g)$, where $m_b$ is each body's mass and
+$J_b$ its centre-of-mass Jacobian. A uniform fractional error $\varepsilon$ in every mass therefore
+scales every joint's gravity torque by exactly $\varepsilon$. I divide the RMS residual by the RMS
+gravity torque to get the uniform mass error that would produce a torque error of the same size. It
+is an upper bound, since part of the residual is the stick-slip ripple, not a mass error.
+
+\Cref{fig:inertia-validation} shows the slow sweep: predicted torque against measured torque, with
+the residual shaded and the mass-equivalent error labelled per joint. The sagittal joints correspond
+to a 29\,\% to 62\,\% mass error, and abduction to 43\,\% and 204\,\%. In my view none of these
+validate the mass model to a useful tolerance. Even the best joint, right thigh at 29\,\%, is an
+order of magnitude looser than the few-percent accuracy a mass-matrix validation would want. The
+model tracks the gravity trend's shape and sign, not its magnitude. The worst case, right abduction
+at 204\,\%, is consistent with an unverified assumption: the cam and thigh angles use a fitted zero
+from the closed-loop kinematics, while abduction assumes its calibrated zero equals the model's zero
+pose, an equality that is never checked against data.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\linewidth]{Figures/inertiaValidationGravity.png}
 \caption{Gravity-model validation on the slow (0.03\,Hz) quasi-static sweep: measured torque
-($K_t$ times current) against the model's predicted torque (gravity plus friction), per joint. The
-fast ripple is the P-only position loop's stick-slip response under Coulomb friction, not sensor
-noise.}
+($K_t$ times current) against the model's predicted torque (gravity plus friction), residual shaded,
+per joint. The mass-equivalent error is the RMS residual divided by the RMS gravity torque. The fast
+ripple is the P-only position loop's stick-slip response under Coulomb friction, not sensor noise.}
 \label{fig:inertia-validation}
 \end{figure}
 
-The chirp excitation does not validate the inertia term. The drive's servo-mode position loop rolls
-off at 0.8\,Hz (\cref{sec:plant-id-drive}), so a chirp commanded above roughly 1\,Hz is mostly not
-executed. The joint never reaches the commanded acceleration, and the shortfall shows up as
-tracking error rather than inertial torque. The regression reflects the missing signal: the fitted
-armature converges to exactly zero for three of the six joints, left abduction, left thigh, right
-thigh. I also score the fit by predicting torque on data withheld from the regression, normalized
-by the measured torque's own RMS. That held-out normalized RMS is 63\,\% pooled across all six
-joints, against the 20\,\% target I use to accept a fit. I therefore treat only the gravity and
-friction terms as validated. A full inertia-matrix identification needs direct torque control (MIT
-mode) rather than the servo-mode position loop used here.
+The chirp excitation does not fully validate the inertia term. The drive's servo-mode position loop
+has a measured closed-loop bandwidth of 1.95\,Hz ($-3$\,dB, \cref{sec:plant-id-drive}), and the
+dynamic run's chirp reached 2\,Hz, right at that ceiling. The top of the sweep is attenuated by
+roughly half, so the joint falls short of the commanded acceleration there. The regression reflects
+the shortfall: the fitted armature converges to exactly zero for three of the six joints, left
+abduction, left thigh, right thigh. I also score the fit by predicting torque on data withheld from
+the regression, normalized by the measured torque's own RMS. That held-out normalized RMS is
+63\,\% pooled across all six joints, against the 20\,\% target I use to accept a fit. Neither the
+gravity model nor the inertia term clears that bar. I therefore treat the identified parameters as
+a rough, order-of-magnitude plant estimate rather than a validated one. MIT mode's velocity loop
+reaches five to eight times the bandwidth of servo mode (\cref{sec:plant-id-drive}); a full
+inertia-matrix identification should excite through it instead.
 
 \subsubsection{IMU caracterisation}
 at $\pm4$\,g and $\pm1000$\,dps, with a 50\,Hz internal low-pass and 200\,Hz sampling.
@@ -357,20 +369,36 @@ Not done due to lack of time, estimated from the stated internal resistance of t
 This is further complicated by the lack of voltage feedback on the motor drivers, which prevents measuring the voltage drop under load.
 In practice, this is not expected to be a problem because the driver are not used in torque control and thus we can except the driver to be able to regulate it without taking the RL policy out of it's distribution.
 
-\subsubsection{Actuator bandwith caracterisation}
+\subsubsection{Actuator bandwidth characterisation}
 \label{sec:plant-id-drive}
+
+I measure the AKE90-8's closed-loop bandwidth in both control interfaces the drive exposes: servo
+mode's position command, and MIT mode's velocity command \cite{morand2026runningrobot}. The two
+loops are not interchangeable, so I measure each through the interface it is actually used with.
+
+For servo mode I command a position chirp to the loaded left thigh through \texttt{SET\_POS}:
+0.05\,Hz to 11.5\,Hz, at 13.9\,deg amplitude. I estimate the transfer function $H(f) =
+P_{xy}/P_{xx}$ by Welch's method. I keep only frequencies where the coherence exceeds 0.7. For MIT
+mode I command a velocity sine at ten frequencies up to 30\,Hz, with the position loop off ($k_p =
+0$) and no leg attached. I sweep three derivative gains, $k_d \in \{0.4, 1.0, 2.5\}$, and read gain
+and phase from the recorded response.
+
+\Cref{fig:actuator-bode} shows both. Servo mode reaches $-3$\,dB at 1.95\,Hz, with an 18\,ms delay
+fitted from the phase slope above 4\,Hz. MIT mode reaches $-3$\,dB between 9.0\,Hz and 15.1\,Hz
+depending on $k_d$, five to eight times higher. The comparison is not perfectly matched. Servo mode
+is measured on the loaded leg tracking position; MIT mode, on a free rotor tracking velocity. Each
+is measured through the interface it is actually commanded with on the robot. MIT phase is
+referenced to its 1\,Hz point, which shifts every reported phase by under 9\,deg. I report that as
+a limitation of the reference, rather than correcting for it. Cam and thigh (nodes 105 and 106)
+agree within 1.3\,dB and 3\,deg everywhere I checked both, so one drive stands for the pair.
 
 \begin{figure}[H]
 \centering
-\begin{minipage}[c]{0.90\textwidth}
-\centering
-\includegraphics[width=\linewidth]{Figures/fig_drive.pdf}
-\captionof{figure}{Actuator bandwidth measurement in Servo Mode. The drive's internal position loop is characterised by applying a chirp to the commanded position and measuring the actual position.}
-\label{fig:drive-bandwidth-servo}
-\end{minipage}
+\includegraphics[width=0.75\linewidth]{Figures/actuatorBandwidthBode.pdf}
+\caption{Measured closed-loop frequency response of the AKE90-8 drive: servo mode's position loop
+(loaded leg) against MIT mode's velocity loop (free rotor), for three derivative gains $k_d$.}
+\label{fig:actuator-bode}
 \end{figure}
-
-ADD HERE FIGURE OF THE DRIVE BANDWIDTH MEASUREMENT in MIT MODE
 
 \subsection{Deployment stack}
 \label{sec:deploy}
