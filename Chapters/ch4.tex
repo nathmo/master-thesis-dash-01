@@ -2,39 +2,52 @@
 
 \label{sec:rl}
 
-\Cref{sec:robot} supplied a measured plant model. This chapter develops the controller for it. Multiple architectures were attempted, starting from raw torque commands and progressively adding structure to the action space. The main changes were motivated either by training failures or by limitations identified on the real actuator interface.
+\Cref{sec:robot} supplied a measured plant model.
+This chapter develops the controller for it.
+Multiple architectures were attempted, starting from raw torque commands and progressively adding structure to the action space.
+The main changes were motivated either by training failures or by limitations identified on the real actuator interface.
 
-The learning algorithm itself was kept fixed. The changes therefore concern the formulation of the task, the action representation, the curriculum and the amount of structure given to the policy. The final architecture is a Fourier gait generator with impedance parameters and reflexes.
-
-\subsection{Problem formulation and general RL architecture}
+The learning algorithm itself was kept fixed.
+The changes therefore concern the formulation of the task, the action representation, the curriculum and the amount of structure given to the policy.
+The final architecture is a Fourier gait generator with impedance parameters and reflexes.
 
 \label{sec:rl-common}
 
-\subsubsection{Formulation}
+\subsection{Formulation}
 
 The task is a single dash: run as fast as possible.
 
-Several formulations were attempted during the project. The first formulation only required the robot to run forward, without requiring it to stop at the end of the track. Later formulations added a commanded velocity or a joystick input. These formulations were more general, but also substantially harder to train. Since the objective of this thesis is maximum running speed rather than general locomotion, the final experiments use the simpler dash formulation.
+Several formulations were attempted during the project.
+The first formulation only required the robot to run forward, without requiring it to stop at the end of the track.
+Later formulations attempted to add velocity command for a joystick input. These formulations were more general, but also substantially harder to train.
+Since the objective of this thesis is maximum running speed rather than general locomotion, the final experiments used only the simpler dash formulation.
 
-The learning algorithm was held fixed at PPO~\cite{schulman2017ppo} from Stable-Baselines3, with an actor--critic MLP running on CPU-parallel MuJoCo environments. Episodes are capped at 60\,s. The control rate is 200\,Hz, which \Cref{sec:plant-id-timing} establishes as both the sensing ceiling and the maximum deployable rate.
-
-The computational budget was large but finite. A milestone corresponds to approximately 600\,M environment steps and a multi-day cluster job. The project as a whole used approximately 3\,G environment steps. This is important when comparing architectures: the experiments do not establish asymptotic performance, but compare what can be obtained within the available training budget.
-
-\subsubsection{The toy problem}
+The learning algorithm was held fixed at PPO~\cite{schulman2017ppo} from Stable-Baselines3, with an actor--critic MLP running on CPU-parallel MuJoCo environments.
+Episodes are capped at 60\,s. The control rate is 200\,Hz, which \Cref{sec:plant-id-timing} establishes as both the sensing ceiling and the maximum deployable rate.
+Later experiments showed it to be borderline for the final controller and the frequency need to be brought back down to 100Hz as the final policy inference via the web interface with the safety layer proved a bit too slow for the 200Hz control loop on the Raspberry Pi 3B. The final policy therefore needs to be retrained to run at 100Hz.
+The computational budget was large but finite and whithin what can be seen in the litterature.
+A milestone corresponds to approximately 600\,M environment steps and a multi-day cluster job.
+The thesis as a whole used approximately 15\,G environment steps, with an estimated 75 Kg of CO2eq emissions fromthe cluster usage.
+To help put that into perspective, the author exhaled 150 kg of CO2eq during the period of this thesis from respiration.
+\subsection{The toy problem}
 
 \label{sec:toy-problem}
 
-Committing a 12-DOF robot to an unproven learning and deployment pipeline is expensive. The complete chain was therefore exercised once at minimum stakes, on a single-motor inverted pendulum.
+Committing a 12-DOF robot to an unproven learning and deployment pipeline is risky.
+The complete chain was therefore exercised once at minimum stakes, on a single-motor inverted pendulum.
+The purpose of this experiment was not to study locomotion. It was to verify the complete path from simulation to the physical controller.
+The chain consists of simulation, training, export, deployment on embedded Linux, and a closed loop over CAN.
+The observation space was deliberately restricted to the telemetry available from the real drive.
+It contains the motor position in turns, velocity in turns per second and torque.
+The observation normalisation statistics used during training are exported as part of the ONNX graph rather than being reconstructed separately on the embedded system.
+The resulting policy runs on a beaglebone black using \texttt{onnxruntime}.
+The control loop closes over CAN at 50\,Hz.
+This experiment therefore tested the software and it's author to help prepare for the full robot before committing the computational and experimental budget.
 
-The purpose of this experiment was not to study locomotion. It was to verify the complete path from simulation to the physical controller. The chain consists of simulation, training, export, deployment on embedded Linux, and a closed loop over CAN.
+\subsection{Observation space}
 
-The observation space was deliberately restricted to the telemetry available from the real drive. It contains the motor position in turns, velocity in turns per second and torque. The observation normalisation statistics used during training are exported as part of the ONNX graph rather than being reconstructed separately on the embedded system.
-
-The resulting policy runs on a Raspberry Pi using \texttt{onnxruntime}. The control loop closes over CAN at 50\,Hz and includes a watchdog. This experiment therefore tested the software path that was later used for the full robot before committing the computational and experimental budget required for the biped.
-
-\subsubsection{Observation space}
-
-The policy sees only measurements that can be produced by the hardware. The observation contains the joint position, joint velocity and joint torque, the IMU gravity direction and angular velocity, the commanded motion and the previous action.
+The policy sees only measurements that can be produced by the hardware.
+The observation contains the joint position, joint velocity and joint torque, the IMU gravity direction and angular velocity, the commanded motion and the previous action.
 
 The observations are expressed in physical units and passed through fixed normalisers. A history stack covering approximately 200\,ms is used instead of giving the policy access to a simulated base-velocity measurement that would not be available on the physical robot.
 
@@ -42,7 +55,7 @@ Sensor noise, bias drift and CAN staleness are injected according to the measure
 
 The actor and critic use asymmetric observations. The actor receives only the deployable observation described above. The critic additionally receives a privileged simulation-only tail containing quantities such as the true base velocity and contact information. These privileged quantities are therefore used to improve value estimation but are not available to the deployed policy.
 
-\subsubsection{Reward design}
+\subsection{Reward design}
 
 The reward was built around forward progress rather than an alive bonus. A dense forward-progress term rewards the robot for moving towards the end of the track, while a per-step time cost makes standing still increasingly expensive.
 
@@ -56,7 +69,7 @@ This was preferable to repeatedly changing the relative weight of all reward ter
 
 Smoothness terms were also given a physical interpretation. Action-rate penalties limit rapid changes in the command sent to the actuator. Gait-specification-rate penalties limit rapid changes in the parameters of the gait generator. Torque and energy terms discourage solutions that use unnecessarily large actuator effort. These terms therefore do not only regularise the policy numerically; they also constrain behaviours that would be undesirable on the physical robot.
 
-\subsubsection{Evaluation protocol}
+\subsection{Evaluation protocol}
 
 Training-time episode length is not used directly as the final performance metric. During exploration the policy contains a non-zero action distribution, and a long episode can therefore result partly from the injected exploration noise. The quoted results are obtained from greedy evaluations.
 

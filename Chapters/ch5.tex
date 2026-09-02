@@ -11,16 +11,42 @@ Its 13S2P pack holds 468\,Wh and is rated 100\,A continuous and 360\,A for 2\,s 
 A Raspberry Pi 3B run the control loop at 200\,Hz on a stock Linux. The platform can be backdriven and playback a recorded gait along with running the inference for a given policy.
 The platform was characterised to bound the performance envelope and to inform the training.
 
+Platform summary: 15 kg biped, six QDD actuators, 468 Wh pack, Pi 3B at 200 Hz on stock Linux. [have]
+What "delivered" means operationally: calibration sequence, safety layer with black-box recorder, backdrive/playback, policy runner — a new user can operate the robot from the web interface without touching code.
+The identification campaign as a deliverable in itself: one small table collecting the measured numbers the rest of the thesis leans on (actuator bandwidth per mode, loop timing/jitter, IMU noise, workspace envelope, torque constants). These are results, not just method — they are what makes the training plant measured.
+
 \subsection{Running speed ceiling estimation}
 
 The physical speed ceiling was established independently of reinforcement learning and bounded to 6\,m/s (\cref{sec:speed-ceiling}).
 The bound was established by first principles and validated in simulation.
 The bound is a function of the leg workspace, the impulse it can deliver and the mass distribution of the robot.
 
-\subsection{Reinforcement learning results}
-\label{sec:rl-results}
-The infrasctucture to train a policy on the measured plant was built and tested.
-Multiple policy where trained with varying result that described in this chapter.
-The main result is that a the pipeline can converge to a running policy on the measured plant and reach speed of 3 m/s in simulation.
+The bound: ~6 m/s, from two independent closures (rail sweep with torque/latency, and the flight-phase impulse argument), which agree. [have — tighten]
+Its role in reading everything that follows: it converts the runner's speed into a fraction of what the plant admits, and its sensitivity analysis (torque and leg mass are the levers, voltage is not) is itself a result for the v2 discussion.
 
+\subsection{The runner}
+Headline, stated precisely: one cold sprint-objective run on the measured MIT-mode plant produces a controller that completes the 100 m dash in 16/16 greedy episodes, 32.5 s, 3.07 m/s average — the project's first true runner, at ~50 % of the physical ceiling.
+Evidence that it runs rather than shuffles: Video on the project repo.
+Seed honesty: outcomes across the lineage are bimodal; report how many seeds/runs produced this and what the others did, per the paired-seed protocol of §4.1.5. [replaces the current "varying results" sentence]
+
+\subsection{Legality of the gait against the measured envelope}
+Legality of the gait against the measured envelope
+The audit protocol in one paragraph: replay the greedy runner and check every step against ch3's measured limits (torque, torque-speed, thermal, velocity).
+What passes: torque and the torque-speed envelope are respected ~99.9 % of steps.
+What fails: swing-leg velocity peaks at ~2× the no-load speed (physically impossible at any gain), and thermal margin is zero — the thigh RMS torque sits at the continuous rating for the entire dash.
+Verdict paragraph: the 3.07 m/s figure is therefore optimistic; the missing simulator constraints (velocity limit, winding thermals) are identified and become future-work items, not silent caveats.
+
+\subsection{What the policy actually learned}
+
+The frequency channel is exploited: the policy rails the cadence between its bounds to warp the phase, parking the clock where the spec-rate penalty is cheap and rewriting the gait spec nearly every step.
+Distillation test: fitting a single honest Fourier spec to the emitted gait fails (poor fit, left/right asymmetry, coefficient clamping) — the per-step re-parameterisation is load-bearing feedback, not a fixed trajectory being tracked.
+Implication paragraph: the generator worked, but as a structured feedback channel rather than an open-loop gait; state what this means for interpreting §4.2 and for deploying the controller.
+
+\subsection{Robustness margins}
+Protocol: perturbed greedy evaluations (mass scale, actuation delay, push), not analytical margins — consistent with the definition in §2.1.
+The numbers: survival vs mass scaling (the policy has authority margin only below nominal mass), delay margin below one control step; what was and wasn't randomized during the runner's training, stated plainly.
+
+\subsection{Deployment readiness}
+What is verified end-to-end: torch-free export bit-identical to the trained policy (golden-trace test), safety governor, and the Pi holding the 200 Hz tick budget with the measured per-tick cost.
+What was not achieved: the hardware dash itself — name the concrete blockers (raspberry pi upgrade / retrain to 100Hz since inference is just short of time budget on the raspbery pi 3B)
 
