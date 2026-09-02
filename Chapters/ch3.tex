@@ -482,8 +482,7 @@ Flight-phase closure (any gait)       & \textbf{6.2\,m/s} & -- & vertical-impuls
 \label{sec:plant-id-force}
 
 The speed bound of \cref{sec:speed-ceiling} needs the force the leg can put on the
-ground, not only where the toe can reach. The leg's static force
-capability over the measured workspace is therefore mapped.
+ground. The leg's static force capability over the measured workspace is therefore mapped.
 
 The domain is the backdriven workspace of \cref{sec:sim-hygiene}. The toe
 Jacobian comes from the model's closed-loop forward kinematics (\cref{sec:twin}),
@@ -520,6 +519,8 @@ Peak torque is the strongest lever: 30\,\% more raises the bound by about 1\,m/s
 Leg mass is second: 30\,\% less raises the bound by about 0.7\,m/s.
 Rotor inertia is nearly flat, and 30\,\% more bus voltage gains nothing, because the bound does not
 sit on the no-load-speed ceiling at this operating point.
+Leg lenght was not simulated due to lack of time as it imply to update the URDF but it is assumed that longer leg would help increase the stride lenght.
 The levers for a faster machine are therefore deliverable torque and leg mass.
+Leg lenght is also likely a significant level but its impact and direction is unknown.
 \Cref{sec:discussion} ranks the mechanical changes that follow from them, and \cref{sec:rl} trains
 its policies against the plant measured in this chapter.
