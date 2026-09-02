@@ -12,7 +12,8 @@ Several lessons emerged from the development of the learned controller.
 The policy repeatedly found behaviours that maximised the numerical objective without satisfying the intended locomotion task.
 Examples included skating, penetrating the floor, and exploiting high-frequency contact dynamics.
 
-This behaviour is an instance of Goodhart's law~\cite{maier2025goodhart}.
+This behaviour is an instance of Goodhart's law.
+The limitation of encoding human intents in a cost function have been studied and this is an expected result~\cite{maier2025goodhart}.
 
 \paragraph{The simulator must enforce the physical envelope.}
 The final runner provides a second example of the same principle.
@@ -26,7 +27,7 @@ In particular, actuator velocity limits and thermal behaviour should be included
 \paragraph{The policy uses the available control authority.}
 The perturbation experiments show that the final controller has little authority remaining above the nominal plant.
 Increasing the robot mass or introducing additional delay rapidly degrades performance.
-This behaviour is consistent with the optimisation objective: the policy was explicitly trained to maximise speed and therefore has an incentive to use the available actuator authority for propulsion rather than reserve it for disturbance rejection.
+This behaviour is consistent with the optimisation objective: the policy was explicitly trained to maximise speed and therefore has an incentive to use the available actuator authority for propulsion rather than reserve it for disturbance rejection outside of its trained range.
 
 Consequently, robustness should not be expected to emerge automatically.
 If robustness to mass uncertainty, latency, impacts, or other plant variations is required, those variations should be represented explicitly in the training distribution.
@@ -34,58 +35,49 @@ If robustness to mass uncertainty, latency, impacts, or other plant variations i
 \subsection{Mechanical limits and performance levers}
 
 The approximately 6\,m/s physical ceiling derived in \cref{sec:speed-ceiling} provides a useful reference for deciding where further development effort should be spent.
-The sensitivity analysis shows that the dominant quantified levers are deliverable actuator torque and moving leg mass. A 30\,\% increase in peak torque raises the estimated ceiling by approximately 1\,m/s, while a 30\,\% reduction in leg mass raises it by approximately 0.7\,m/s. By contrast, increasing the bus voltage by 30\,\% produces essentially no improvement at the present operating point because the limiting condition is not the actuator no-load speed.
-
-However, the static force map reveals an additional mechanical limitation that is not captured by considering motor torque alone. Near the nominal standing configuration, the leg force capability is strongly anisotropic, with a force ellipse of approximately 19:1 between the vertical and fore--aft directions. The leg can therefore generate large forces for supporting the body but comparatively little force in the direction required for propulsion.
-
-This suggests that the next version of the robot should begin with a mechanical design search rather than immediately increasing either the training budget or the actuator size.
+From the result of the sensitivity analysis, the following point can be made.
 
 \subsubsection{Increase the usable leg workspace}
 
-The first design objective should be to increase the usable fore--aft workspace of the foot. The available stroke directly enters the speed-ceiling calculation: for a given stride frequency, a larger usable foot sweep allows a larger stride and therefore a higher forward speed.
+The first design objective should be to increase the usable fore--aft workspace of the foot.
+The available stroke directly enters the speed-ceiling calculation: for a given stride frequency, a larger usable foot sweep allows a larger stride and therefore a higher forward speed.
 
-This should not be interpreted simply as making the leg longer. Changing the segment lengths also modifies the transmission ratio, force capability, inertia, and location of singular configurations. Instead, the four-bar geometry and segment dimensions should be optimised together to maximise the portion of the workspace that is useful during running.
-
-Leg length itself was not included in the sensitivity study because changing it requires modifying the complete robot model. Its quantitative influence therefore remains unverified in this thesis. The expected benefit of additional workspace should consequently be tested through a dedicated morphology optimisation before committing to a new mechanical design.
+The four-bar geometry and segment dimensions should be optimised together to maximise the portion of the workspace that is useful during running along with the level of force anysotropy required.
 
 \subsubsection{Reduce the force anisotropy}
 
 A second and potentially inexpensive lever is to redesign the four-bar linkage so that more of the available actuator torque can be converted into fore--aft ground force.
 
-At the current standing pose, the approximately 19:1 force anisotropy indicates that the mechanism is mechanically well suited to supporting vertical load but poorly suited to producing horizontal propulsion. Increasing motor torque would increase both capabilities, but would not address this underlying transmission inefficiency.
+At the current standing pose, the approximately 19:1 force anisotropy indicates that the mechanism is mechanically well suited to supporting vertical load but poorly suited to producing horizontal propulsion.
+Increasing motor torque would increase both capabilities, but would not address this missplacement of control authority that stem from the 4bar linkage anysotropy.
 
-A redesigned linkage could therefore improve effective propulsive force without requiring a proportionally larger actuator. For this reason, linkage geometry should be explored before actuator scaling. The design problem should combine at least two objectives: maximising usable fore--aft workspace and maintaining favourable force transmission throughout the stance region. Optimising either quantity in isolation could otherwise degrade the other.
+A redesigned linkage could therefore improve effective propulsive force without requiring a proportionally larger actuator.
+For this reason, linkage geometry should be explored before actuator scaling.
+The design problem should combine at least two objectives: maximising usable fore--aft workspace and maintaining favourable force transmission throughout the stance region.
 
 \subsubsection{Reduce distal leg mass}
 
-The sensitivity analysis also identifies moving leg mass as an important performance lever. Reducing the leg mass by 30\,\% increases the estimated speed ceiling by approximately 0.7\,m/s.
+The sensitivity analysis also identifies moving leg mass as an important performance lever.
+Reducing the leg mass by 30\,\% increases the estimated speed ceiling by approximately 0.7\,m/s.
 
-The practical margin for improvement may, however, be limited because the existing distal links are already lightweight. The measured masses are 483\,g for the thigh, 324\,g for the shin, 71\,g for the pushrod, and 222\,g for the foot on each leg. Further reduction would therefore need to be achieved without sacrificing stiffness or durability.
+The practical margin for improvement may, however, be limited because the existing distal links are already lightweight.
+Further reduction would therefore need to be achieved without sacrificing stiffness or durability.
 
-Where reductions remain possible, priority should be given to distal mass rather than total robot mass. Mass located near the foot contributes strongly to the inertia that must be accelerated and reversed during each swing phase, whereas an equivalent mass reduction near the torso has a much smaller effect on swing dynamics.
+Where reductions remain possible, priority should be given to distal mass rather than total robot mass.
+Mass located near the foot contributes strongly to the inertia that must be accelerated and reversed during each swing phase, whereas an equivalent mass reduction near the torso has a much smaller effect on swing dynamics.
 
 \subsubsection{Increase actuator torque density}
 
-If linkage optimisation and mass reduction are insufficient, increasing actuator capability is the next direct lever. Among the parameters tested in the sensitivity analysis, deliverable peak torque has the strongest effect on the estimated speed ceiling: a 30\,\% increase raises the bound by approximately 1\,m/s.
+If linkage optimisation and mass reduction are insufficient, increasing actuator capability is the next direct lever altough a much pricier one.
 
-The relevant design objective is not peak torque alone, however. A larger actuator generally increases mass, rotor inertia, electrical demand, and thermal load. Part of the gain obtained from higher torque can therefore be lost if the new actuator substantially increases the moving mass of the leg.
-
-For a future platform, actuator selection should consequently favour torque density and continuous thermal capability rather than simply the largest available peak-torque rating. Contemporary record-oriented humanoids appear to use substantially higher joint torque capability than DASH-01, but sufficiently detailed actuator specifications are not available in this thesis to support a direct numerical comparison. Any estimate of approximately 400\,N\,m for competing platforms should therefore remain an engineering estimate unless a reliable source can be established.
+For a future platform, actuator selection should consequently favour torque density and continuous thermal capability rather than simply the largest available peak-torque rating.
+Contemporary record-oriented humanoids appear to use substantially higher torque capability than DASH-01. The author guesstimate them to be around 400 Nm peak but no credible source could be found to confirm nor deny this value.
 
 \subsubsection{Bus voltage is not presently a priority}
 
-Increasing the bus voltage initially appears attractive because it raises the actuator no-load speed. The sensitivity study, however, indicates that a 30\,\% voltage increase produces essentially no increase in the current speed ceiling. At the operating point considered here, the mechanism is limited by torque, inertia, workspace, and available stance impulse before it reaches the no-load-speed limit.
+Increasing the bus voltage initially appears attractive because it raises the actuator no-load speed.
+The sensitivity study, however, indicates that a 30\,\% voltage increase produces essentially no increase in the current speed ceiling.
+At the operating point considered here, the mechanism is limited by torque, inertia, workspace, and available stance impulse before it reaches the no-load-speed limit.
+Increasing voltage should therefore not be treated as a primary performance lever for the present design.
+It may become relevant after other limitations have been removed, but the current results do not justify prioritising it.
 
-Increasing voltage should therefore not be treated as a primary performance lever for the present design. It may become relevant after other limitations have been removed, but the current results do not justify prioritising it.
-
-\subsection{Future work}
-
-The next iteration of the project should begin with a morphology search informed by the measurements obtained in this thesis. The first priority is to redesign the four-bar linkage and leg dimensions jointly, with the objective of increasing the usable fore--aft workspace while reducing the strong force anisotropy of the current mechanism. This offers the possibility of obtaining more propulsive capability from the actuators already installed before increasing actuator size.
-
-The second priority is to reduce distal leg mass where meaningful reductions remain possible. This should be considered together with linkage redesign, because changing segment lengths and transmission geometry also changes the distribution of moving mass and the resulting swing inertia.
-
-If additional performance is still required after these changes, the actuator selection should then be revisited with an emphasis on greater torque density and continuous torque capability. The measured sensitivity suggests that additional torque is the strongest remaining direct lever, but its benefit must be evaluated together with the mass and inertia penalty introduced by a larger drive.
-
-Several changes are also required independently of maximum speed. The current point foot provides no direct contact moment and limits the available interaction with the ground. A foot geometry providing a finite support region, potentially combined with a compliant element, should therefore be evaluated. An impact or force sensor at the foot would additionally provide direct information about touchdown and ground reaction, rather than requiring the controller to infer contact indirectly from base motion.
-
-Finally, the simulation should be updated before the next high-speed training campaign. Explicit actuator velocity limits and a validated thermal model should be incorporated so that future policies cannot exploit behaviours unavailable to the physical plant. Once these corrections and mechanical changes are included, the existing training and deployment tooling can be reused to evaluate whether the redesigned platform closes the gap between the current 3.07\,m/s runner and the approximately 6\,m/s capability suggested by the present first-principles analysis.
