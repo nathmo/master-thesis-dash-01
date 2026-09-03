@@ -39,7 +39,7 @@ The mean completion time was 32.5\,s, corresponding to an average forward speed 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\linewidth]{Figures/sprint_dash_stats.png}
-\caption{Greedy evaluation of the sprint policy: forward speed over the dash (left) and cumulative distance against the 100\,m target (right).}
+\caption{One of the greedy evaluation of the sprint policy: forward speed over the dash (left) and cumulative distance against the 100\,m target (right).}
 \label{fig:sprint-dash-stats}
 \end{figure}
 
@@ -74,7 +74,12 @@ This can likely be explained by the fact that errors compound rapidly: while the
 
 This is the expected behaviour since the policy robustness is set at training by changing the noise distribution in the parameters it needs to be robust against.
 
-ADD PLOT AND graph
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/sprint_margins.png}
+\caption{Robustness margins of the sprint policy under greedy evaluation: survival rate and mean speed against total mass scaling (left), action delay (centre), and push impulse (right). The dashed line marks the nominal training value.}
+\label{fig:sprint-margins}
+\end{figure}
 
 \subsection{Deployment readiness}
 
