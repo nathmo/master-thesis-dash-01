@@ -28,7 +28,7 @@ Later experiments showed it to be borderline for the final controller and the fr
 The computational budget was large but finite and within what can be seen in the literature.
 A milestone corresponds to approximately 300 to 600\,M environment steps and a multi-day cluster job.
 The thesis as a whole used approximately 15\,G environment steps, with an estimated 75\,kg of CO2eq emissions from the cluster usage.
-To help put that into perspective, a one-way airplane trip from Geneva to Paris would emmit about the same.
+To help put that into perspective, a one-way airplane trip from Geneva to Paris would emit about the same.
 
 \subsection{The toy problem}
 
@@ -164,7 +164,7 @@ After a significant amount of time spent to understand how to send commands to t
 
 The MIT command frame exposes $k_p$ and $k_d$, so the position target becomes an impedance command.
 With fixed values, the policy can move the target position while the actuator controller provides the corresponding compliance.
-This raised the actuator bandwidth by an order of magnitude but it is theoritized that it would not solve the previous issue where the policy was still reward farming and not running.
+This raised the actuator bandwidth by an order of magnitude, but it is assumed that it would not solve the previous issue where the policy was still reward farming and not running.
 The limitation is that fixed gains impose the same compliance during all phases of the gait.
 A stiffness that is useful during stance is not necessarily appropriate during swing or at foot impact.
 The next step was therefore to make compliance part of the gait specification rather than treating it as a constant actuator setting.
@@ -264,7 +264,7 @@ The second major design variable was therefore the difficulty of the simulated p
 The curriculum consists of six milestones, m1--m6.
 The base degrees of freedom are progressively released using equality constraints.
 The first milestone constrains the robot to a forward/backward rail, the following milestones free the vertical dimension to let the policy learn to support the weight of the robot.
-Subsequent milestones release pitch followed the lateral dimension, then by roll and yaw subsequently before reaching the fully free plant.
+Subsequent milestones release pitch, then the lateral dimension, then roll, and finally yaw, which gives the fully free plant.
 
 The purpose is to postpone the hardest balance problem until a basic locomotion pattern has already been learned.
 On the first milestone the robot does not need to solve full-body balance.

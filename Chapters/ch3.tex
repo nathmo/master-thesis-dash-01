@@ -403,7 +403,7 @@ One tick drains both CAN buses, runs a dummy inference of the policy and writes 
 
 At 50\,Hz the mean period overshoots its 20\,ms target and the jitter is an order of magnitude above the faster rates.
 The likely cause is the non-real-time scheduler, which wakes the loop late after the longer sleeps.
-The dummy inferences was later found to be too optimistic as the real policy inference was later shown to require to lower the frequency to 100\,Hz to run reliably on the Pi 3B.
+The dummy inference was later found to be too optimistic: the real policy requires the loop to run at 100\,Hz on the Pi 3B.
 
 
 \subsubsection{IMU characterisation}
@@ -647,8 +647,8 @@ feeds the flight-phase impulse bound.}
 The rail model also gives the sensitivity of the bound to the design.
 Four parameters were each scaled by $+50\,\%$ with everything else nominal: leg mass, rotor
 inertia, deliverable peak torque and bus voltage (through the no-load speed).
-Peak torque is the strongest lever: 50\,\% more raises the bound by about 1\,m/s in the worst case and 4 m\,m/s in the best one.
-Leg mass is second: 50\,\% more lower the bound by about 2\,m/s.
+Peak torque is the strongest lever: 50\,\% more raises the bound by about 1\,m/s in the worst case and 4\,m/s in the best one.
+Leg mass is second: 50\,\% more lowers the bound by about 2\,m/s.
 Rotor inertia is nearly flat, and 50\,\% more bus voltage gains nothing, because the bound does not
 sit on the no-load-speed ceiling at this operating point.
 Leg length was not simulated due to lack of time as it implies updating the URDF, but it is assumed that a longer leg would help increase the stride length.
