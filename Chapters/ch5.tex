@@ -2,7 +2,7 @@
 \label{sec:results}
 
 This section presents the main outcomes of the thesis and characterises the final deliverable in terms of the completed hardware platform, the measured physical performance envelope, the learned running controller, its robustness, and its readiness for deployment.
-\subsection{Hardware delivered}
+\subsection{Robotic platform}
 
 Firstly, this thesis was quite involved in terms of hardware and although the mechanical design was already done and provided, a lot of work was required to bring it from a state of expensive paperweight to a robot that could be controlled.
 The platform is a biped weighing 15\,kg.
@@ -31,6 +31,9 @@ The associated sensitivity analysis further shows that actuator torque capabilit
 
 The 6\,m/s estimate provides the reference and very optimistic upper ceiling against which the learned controller can be evaluated.
 
+
+\newpage 
+
 \subsection{RL Policy for dash running}
 
 Using the measured plant model with MIT-mode actuation, a single cold training run with the sprint objective produced a controller that successfully completed the simulated 100\,m dash in all 16 greedy evaluation episodes.
@@ -38,21 +41,14 @@ The mean completion time was 32.5\,s, corresponding to an average forward speed 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/sprint_dash_run.png}
-\caption{Simulated stance-leg sequence of the sprint policy, sampled every 35\,ms after right-foot touchdown.}
-\label{fig:sprint-dash-run}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\linewidth]{Figures/sprint_dash_stats.png}
+\includegraphics[width=0.9\linewidth]{Figures/sprint_dash_stats.png}
 \caption{One of the greedy evaluation of the sprint policy: forward speed over the dash (left) and cumulative distance against the 100\,m target (right).}
 \label{fig:sprint-dash-stats}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/training_plots.png}
+\includegraphics[width=0.9\linewidth]{Figures/training_plots.png}
 \caption{Training diagnostics for the sprint policy: episode reward and length, forward-speed reward income, gait and other reward terms, curriculum schedules, losses, PPO clip statistics, and policy standard deviation with explained variance, all against timesteps.}
 \label{fig:training-plots}
 \end{figure}
@@ -78,13 +74,13 @@ The mass-scaling experiments indicate that the learned runner possesses apprecia
 Performance degrades rapidly as the mass is increased above nominal, indicating limited force margin in the learned solution.
 Similarly, the policy was very sensitive to actuation delay larger than what it was trained against.
 This can likely be explained by the fact that errors compound rapidly: while the control action might have been stable at a given time, at t+1 the control action might already be much bigger. Since the policy was tasked with maximising speed, it uses all its control authority for this task and has no more than what was needed in simulation to recover from disturbances.
-
+The policy was not sensitive to external pushes, but it was only tested on the fore-aft axis.
 This is the expected behaviour since the policy robustness is set at training by changing the noise distribution in the parameters it needs to be robust against.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\linewidth]{Figures/sprint_margins.png}
-\caption{Robustness margins of the sprint policy under greedy evaluation: survival rate and mean speed against total mass scaling (left), action delay (centre), and push impulse (right). The dashed line marks the nominal training value.}
+\caption{Robustness margins of the sprint policy under greedy evaluation: survival rate and mean speed against total mass scaling (left), action delay (centre), and push impulse along the fore-aft axis (right). The dashed line marks the nominal training value.}
 \label{fig:sprint-margins}
 \end{figure}
 

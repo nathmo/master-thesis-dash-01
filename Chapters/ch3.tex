@@ -123,9 +123,9 @@ Total         & 140 \\
 \label{tab:manufacturers}
 \end{table}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{Figures/ScreenshotActuatorMap.png}
+\includegraphics[width=1.05\textwidth]{Figures/ScreenshotActuatorMap.png}
 \caption{Excerpt of the dashboard, showing the actuator database used to select the drive.}
 \label{fig:motormap}
 \end{figure}
@@ -134,51 +134,6 @@ The database was compiled into an interactive dashboard, \emph{motormap} \cite{m
 The choice of the actuator itself is detailed in the master's thesis of M. Aebi \cite{aebi2025dash01}.
 The final drive choice was the CubeMars AK60-39 for the hip roll and the AKE90-8 for the cam and thigh.
 The AKE90-8 is rated for up to 72\,A peak, while the AK60-39 is rated for 17\,A peak.
-
-\subsubsection{Battery choice}
-\label{sec:hw-battery}
-
-A database of roughly 430 commercial cells was built on the same principle as the actuator database.
-Since 48\,V is the highest pack voltage the selected drives accept, the database was filtered to cells usable in a 13S configuration.
-The motor selection sets the current requirement. Assuming half of the six motors at peak torque simultaneously (two AKE90-8 and one AK60-39), the pack must deliver about 160\,A.
-From these candidates, a 13S2P pack of EVE INR21700-50PL cells was selected, as the best compromise between energy density, power density and cost.
-
-The pack can be monitored over Bluetooth and its limits configured there with the DALY BMS app.
-A CAN interface is also available but was not used, due to lack of time.
-
-The manufacturer states the internal resistance below 10\,m$\Omega$ per cell, which gives about 65\,m$\Omega$ for the 13S2P pack.
-At the rated 360\,A peak, the voltage drop would reach 23\,V.
-At the 160\,A working peak of the motor budget, the drop is about 10\,V, which the BMS low-voltage protection tolerates on a full charge.
-Due to the lack of voltage feedback on the drives, this figure has not been verified on the real robot.
-\begin{table}[htbp]
-\centering
-\small
-\setlength{\tabcolsep}{4pt}
-    \begin{tabular}{lp{3.5cm}}
-        \toprule
-        \textbf{Parameter} & \textbf{Specification} \\
-        \midrule
-        Cell & EVE INR21700-50PL, 5.0\,Ah \\
-        Configuration & 13S2P \\
-        Nominal voltage, capacity & 48.1\,V, 10\,Ah (468\,Wh) \\
-        Continuous rating & 100\,A, cell-limited \\
-        Peak current & 360\,A for 2\,s\\
-        Mass (BMS, casing) & 3.5\,kg \\
-        Power density (peak) & 4900\,W/kg \\
-        Power density (cont.) & 1370\,W/kg \\
-        Energy density & 133.7\,Wh/kg \\
-        \bottomrule
-    \end{tabular}
-\caption{Specification of the selected 13S2P battery pack.}
-\label{tab:battery-spec}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\textwidth]{Figures/cellDashboard.png}
-\caption{Excerpt of the dashboard, showing the cell database used to select the pack.}
-\label{fig:celldashboard}
-\end{figure}
 
 
 \subsubsection{Compute, CAN bus and sensing}
@@ -228,6 +183,54 @@ Contact sensors were considered and never fitted due to lack of time.
 The IMU unit is an \textbf{ICM-20948} on a Waveshare Sense HAT\,(B), read over I2C. 
 
 
+\subsubsection{Battery choice}
+\label{sec:hw-battery}
+
+A database of roughly 430 commercial cells was built on the same principle as the actuator database.
+Since 48\,V is the highest pack voltage the selected drives accept, the database was filtered to cells usable in a 13S configuration.
+The motor selection sets the current requirement. Assuming half of the six motors at peak torque simultaneously (two AKE90-8 and one AK60-39), the pack must deliver about 160\,A.
+From these candidates, a 13S2P pack of EVE INR21700-50PL cells was selected, as the best compromise between energy density, power density and cost.
+
+The pack can be monitored over Bluetooth and its limits configured there with the DALY BMS app.
+A CAN interface is also available but was not used, due to lack of time.
+
+The manufacturer states the internal resistance below 10\,m$\Omega$ per cell, which gives about 65\,m$\Omega$ for the 13S2P pack.
+At the rated 360\,A peak, the voltage drop would reach 23\,V.
+At the 160\,A working peak of the motor budget, the drop is about 10\,V, which the BMS low-voltage protection tolerates on a full charge.
+Due to the lack of voltage feedback on the drives, this figure has not been verified on the real robot.
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+    \begin{tabular}{lp{3.5cm}}
+        \toprule
+        \textbf{Parameter} & \textbf{Specification} \\
+        \midrule
+        Cell & EVE INR21700-50PL, 5.0\,Ah \\
+        Configuration & 13S2P \\
+        Nominal voltage, capacity & 48.1\,V, 10\,Ah (468\,Wh) \\
+        Continuous rating & 100\,A, cell-limited \\
+        Peak current & 360\,A for 2\,s\\
+        Mass (BMS, casing) & 3.5\,kg \\
+        Power density (peak) & 4900\,W/kg \\
+        Power density (cont.) & 1370\,W/kg \\
+        Energy density & 133.7\,Wh/kg \\
+        \bottomrule
+    \end{tabular}
+\caption{Specification of the selected 13S2P battery pack.}
+\label{tab:battery-spec}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\textwidth]{Figures/cellDashboard.png}
+\caption{Excerpt of the dashboard, showing the cell database used to select the pack.}
+\label{fig:celldashboard}
+\end{figure}
+
+\newpage
+
+
 \subsection{The digital twin}
 \label{sec:twin}
 A simulation ready model was derived from the CAD data. The model is exported in two formats, URDF and MJCF.
@@ -270,27 +273,99 @@ The onboard safety layer checks every commanded pose against this grid before it
 The green region is the safe envelope enforced by the onboard safety layer.}
 \label{fig:joint-limits-actuator}
 \end{figure}
-
 \subsubsection{Inertia matrix validation}
 \label{sec:inertia-validation}
 
-Each actuated joint's torque constant $K_t$, effective inertia and friction (viscous and
-Coulomb) are identified from two excitation profiles logged through the web interface \cite{morand2026runningrobot}.
-A quasi-static sweep at 0.03\,Hz holds the joint near equilibrium, so gravity dominates the measured
-torque. A single per-joint least-squares fit on the pooled data recovers $K_t$, the effective inertia and the friction terms
-together. The fit uses the model's gravity torque, computed through the closed 4-bar loop
-(\cref{sec:twin}).
+The CAD export provides, for every body $b$, a mass $m_b$, a centre of mass $\mathbf r_{c,b}$ and an
+inertia tensor $\mathbf I_b$, all expressed in the body frame. A wrong export transformation rotates
+$\mathbf r_{c,b}$ and $\mathbf I_b$ without changing their magnitude, so the check below has to be
+sensitive to the frame and to the magnitude separately.
 
-A raw torque residual is hard to judge on its own, so it is converted into a mass-equivalent error.
-It is an upper bound, since a part of the residual is friction rather than gravity torque.
-\Cref{fig:inertia-validation} reports the per-joint values. The relative error is large because the
-segment masses are small, so their gravity torque sits close to the noise floor.
-The check still serves its purpose: it confirms that the inertia matrices are aligned in the correct
-frame and of the correct magnitude, and that the gravity trend is right.
-Since the CAD values are not random, a correct frame and magnitude imply the export transformation
-is correct, and the CAD inertia data can be trusted.
-The bounded mass error is reused as a domain-randomisation range in the RL training, to make the
-policy robust to this uncertainty.
+Each actuated joint's torque constant $K_t$, effective inertia $I_{\mathrm{eff}}$ and friction
+(viscous $b_v$, Coulomb $b_c$) are identified from two excitation profiles logged through the web
+interface \cite{morand2026runningrobot}: a quasi-static sine sweep at 0.03\,Hz, which holds the
+joint near equilibrium so gravity dominates the measured torque, and a 20\,s chirp from 0.05 to
+0.6\,Hz, which excites the inertial term. Every joint obeys the single-DOF balance
+\begin{equation}
+K_t\,(i - i_0) = I_{\mathrm{eff}}\,\ddot q + b_v\,\dot q + b_c\,\mathrm{sgn}(\dot q) + \tau_g(\mathbf q),
+\label{eq:joint-balance}
+\end{equation}
+where $i$ is the phase current, $i_0$ the drive's DC current offset and $\tau_g(\mathbf q)$ the
+model's gravity torque at that joint, a function of the full configuration $\mathbf q$.
+
+The gravity torque is computed from the inertial data by forward kinematics only, which stays
+well-posed at the 4-bar singularity where inverse dynamics does not (\cref{sec:twin}). With
+$\mathbf J_{c,b}(\mathbf q)$ the centre-of-mass Jacobian of body $b$ and $\mathbf g$ the gravity
+vector, the gravity generalised force on all joints, actuated ($a$) and passive ($p$), is
+\begin{equation}
+\boldsymbol\tau_g(\mathbf q) = -\sum_b m_b\,\mathbf J_{c,b}^{\!\top}(\mathbf q)\,\mathbf g .
+\label{eq:grav-torque}
+\end{equation}
+The closed loop couples the two sets. Linearising the loop-closure constraint,
+$\mathbf J_a\,\delta\mathbf q_a + \mathbf J_p\,\delta\mathbf q_p = \mathbf 0$, gives the
+passive-to-actuated map
+\begin{equation}
+\mathbf G = \frac{\partial \mathbf q_p}{\partial \mathbf q_a}
+          = -\bigl(\mathbf J_p^{\!\top}\mathbf J_p + \lambda\mathbf 1\bigr)^{-1}\mathbf J_p^{\!\top}\mathbf J_a,
+\qquad \lambda = 10^{-6},
+\label{eq:loop-jacobian}
+\end{equation}
+damped so that it stays bounded at the singular poses, and by virtual work the gravity torque seen
+by the actuated joints is the reduced-coordinate projection
+\begin{equation}
+\boldsymbol\tau_{g,a}^{\mathrm{red}} = \boldsymbol\tau_{g,a} + \mathbf G^{\!\top}\boldsymbol\tau_{g,p}.
+\label{eq:grav-reduced}
+\end{equation}
+This is the $\tau_g$ used in \cref{eq:joint-balance} for the cam and thigh joints, which drive the
+leg through the 4-bar; abduction is loop-independent.
+
+Dividing \cref{eq:joint-balance} by $K_t$ makes it linear in the measured quantities. For the $N$
+pooled samples of one joint, the regressor matrix $\boldsymbol\Phi \in \mathbb R^{N\times 5}$ and the
+parameter vector $\boldsymbol\theta$ are
+\begin{equation}
+\boldsymbol\Phi_{k,:} = \begin{bmatrix} \ddot q_k & \dot q_k & \mathrm{sgn}(\dot q_k) & \tau_g(\mathbf q_k) & 1 \end{bmatrix},
+\qquad
+\boldsymbol\theta = \begin{bmatrix} I_{\mathrm{eff}}/K_t & b_v/K_t & b_c/K_t & 1/K_t & i_0 \end{bmatrix}^{\!\top},
+\label{eq:regressor}
+\end{equation}
+and the estimate is the ordinary least-squares solution
+\begin{equation}
+\hat{\boldsymbol\theta} = \arg\min_{\boldsymbol\theta}\;\bigl\|\boldsymbol\Phi\,\boldsymbol\theta - \mathbf i\bigr\|_2^2
+                        = \boldsymbol\Phi^{+}\,\mathbf i,
+\label{eq:ls-fit}
+\end{equation}
+with $\mathbf i$ the stacked current samples. The quasi-static and chirp runs are simply
+concatenated. The $\tau_g$ column varies with pose across the slow sweep and fixes
+$K_t = 1/\hat\theta_4$; the $\ddot q$ column is large only during the chirp and fixes
+$I_{\mathrm{eff}} = \hat\theta_1 K_t$; the friction terms follow from $\hat\theta_2$ and
+$\hat\theta_3$. The intercept column is essential: over a short sweep $\tau_g$ is itself mostly
+constant, so without it the drive's current offset lands in $\hat\theta_4$ and can flip the sign of
+$K_t$. The inertia tensors enter through the second column: the tree mass matrix $\mathbf M(\mathbf q)$
+built from the $\mathbf I_b$ gives the link contribution, and the rotor armature is the remainder
+$J_{\mathrm{rot}} = I_{\mathrm{eff}} - M_{jj}(\bar{\mathbf q})$ at the median pose $\bar{\mathbf q}$.
+
+A raw torque residual is hard to judge on its own, so it is converted into a mass-equivalent error,
+\begin{equation}
+\epsilon_m = \frac{\mathrm{RMS}\bigl(K_t(i_k - i_0) - \hat\tau_k\bigr)}{\mathrm{RMS}\bigl(\tau_g(\mathbf q_k)\bigr)},
+\qquad
+\hat\tau_k = I_{\mathrm{eff}}\,\ddot q_k + b_v\,\dot q_k + b_c\,\mathrm{sgn}(\dot q_k) + \tau_g(\mathbf q_k),
+\label{eq:mass-error}
+\end{equation}
+the fraction of the gravity torque the model fails to explain, read as a relative error on the
+segment masses. It is an upper bound, since a part of the residual is friction rather than gravity
+torque. \Cref{fig:inertia-validation} reports the per-joint values. The relative error is large
+because the segment masses are small, so their gravity torque sits close to the noise floor.
+
+The check still serves its purpose. $K_t$ and the gravity model enter \cref{eq:joint-balance} only
+through their product, so the fit alone cannot tell a scaled $K_t$ from a scaled mass; frame and
+magnitude are therefore tested separately. The pose dependence of $\tau_g$ tests the frame of
+$\mathbf r_{c,b}$, since a mis-rotated centre of mass changes the shape of the gravity curve and not
+only its size. The recovered $K_t$ against the datasheet value tests the magnitude. Both confirm
+that the inertial data are in the correct frame and of the correct magnitude, and that the gravity
+trend is right. Since the CAD values are not random, a correct frame and magnitude imply the export
+transformation is correct, and the CAD inertia data can be trusted. The bounded mass error
+$\epsilon_m$ is reused as a domain-randomisation range in the RL training, to make the policy
+robust to this uncertainty.
 
 \begin{figure}[H]
 \centering
@@ -302,19 +377,6 @@ ripple is likely the P-only position loop's stick-slip response due to friction.
 \label{fig:inertia-validation}
 \end{figure}
 
-\subsubsection{IMU characterisation}
-The base IMU was sampled at rest for 300\,s, configured at $\pm4$\,g and $\pm1000$\,dps, with a
-50\,Hz internal low-pass and 200\,Hz sampling.
-The measurement gives 1.8\,mg and 0.08\,dps RMS noise. The noise density is
-218\,$\mu$g/$\sqrt{\text{Hz}}$ and 0.0096\,dps/$\sqrt{\text{Hz}}$. The gyro turn-on bias is
-repeatable at $[1.03, 0.11, -0.53]$\,dps, and the in-run bias stability is 0.010--0.012\,dps.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\linewidth]{Figures/fig_imu_noise.png}
-\caption{Noise characterisation of the base IMU (ICM-20948), sampled at 200\,Hz for 300\,s at rest.}
-\label{fig:imu-noise}
-\end{figure}
 
 \subsubsection{CAN bus latency and load characterisation}
 \label{sec:plant-id-timing}
@@ -342,6 +404,23 @@ One tick drains both CAN buses, runs a dummy inference of the policy and writes 
 At 50\,Hz the mean period overshoots its 20\,ms target and the jitter is an order of magnitude above the faster rates.
 The likely cause is the non-real-time scheduler, which wakes the loop late after the longer sleeps.
 The dummy inferences was later found to be too optimistic as the real policy inference was later shown to require to lower the frequency to 100\,Hz to run reliably on the Pi 3B.
+
+
+\subsubsection{IMU characterisation}
+The base IMU was sampled at rest for 300\,s, configured at $\pm4$\,g and $\pm1000$\,dps, with a
+50\,Hz internal low-pass and 200\,Hz sampling.
+The measurement gives 1.8\,mg and 0.08\,dps RMS noise. The noise density is
+218\,$\mu$g/$\sqrt{\text{Hz}}$ and 0.0096\,dps/$\sqrt{\text{Hz}}$. The gyro turn-on bias is
+repeatable at $[1.03, 0.11, -0.53]$\,dps, and the in-run bias stability is 0.010--0.012\,dps.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{Figures/fig_imu_noise.png}
+\caption{Noise characterisation of the base IMU (ICM-20948), sampled at 200\,Hz for 300\,s at rest.}
+\label{fig:imu-noise}
+\end{figure}
+
+
 \subsubsection{Actuator thermal characterisation}
 
 The actuator thermal response was not measured due to lack of time. The thermal lumped model parameters were estimated roughly from the mass of the actuator but not used in the simulation.
@@ -352,19 +431,68 @@ The battery was not characterised due to lack of time; its behaviour was estimat
 This is further complicated by the lack of voltage feedback on the drives, which prevents measuring the voltage drop under load.
 In practice, this is not expected to be a problem: the drives are not used in torque control, so they can be expected to regulate the voltage drop without taking the RL policy out of its distribution.
 
+\newpage 
+
 \subsubsection{Actuator bandwidth characterisation}
 \label{sec:plant-id-drive}
 
-The AKE90-8's closed-loop bandwidth was measured in both Servo and MIT mode.
+The AKE90-8's closed-loop position bandwidth was measured in both Servo and MIT mode, on the
+thigh joints of both legs, with the legs attached but unloaded (robot homed on its stand). Both are position loops at the interface each mode is actually used through, so the two are
+directly comparable. In Servo mode the command is a position set-point to the drive's internal
+position loop. In MIT mode the drive runs its impedance law
+\begin{equation}
+\tau = k_p\,(p_{\mathrm{des}} - p) - k_d\,\dot p,
+\qquad k_p = 200\ \mathrm{N\,m/rad},\quad k_d = 5\ \mathrm{N\,m\,s/rad},
+\label{eq:mit-impedance}
+\end{equation}
+with the feed-forward velocity and torque held at zero. These are the deployed gains, the same
+$\langle k_p, k_d\rangle$ actuator the policy is trained against in simulation
+(\cref{sec:twin}). One extra run at $k_p = 500$ probes the stiffness dependence.
 
-\Cref{fig:actuator-bode} shows the results. Servo mode reaches $-3$\,dB at 1.95\,Hz. MIT mode reaches $-3$\,dB between 6.0\,Hz and 20\,Hz
-depending on $k_p$ and $k_d$.
+The excitation is a stepped sine, so that every frequency is measured in
+steady state: 1 to 30\,Hz in 1\,Hz steps, at least 5\,s inside each frequency, with the frequency
+switched at upward zero crossings so the command stays continuous. The command amplitude follows
+\begin{equation}
+A(f) = \min\!\Bigl(A_{\max},\ \frac{v_{\max}}{2\pi f}\Bigr),
+\qquad A_{\max} = 0.044\ \mathrm{rad},\quad v_{\max} = 1\ \mathrm{rad/s},
+\label{eq:bode-amplitude}
+\end{equation}
+constant position amplitude at low frequency and constant velocity amplitude above the corner, so
+that neither excursion nor speed grows with frequency. Commands are streamed at 200\,Hz over CAN
+and the drive's reported position, at the same rate and kernel time-stamped on reception, is the
+measured output; its resolution is 0.1$^\circ$. A 200\,Hz watchdog aborts on drive error,
+over-current, over-temperature or position leaving the safe window \cite{morand2026runningrobot}.
+
+Per frequency, the first 1.2\,s after each switch are discarded and the reported position $p_k$
+is projected by least squares onto the command's own sine and cosine, plus a mean and a linear
+drift term,
+\begin{equation}
+p_k \approx a\,\sin\varphi_k + b\,\cos\varphi_k + c + d\,t_k,
+\qquad
+|H(f)| = \frac{\sqrt{a^2 + b^2}}{A(f)},\quad
+\angle H(f) = \operatorname{atan2}(b, a),
+\label{eq:bode-fit}
+\end{equation}
+where $\varphi_k$ is the command phase at sample $k$. Fitting on the exact command phase, instead of
+an FFT bin, rejects the drift and the quantisation noise. Points whose response amplitude
+falls below the position-feedback resolution, or whose residual exceeds 45\,\% of the response,
+are masked since they are likely noise; the high-frequency Servo points end there by design. The
+$-3$\,dB frequency is read by linear interpolation of the magnitude, and the loop delay from the
+slope of the unwrapped phase above 4\,Hz,
+$\tau_d = -\tfrac{1}{360^\circ}\,\mathrm{d}\angle H/\mathrm{d}f$.
+
+\Cref{fig:actuator-bode} shows the results. Servo mode reaches $-3$\,dB at 1.9\,Hz on both thighs.
+MIT mode reaches $-3$\,dB at 6.1 to 6.5\,Hz at the deployed gains, and 18\,Hz at $k_p = 500$ with
+the same $k_d$: the corner scales with $k_p/k_d$, so the loop is damping-dominated. The phase
+slope gives a delay of 11 to 13\,ms in MIT mode against 19 to 22\,ms in Servo mode.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\linewidth]{Figures/actuator_bode.png}
-\caption{Measured closed-loop tracking a sine chirp and its response as the frequency increases in terms of tracking error of the AKE90-8 drive: servo mode's position loop
-(free rotor) against MIT mode's position loop (free rotor).}
+\caption{Measured closed-loop position frequency response of the AKE90-8 thigh drives, both
+legs, stepped-sine excitation 1--30\,Hz with legs attached and unloaded: Servo mode's internal
+position loop against MIT mode's impedance loop at the deployed gains ($k_p = 200$, $k_d = 5$),
+plus one MIT run at $k_p = 500$. Points below the 0.1$^\circ$ feedback resolution are masked.}
 \label{fig:actuator-bode}
 \end{figure}
 
@@ -433,6 +561,9 @@ The \emph{limbs and inertia} widget stores the weighed segment masses and compar
 \label{fig:widget-measurement}
 \end{figure}
 
+
+\newpage 
+
 \subsection{Running speed ceiling estimation}
 \label{sec:speed-ceiling}
 
@@ -500,12 +631,15 @@ proportions a design lever that is presented in \cref{sec:discussion}.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\linewidth]{Figures/fig_force_map.png}
+\includegraphics[width=1\linewidth]{Figures/fig_force_map.png}
 \caption{Static toe-force capability over the measured workspace: maximum vertical force $F_z$
 (left) and horizontal force $F_x$ (right), in body weights, clipped at 3.5\,BW. The vertical map
 feeds the flight-phase impulse bound.}
 \label{fig:force-map}
 \end{figure}
+
+
+\newpage 
 
 \subsubsection{Sensitivity of the bound to the design parameters}
 \label{sec:speed-sensitivity}
@@ -526,7 +660,7 @@ its policies against the plant measured in this chapter.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\textwidth]{Figures/bound_sensitivity_bars.png}
+  \includegraphics[width=1\textwidth]{Figures/bound_sensitivity_bars.png}
   \caption{Sensitivity of the speed-ceiling estimates to $+50\,\%$ design changes, one
   parameter at a time.}
   \label{fig:bound-sensitivity}

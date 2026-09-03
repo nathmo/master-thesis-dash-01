@@ -22,24 +22,28 @@ characterisation and the training of a policy.
 \subsection{The objective moved from record pace to a measured demonstrator}
 \label{sec:intro-reframe}
 
-\textbf{The record moved faster than the thesis.} New bipedal speed marks now appear at roughly a
-monthly cadence, from teams with institutional budgets. 
+\textbf{The record moved faster than the thesis.} New bipedal speed records are now being set by
+teams with substantially greater resources and increasingly specialised platforms. Matching the
+record therefore ceased to be a realistic objective for the hardware and time available to this thesis.
 
-\textbf{The measured plant does not admit record pace.} \Cref{sec:speed-ceiling} bounds this
-mechanism at about 6\,m/s. The bound comes from first principles, by using the workspace of the leg and the impulse it can deliver. 
+\textbf{The measured plant imposes a lower speed ceiling.} \Cref{sec:speed-ceiling} estimates a
+maximum running speed of about $6,\mathrm{m/s}$ for DASH-01. The estimate is derived from the
+measured mechanism, its actuator limits, and the available leg workspace.
+This establishes the physical capability of the platform independently of any learned controller.
 
-The objective of this thesis was therefore restated as a measured demonstrator plus a reusable method. The
-deliverable is the chain from CAD to a trained policy. 
+The objective of this thesis was therefore reframed as a measured running demonstrator and a
+reusable methodology for transferring reinforcement learning to a custom biped. The deliverable is
+the complete chain from the mechanical model and plant characterisation to a trained and deployed
+policy.
 
-\textbf{The problem this addresses.} Reinforcement learning has produced legged-locomotion results
-on research platforms. Reproducing them on a new, custom, imperfectly known robot is non-trivial. The plant parameters are uncertain. The actuators hide undocumented internal control
-loops. The sensors are commodity parts. The gap between ``reinforcement learning walks in simulation'' and ``reinforcement learning walks on this robot'' is
-dominated by modelling fidelity, actuator bandwidth and calibration.
+The central engineering challenge is that the robot is not a known control platform. Its relevant
+parameters must be identified experimentally, while the actuators contain internal control loops
+whose dynamics are only partially documented. Sensor characteristics, communication latency and
+execution timing further affect the behaviour seen by the policy. Consequently, obtaining
+locomotion in simulation is only one part of the problem: the simulated plant must reproduce the
+properties that determine whether the learned controller can operate on the physical robot.
 
-\textbf{Sensing scope.} Proprioception and one base inertial measurement unit are the only sensors.
-Foot impact sensors were dropped due to lack of time rather than on evidence. The hardware provision for them
-remains in place, as four analogue inputs on the sensor hat. The literature prior that foot feedback
-helps convergence is therefore untested here.
+\newpage
 
 \subsection{Contributions}
 \label{sec:intro-contrib}
@@ -47,7 +51,7 @@ helps convergence is therefore untested here.
 \begin{itemize}[leftmargin=*]
   \item \textbf{A CAD-to-MJCF pipeline}, with the loop-closure treatment URDF cannot express. The model was then validated against the
         backdriven workspace (\cref{sec:twin}).
-  \item \textbf{A measured plant} (\cref{sec:plant-id}). It covers weighed segment masses, a torque
+  \item \textbf{A caracterized demonstrator robot} (\cref{sec:plant-id}). It covers weighed segment masses, a torque
         constant identified by a known-mass method that breaks the degeneracy between $K_t$ and
         gravity, the Bode response of the drive's internal position loop, inertial-sensor noise
         characteristics, loop timing and the CAN protocol.
