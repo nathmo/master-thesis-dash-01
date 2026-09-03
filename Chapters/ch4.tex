@@ -132,8 +132,8 @@ As expected, the leg could track slow points, but became increasingly jittery wh
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/fig_positionController.png}
-\caption{Joint position-target action space: the policy output is streamed as the MIT-frame position target, tracked with fixed stiff gains and no feed-forward torque.}
+\includegraphics[width=0.95\linewidth]{Figures/fig_ServoController.png}
+\caption{Joint position-target action space: the policy output is streamed as the Servo-frame position target.}
 \label{fig:arch-position}
 \end{figure}
 
@@ -155,8 +155,8 @@ More reward shaping was attempted to penalise this behaviour with limited succes
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/fig_MITwithFixedComplianceController.png}
-\caption{Impedance action space with static gains: the policy sets the MIT-frame position target and feed-forward torque, while stiffness and damping stay fixed at a soft, hand-tuned setting.}
+\includegraphics[width=0.95\linewidth]{Figures/fig_positionController.png}
+\caption{Impedance action space with static gains: the policy sets the MIT-frame position target, while stiffness and damping stay fixed at a soft, hand-tuned setting.}
 \label{fig:arch-impedance}
 \end{figure}
 
@@ -170,55 +170,59 @@ A stiffness that is useful during stance is not necessarily appropriate during s
 The next step was therefore to make compliance part of the gait specification rather than treating it as a constant actuator setting.
 This approach was therefore not attempted further and no policy was trained for it.
 
-\subsubsection{A Fourier gait generator tuned by the policy in position and compliance space}
+\subsubsection{Fourier gait generator tuned by the policy in position and compliance}
 
 \label{sec:rl-cpg}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\linewidth]{Figures/fig_fourierCPG.png}
+\includegraphics[width=0.95\linewidth]{Figures/fig_ComplianceCPG.png}
 \caption{Fourier gait-generator action space: the policy sets the clock frequency and the per-joint Fourier coefficients, and the synthesised trajectory becomes the MIT-frame position target.}
 \label{fig:arch-fourier}
 \end{figure}
-
 The main motivation for introducing a Fourier-based gait generator was to address a limitation observed with direct position control.
-In the latter approach, the policy was free to specify the position of each joint independently at every control step.
-This provided a large space in which the policy could exploit unintended behaviours, including repeated reward-gaming strategies observed during training.
-Rather than requiring the policy to discover the periodic structure of locomotion from scratch, the gait generator was therefore introduced to explicitly impose this structure while retaining enough freedom to adapt the gait.
-The policy no longer specifies every joint position independently, but instead controls a lower-dimensional Fourier representation of the gait.
-Once the compliance mode was unlocked, it was also natural to extend this parameterisation to the stiffness and damping.
-Since the required compliance can reasonably be expected to depend on the phase of the gait, these parameters were represented using the same principle as the joint trajectories.
-The resulting generator therefore describes not only where the joints should move, but also how strongly they should track the generated trajectory throughout the gait cycle.
-This allows, for example, different compliance characteristics during impact and push-off.
+In the previous approach, the policy independently specified the position of each joint at every control step, leaving a large space of possible behaviours in which reward-gaming strategies could emerge.
+The gait generator was therefore introduced to constrain the action space to a lower-dimensional representation of periodic motion, rather than requiring the policy to discover both the form and timing of the gait from individual joint commands.
+The final generator represents the sagittal joint trajectories using a Fourier series, whose coefficients are updated by the policy during execution.
 
-To further reduce the dimensionality of the problem, a single generator was initially used for both legs.
-The right-leg trajectory was constrained to follow the same Fourier representation as the left leg, with a phase shift of $\pi$.
-This imposed the expected left/right alternation of a straight-line running gait while substantially reducing the number of parameters that the policy had to determine.
-This assumption, however, proved to be too restrictive.
-In particular, the learned policy tended to accept the reward penalty associated with continuously modifying the Fourier coefficients rather than maintaining a fixed set of coefficients.
-This behaviour suggests that the two legs could not be adequately described by a single phase-shifted trajectory and that independent corrections were important for maintaining the desired motion.
+The introduction of impedance control also raised the question of whether the stiffness and damping should be parameterized by the same periodic representation.
+Such a parameterization would allow the compliance to vary systematically over the gait cycle, for example providing different behaviour during stance, swing, and impact.
+This approach was considered but was not retained because it would have increased the dimensionality of the action space without providing a corresponding advantage for the deployed interface.
+The impedance interface already provides the policy with the current gait phase through the phase variables, while the $k_p$ and $k_d$ multipliers are transmitted to the drives at every control step.
+Consequently, the policy can learn a phase-dependent compliance profile without explicitly representing it as another Fourier series.
+More importantly, the per-step representation also allows the policy to modify the compliance in response to events that are not determined by the nominal gait phase, such as disturbances or an unexpected foot contact.
+The four per-leg compliance multipliers are therefore updated independently at each control step, mapped logarithmically around the base gains, and clamped to the measured safe operating range.
 
-Despite this behaviour, the Fourier generator produced a working policy.
-Although the Fourier coefficients were updated continuously at each policy step, the resulting gait remained approximately periodic, with the generated trajectories varying by only a few percent over successive cycles.
-With all degrees of freedom released, the policy achieved stable running at speeds of up to approximately $3\,\mathrm{m/s}$.
-This observation motivated a further experiment to determine whether the learned gait itself was stable, independently of the policy's continuous corrections.
-Static Fourier coefficients were found to emulate the gait cycle that the policy was commanding.
-The robot was then commanded using only this fixed Fourier gait, without allowing the policy to modify the coefficients during execution.
-The robot was able to reach approximately the same running speed, but lost balance after only a few steps.
-The resulting behaviour demonstrates that the learned Fourier trajectory does not constitute a dynamically stable open-loop gait.
-Instead, the periodic trajectory provides the nominal locomotion pattern, while continuous policy updates are required to compensate for disturbances and state deviations and keep the robot upright.
+To reduce the dimensionality of the trajectory representation further, a single Fourier generator was initially used for both legs.
+The right-leg trajectory was obtained by evaluating the same series with a phase shift of $\pi$, imposing the expected left/right alternation of a straight-line gait.
+This assumption was subsequently found to be too restrictive.
+The learned policy produced a strongly asymmetric gait despite the shared representation, and continuously modified the Fourier coefficients during execution.
+The coefficient-change penalty was applied only during part of the gait cycle, while the cadence was also a policy-controlled variable.
+The policy exploited these degrees of freedom by driving the cadence towards the boundary of its allowed range, allowing the phase to remain in the unpenalized region for most of the cycle.
+As a result, approximately 93,\% of the phase remained outside the penalized region and approximately 89,\% of coefficient updates avoided the corresponding penalty.
+
+The resulting gait was strongly asymmetric.
+For the successful pitch-free runner, the cadence was approximately $4.8,\mathrm{Hz}$, with approximately 80,\% of the cycle spent airborne and a left-foot contact duty factor close to zero.
+This asymmetry was not penalized while yaw was constrained.
+The results therefore indicated that imposing a common Fourier representation with a $\pi$ phase shift did not enforce the expected symmetric alternating gait in practice.
+
+The extent to which the resulting motion could be represented by a stationary Fourier trajectory was tested by fitting a fixed set of in-range coefficients to the trajectories generated by the policy.
+A single fixed parameter set explained approximately 60,\% of the trajectory variance.
+The remaining variation was primarily associated with the left/right asymmetry, which cannot be represented by the mirrored basis, with an additional contribution from coefficient saturation.
+When the fitted coefficients were subsequently frozen and replayed open loop, the robot reproduced the motion only transiently and fell within a few steps.
+The same qualitative result was obtained for all freeze-and-replay variants tested.
+Thus, the Fourier coefficients describe a nominal structure for the gait, but the continuously updated coefficients remain an important feedback mechanism for maintaining stability.
+The generator constrains the form of the commanded motion while leaving the policy free to modify it in response to the robot state.
+
+The $100,\mathrm{m}$ dash completed in all $16$ greedy evaluation episodes, at $3.07,\mathrm{m/s}$.
+Inspection of the resulting trajectories showed that the robot was running in circles.
+This behaviour became apparent only after yaw was released and is consistent with the asymmetric gait observed in the yaw-constrained experiments.
+It also revealed that the forward-speed reward, being defined in the body frame rather than relative to the dash direction, did not by itself constrain the direction of locomotion.
 
 
 \subsubsection{Explicit oscillator against the Fourier series}
 
 \label{sec:cpg-ab}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\linewidth]{Figures/fig_CPGOSCILLATORController.png}
-\caption{Explicit limit-cycle oscillator action space: a Hopf CPG per leg drives a measured foot-space inverse-kinematics lookup table, with the policy setting amplitude, frequency and phase offset plus a hip-roll reflex.}
-\label{fig:arch-oscillator}
-\end{figure}
 
 The Fourier parameterisation is one member of a larger family of structured gait representations.
 Another canonical representation is an explicit limit-cycle oscillator, as used in the CPG literature~\cite{ijspeert2008,cpgrl2022}.
