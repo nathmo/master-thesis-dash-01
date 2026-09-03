@@ -32,17 +32,9 @@ In the context of this thesis, \textbf{failure} refers to the termination of an 
 
 \label{sec:bg-hard}
 
-Bipedal locomotion can be approached in different ways, depending in particular on the speed of motion and on the assumptions made about contact and dynamics.
+Bipedal locomotion can be approached in different ways, depending in particular on the speed of motion and on the assumptions made about contact and dynamics. The simplest case is a robot with flat feet walking on flat terrain at sufficiently low speed that inertial effects can be neglected; this was the approach used for WABOT-1 in 1973 \cite{waseda2026wabot1}. Maintaining stability can then be reduced to keeping the projection of the CoM inside the support polygon formed by the feet. As the robot moves faster, inertial effects can no longer be neglected. The relevant quantity is then not simply the projection of the CoM, but the Zero Moment Point (ZMP), which must remain within the support polygon; this approach was used, for example, in ASIMO \cite{whatimakethis2020asimo}.
 
-The simplest case is a robot with flat feet walking on flat terrain at sufficiently low speed that inertial effects can be neglected. This was the approach used for WABOT-1 in 1973 \cite{waseda2026wabot1}.
-
-In this case, maintaining stability can be reduced to keeping the projection of the CoM inside the support polygon formed by the feet.
-
-As the robot moves faster, inertial effects can no longer be neglected. The relevant quantity is then not simply the projection of the CoM, but the Zero Moment Point (ZMP), which must remain within the support polygon. This approach was used, for example, in ASIMO \cite{whatimakethis2020asimo}.
-
-Running introduces a flight phase, which is incompatible with the previous approaches that require at least one foot to remain in contact with the ground at all times.
-
-To enable running, Raibert \cite{raibert1986} proposed a foot-placement method based on the following relation:
+Running introduces a flight phase, which is incompatible with the previous approaches that require at least one foot to remain in contact with the ground at all times. To enable running, Raibert \cite{raibert1986} proposed a foot-placement method based on the following relation:
 
 \begin{equation}
   x_f = \tfrac{1}{2} \cdot \dot{x} \cdot T_s + k \cdot (\dot{x} - \dot{x}_d)
@@ -51,29 +43,15 @@ To enable running, Raibert \cite{raibert1986} proposed a foot-placement method b
 
 where $x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres; $\dot{x}$ is the current forward speed in metres per second; $\dot{x}_d$ is the commanded forward speed, in metres per second; $T_s$ is the stance duration, in seconds; and $k$ is a velocity feedback gain, also expressed in seconds.
 
-The first term corresponds to the neutral point, which produces no net fore-aft impulse. The second term provides velocity feedback: when the robot is moving faster than commanded, the foot is placed further forward, producing a decelerating effect during stance.
+The first term corresponds to the neutral point, which produces no net fore-aft impulse. The second term provides velocity feedback: when the robot is moving faster than commanded, the foot is placed further forward, producing a decelerating effect during stance. This lineage runs through systems such as BigDog \cite{raibert2008bigdog} and later Atlas.
 
-This lineage runs through systems such as BigDog \cite{raibert2008bigdog} and later Atlas.
+The underlying idea is that the gait can be stabilised, to a significant extent, by placing the feet at the appropriate location and time. This also makes it possible to build running robots with point-contact feet, rather than requiring the large flat feet used by earlier approaches. The approach was subsequently refined by solving the foot-placement and whole-body motion problem online, leading to what is commonly formulated as a Model Predictive Control approach \cite{kuindersma2016atlas}. This approach was central to the development of the early dynamic legged robots developed by Boston Dynamics.
 
-The underlying idea is that the gait can be stabilised, to a significant extent, by placing the feet at the appropriate location and time.
-
-This also makes it possible to build running robots with point-contact feet, rather than requiring the large flat feet used by earlier approaches.
-
-The approach was subsequently refined by solving the foot-placement and whole-body motion problem online, leading to what is commonly formulated as a Model Predictive Control approach \cite{kuindersma2016atlas}.
-
-This approach was central to the development of the early dynamic legged robots developed by Boston Dynamics.
-
-These approaches rely on a sufficiently accurate model of the plant.
-
-In practice, however, the plant parameters are only partially known and may vary with configuration, load, contact conditions, and hardware.
-
-Classical model-based controllers are therefore designed around a particular model and possess a finite robustness margin with respect to modelling errors and disturbances. Beyond this margin, the controller may no longer be able to stabilise the system.
+These approaches rely on a sufficiently accurate model of the plant. In practice, however, the plant parameters are only partially known and may vary with configuration, load, contact conditions, and hardware. Classical model-based controllers are therefore designed around a particular model and possess a finite robustness margin with respect to modelling errors and disturbances. Beyond this margin, the controller may no longer be able to stabilise the system.
 
 Reinforcement Learning provides an alternative way of obtaining this robustness. Rather than explicitly deriving a controller from a single plant model, RL trains a policy over a distribution of simulated plants. The policy can therefore be exposed to variations in plant parameters during training, for example through domain randomisation, with the objective of improving its robustness to model mismatch.
 
-The problem is further complicated by the unilateral and saturating nature of ground contact. A foot can only push against the ground, not pull it, and the tangential component of the contact force is bounded by the friction cone. Exceeding this bound results in slipping.
-
-A second complication is the timescale of the dynamics. A legged robot can, to a first approximation, be considered as an inverted pendulum with characteristic length $h$.
+The problem is further complicated by the unilateral and saturating nature of ground contact. A foot can only push against the ground, not pull it, and the tangential component of the contact force is bounded by the friction cone. Exceeding this bound results in slipping. A second complication is the timescale of the dynamics. A legged robot can, to a first approximation, be considered as an inverted pendulum with characteristic length $h$.
 
 In the absence of corrective input, the characteristic timescale of the inverted pendulum is on the order of
 
@@ -83,12 +61,10 @@ In the absence of corrective input, the characteristic timescale of the inverted
 
 which corresponds to approximately $300\,\mathrm{ms}$ for a characteristic length of $1\,\mathrm{m}$.
 
-During running, however, contact with the ground may last only a few tens of milliseconds. Within this timescale, the robot must measure the state of the system, estimate the relevant dynamics, compute a corrective command, communicate it to the actuator, and physically produce the required motion.
-
+During running, however, contact with the ground may last only a few tens of milliseconds.
+Within this timescale, the robot must measure the state of the system, estimate the relevant dynamics, compute a corrective command, communicate it to the actuator, and physically produce the required motion.
 This places significant requirements on sensing, computation, communication latency, and actuator bandwidth.
-
 The robot considered in this thesis has a measured actuator bandwidth corresponding to a $2\,\mathrm{Hz}$ pole in servo mode, and up to $20\,\mathrm{Hz}$ in MIT mode depending on the position-loop gains.
-
 This limitation will become relevant again when discussing the control architecture and the sim-to-real problem later in this thesis.
 
 \subsection{Reinforcement learning for locomotion}
