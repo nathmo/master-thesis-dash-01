@@ -1,8 +1,7 @@
 \section{Results}
 \label{sec:results}
 
-This section is a recap of what this thesis achieved along with the results that characterise the deliverable.
-
+This section presents the main outcomes of the thesis and characterises the final deliverable in terms of the completed hardware platform, the measured physical performance envelope, the learned running controller, its robustness, and its readiness for deployment.
 \subsection{Hardware delivered}
 
 Firstly, this thesis was quite involved in terms of hardware and although the mechanical design was already done and provided, a lot of work was required to bring it from a state of expensive paperweight to a robot that could be controlled.
@@ -32,10 +31,13 @@ The associated sensitivity analysis further shows that actuator torque capabilit
 
 The 6\,m/s estimate provides the reference and very optimistic upper ceiling against which the learned controller can be evaluated.
 
-\subsection{The runner}
+\subsection{RL Policy for dash running}
 
 Using the measured plant model with MIT-mode actuation, a single cold training run with the sprint objective produced a controller that successfully completed the simulated 100\,m dash in all 16 greedy evaluation episodes.
 The mean completion time was 32.5\,s, corresponding to an average forward speed of 3.07\,m/s.
+
+ADD FIGURE RUNNING SCREENSHOT + SPEED AND other stat PLOT
+ADD TRAINING PLOT OF THE Policy
 
 \subsection{Legality of the gait against the measured envelope}
 
@@ -45,8 +47,8 @@ The commanded torque remains within the permitted torque and torque--speed envel
 In this respect, the learned policy operates almost entirely inside the measured instantaneous actuation capability of the robot.
 The commanded current stays at the allowed thermal limit.
 
-The audit nevertheless exposes one important violation.
-First, the swing-leg joint velocity reaches approximately twice the measured no-load actuator speed.
+The audit nevertheless exposes an important violation.
+The swing-leg joint velocity reaches approximately twice the measured no-load actuator speed.
 Such motion is physically unattainable and therefore identifies a bug in the form of a missing velocity constraint in the simulation model that needs to be patched.
 
 \subsection{Robustness margins}
@@ -60,6 +62,8 @@ Similarly, the policy was very sensitive to actuation delay larger than what it 
 This can likely be explained by the fact that errors compound rapidly: while the control action might have been stable at a given time, at t+1 the control action might already be much bigger. Since the policy was tasked with maximising speed, it uses all its control authority for this task and has no more than what was needed in simulation to recover from disturbances.
 
 This is the expected behaviour since the policy robustness is set at training by changing the noise distribution in the parameters it needs to be robust against.
+
+ADD PLOT AND graph
 
 \subsection{Deployment readiness}
 

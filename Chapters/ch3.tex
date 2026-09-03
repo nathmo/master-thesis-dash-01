@@ -95,6 +95,7 @@ through a spring (not rendered). The spring was later measured to be roughly an 
 
 A database to select the actuator was assembled.
 Major robotic actuator manufacturers' websites were scraped for datasheets and a large language model was used to parse each datasheet.
+The database content was then manually checked to ensure the LLM produce the expected result.
 The resulting database holds 140 entries across 11 suppliers, listed in \cref{tab:manufacturers}.
 
 \begin{figure}[htbp]
@@ -453,6 +454,8 @@ The maximum speed was instead constrained using an impulse balance: the availabl
 As speed increases, stance duration decreases while the leg's minimum cycling period remains finite, eventually leaving insufficient stance impulse to support the robot's weight.
 This gives a slightly lower upper bound of approximately $6.2\,\mathrm{m/s}$.
 Both analyses agree on a ceiling of about 6\,m/s, and this rounded figure is the bound quoted in the rest of the document.
+For the details of the simulation, refer to the code itself.\cite{morand2026runningrobot}
+
 \begin{table}[H]
 \centering
 \small
