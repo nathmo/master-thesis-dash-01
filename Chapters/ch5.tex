@@ -36,8 +36,19 @@ The 6\,m/s estimate provides the reference and very optimistic upper ceiling aga
 Using the measured plant model with MIT-mode actuation, a single cold training run with the sprint objective produced a controller that successfully completed the simulated 100\,m dash in all 16 greedy evaluation episodes.
 The mean completion time was 32.5\,s, corresponding to an average forward speed of 3.07\,m/s.
 
-ADD FIGURE RUNNING SCREENSHOT + SPEED AND other stat PLOT
-ADD TRAINING PLOT OF THE Policy
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/sprint_dash_stats.png}
+\caption{Greedy evaluation of the sprint policy: forward speed over the dash (left) and cumulative distance against the 100\,m target (right).}
+\label{fig:sprint-dash-stats}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/training_plots.png}
+\caption{Training diagnostics for the sprint policy: episode reward and length, forward-speed reward income, gait and other reward terms, curriculum schedules, losses, PPO clip statistics, and policy standard deviation with explained variance, all against timesteps.}
+\label{fig:training-plots}
+\end{figure}
 
 \subsection{Legality of the gait against the measured envelope}
 
