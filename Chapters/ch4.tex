@@ -105,7 +105,12 @@ Each one was tried to solve a problem and introduced a different limitation.
 
 \label{sec:rl-torque}
 
-% TODO: add architecture figure for this action space
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/fig_TorqueController.png}
+\caption{Direct joint-torque action space: the policy output is streamed as the MIT-frame feed-forward torque, with the position and velocity gains held at zero.}
+\label{fig:arch-torque}
+\end{figure}
 
 The first framework commanded joint torque directly on a simplified biped, because the robot was still being designed. It was abandoned for two different reasons: the training did not converge, and the assumed hardware interface was not considered deployable at the required rate.
 
@@ -125,7 +130,12 @@ As expected, the leg could track slow points, but became increasingly jittery wh
 \subsubsection{Joint position targets}
 \label{sec:rl-position}
 
-% TODO: add architecture figure for this action space
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/fig_positionController.png}
+\caption{Joint position-target action space: the policy output is streamed as the MIT-frame position target, tracked with fixed stiff gains and no feed-forward torque.}
+\label{fig:arch-position}
+\end{figure}
 
 The policy was now expected to output six position targets for its action vector, one for each actuated joint.
 In simulation these commands drive MuJoCo position actuators with gains and force ranges derived from the actuator specifications.
@@ -143,7 +153,12 @@ More reward shaping was attempted to penalise this behaviour with limited succes
 
 \label{sec:rl-impedance}
 
-% TODO: add architecture figure for this action space
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/fig_MITwithFixedComplianceController.png}
+\caption{Impedance action space with static gains: the policy sets the MIT-frame position target and feed-forward torque, while stiffness and damping stay fixed at a soft, hand-tuned setting.}
+\label{fig:arch-impedance}
+\end{figure}
 
 After a significant amount of time spent to understand how to send commands to the CubeMars drives in impedance mode to avoid the actuator bandwidth issue in servo mode, the action space was extended to include stiffness and damping.
 
@@ -159,7 +174,12 @@ This approach was therefore not attempted further and no policy was trained for 
 
 \label{sec:rl-cpg}
 
-% TODO: add architecture figure for this action space
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/fig_fourierCPG.png}
+\caption{Fourier gait-generator action space: the policy sets the clock frequency and the per-joint Fourier coefficients, and the synthesised trajectory becomes the MIT-frame position target.}
+\label{fig:arch-fourier}
+\end{figure}
 
 The main motivation for introducing a Fourier-based gait generator was to address a limitation observed with direct position control.
 In the latter approach, the policy was free to specify the position of each joint independently at every control step.
@@ -192,6 +212,13 @@ Instead, the periodic trajectory provides the nominal locomotion pattern, while 
 \subsubsection{Explicit oscillator against the Fourier series}
 
 \label{sec:cpg-ab}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/fig_CPGOSCILLATORController.png}
+\caption{Explicit limit-cycle oscillator action space: a Hopf CPG per leg drives a measured foot-space inverse-kinematics lookup table, with the policy setting amplitude, frequency and phase offset plus a hip-roll reflex.}
+\label{fig:arch-oscillator}
+\end{figure}
 
 The Fourier parameterisation is one member of a larger family of structured gait representations.
 Another canonical representation is an explicit limit-cycle oscillator, as used in the CPG literature~\cite{ijspeert2008,cpgrl2022}.
@@ -242,7 +269,7 @@ A ride-height rail and the measured inverse-kinematics lookup table make this si
 Balance is therefore learned last rather than being required from the beginning.
 This is a form of curriculum over plant controllability rather than over the command or terrain as it was done in some papers.
 
-\subsubsection{Progression must be gated, not scheduled}
+\subsubsection{Progression gate}
 
 The first versions of the curriculum used fixed, clock-driven progression.
 This caused the curriculum to release a new degree of freedom before the policy had learned the previous problem.

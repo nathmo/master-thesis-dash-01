@@ -476,7 +476,7 @@ Flight-phase closure (any gait)       & \textbf{6.2\,m/s} & -- & vertical-impuls
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\linewidth]{Figures/rail_sweep_extent.png}
+\includegraphics[width=0.85\linewidth]{Figures/rail_sweep_extent.png}
 \caption{Workspace of the leg used to infer an optimistic upper bound on the running speed.}
 \label{fig:speed-ceiling}
 \end{figure}
@@ -505,7 +505,7 @@ proportions a design lever that is presented in \cref{sec:discussion}.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\linewidth]{Figures/fig_force_map.png}
+\includegraphics[width=0.8\linewidth]{Figures/fig_force_map.png}
 \caption{Static toe-force capability over the measured workspace: maximum vertical force $F_z$
 (left) and horizontal force $F_x$ (right), in body weights, clipped at 3.5\,BW. The vertical map
 feeds the flight-phase impulse bound.}
@@ -515,15 +515,24 @@ feeds the flight-phase impulse bound.}
 \subsubsection{Sensitivity of the bound to the design parameters}
 \label{sec:speed-sensitivity}
 
-The latency-included rail model also gives the sensitivity of the bound to the design.
-Four parameters were each scaled by $\pm30\,\%$ with everything else nominal: leg mass, rotor
+The rail model also gives the sensitivity of the bound to the design.
+Four parameters were each scaled by $\pm50\,\%$ with everything else nominal: leg mass, rotor
 inertia, deliverable peak torque and bus voltage (through the no-load speed).
-Peak torque is the strongest lever: 30\,\% more raises the bound by about 1\,m/s.
-Leg mass is second: 30\,\% less raises the bound by about 0.7\,m/s.
-Rotor inertia is nearly flat, and 30\,\% more bus voltage gains nothing, because the bound does not
+Peak torque is the strongest lever: 50\,\% more raises the bound by about 1\,m/s.
+Leg mass is second: 50\,\% less raises the bound by about 0.7\,m/s.
+Rotor inertia is nearly flat, and 50\,\% more bus voltage gains nothing, because the bound does not
 sit on the no-load-speed ceiling at this operating point.
 Leg length was not simulated due to lack of time as it implies updating the URDF, but it is assumed that a longer leg would help increase the stride length.
 The levers for a faster robot are therefore deliverable torque and leg mass.
 Leg length is also likely a significant lever but its impact and direction are unknown.
 \Cref{sec:discussion} ranks the mechanical changes that follow from them, and \cref{sec:rl} trains
 its policies against the plant measured in this chapter.
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{Figures/bound_sensitivity_bars.png}
+  \caption{Sensitivity of the speed-ceiling estimates to $+50\,\%$ design changes, one
+  parameter at a time.}
+  \label{fig:bound-sensitivity}
+\end{figure}
