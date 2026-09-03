@@ -11,14 +11,13 @@
     \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
 
     \textsc{\LARGE École Polytechnique Fédérale de Lausanne}\\[0.5cm]
-    \includegraphics[width=5cm]{Figures/epfl_red.png}\\[0.5cm]
-    \LARGE{\textsc{Robotique, 2025-26}}\\[0.5cm]
+    \includegraphics[width=5cm]{Figures/epfl_red.png}\hfill\includegraphics[trim=80 441 78 443, clip, width=5cm]{Figures/LABlogo.png}\\[0.5cm]
+    \LARGE{\textsc{Robotic Section, 2025-26}}\\[0.5cm]
     \huge{\textbf{Master thesis}}
 
     \HRule \\[0.4cm]
     {\huge \bfseries DASH-01:\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
     \HRule \\[0.5cm]
-    \includegraphics[trim=80 441 78 443, clip, width=5cm]{Figures/LABlogo.png}\\[0.3cm]
     \LARGE{\text{13.04.2026 - 04.09.2026}}\\[0.5cm]
 
     \vspace{5mm}
@@ -52,8 +51,7 @@ The work follows the complete path from the robot model to a deployable controll
 
 Several reinforcement-learning formulations were then investigated. Direct torque control did not converge within the available training budget and was initially rejected because of an assumed communication-bandwidth limitation. Per-step position control converged to several non-locomotive solutions, including skating. The action space was consequently structured around a periodic gait generator. Fourier-series and explicit oscillator representations were compared, together with impedance parameters and fast balance reflexes. A curriculum progressively released the robot's base degrees of freedom, allowing locomotion to be learned before full-body balance was required.
 
-The experiments show that the formulation of the learning problem was at least as important as the choice of learning algorithm. In particular, reward maximisation could produce apparently successful policies that exploited the simulation rather than running, while external balance assistance could produce policies dependent on the assistance. The final curriculum reached sustained running in simulation, with the best policies reaching approximately 3\,m/s. The main remaining limitation was the transition to a fully free pitch and roll plant, where the learned controllers encountered a stability wall associated with both the policy and the physical geometry of the leg.
-
+The experiments show that the formulation of the learning problem was at least as important as the choice of learning algorithm. In particular, reward maximisation could produce apparently successful policies that exploited the simulation rather than running, while external balance assistance could produce policies dependent on the assistance. The final curriculum reached sustained running in simulation, with the best policies reaching approximately 3\,m/s.
 The resulting framework provides a measured and deployable RL pipeline for high-speed bipedal locomotion, together with an experimentally grounded estimate of the remaining gap between the current robot and its physical speed limit. The results indicate that further progress is likely to require changes to the mechanical plant and actuator capability rather than simply increasing the reinforcement-learning budget.
 
 \vspace{1.5em}
