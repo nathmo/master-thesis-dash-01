@@ -98,9 +98,7 @@ Major robotic actuator manufacturers' websites were scraped for datasheets and a
 The database content was then manually checked to ensure the LLM produce the expected result.
 The resulting database holds 140 entries across 11 suppliers, listed in \cref{tab:manufacturers}.
 
-\begin{figure}[htbp]
-\centering
-\begin{minipage}[c]{0.35\textwidth}
+\begin{table}[htbp]
 \centering
 \begin{tabular}{lr}
 \toprule
@@ -121,15 +119,15 @@ mjbots        & 1  \\
 Total         & 140 \\
 \bottomrule
 \end{tabular}
-\captionof{table}{Actuator manufacturers represented in the database}
+\caption{Actuator manufacturers represented in the database}
 \label{tab:manufacturers}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.60\textwidth}
+\end{table}
+
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{Figures/ScreenshotActuatorMap.png}
-\captionof{figure}{Excerpt of the dashboard, showing the actuator database used to select the drive.}
+\includegraphics[width=0.95\textwidth]{Figures/ScreenshotActuatorMap.png}
+\caption{Excerpt of the dashboard, showing the actuator database used to select the drive.}
 \label{fig:motormap}
-\end{minipage}
 \end{figure}
 
 The database was compiled into an interactive dashboard, \emph{motormap} \cite{morand2026motormap}, built from the \texttt{actuatorReview} code \cite{morand2026actuatorreview}.
@@ -152,9 +150,7 @@ The manufacturer states the internal resistance below 10\,m$\Omega$ per cell, wh
 At the rated 360\,A peak, the voltage drop would reach 23\,V.
 At the 160\,A working peak of the motor budget, the drop is about 10\,V, which the BMS low-voltage protection tolerates on a full charge.
 Due to the lack of voltage feedback on the drives, this figure has not been verified on the real robot.
-\begin{figure}[H]
-\centering
-\begin{minipage}[c]{0.45\textwidth}
+\begin{table}[htbp]
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
@@ -173,15 +169,15 @@ Due to the lack of voltage feedback on the drives, this figure has not been veri
         Energy density & 133.7\,Wh/kg \\
         \bottomrule
     \end{tabular}
-\captionof{table}{Specification of the selected 13S2P battery pack.}
+\caption{Specification of the selected 13S2P battery pack.}
 \label{tab:battery-spec}
-\end{minipage}\hfill
-\begin{minipage}[c]{0.50\textwidth}
+\end{table}
+
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{Figures/cellDashboard.png}
-\captionof{figure}{Excerpt of the dashboard, showing the cell database used to select the pack.}
+\includegraphics[width=0.95\textwidth]{Figures/cellDashboard.png}
+\caption{Excerpt of the dashboard, showing the cell database used to select the pack.}
 \label{fig:celldashboard}
-\end{minipage}
 \end{figure}
 
 
@@ -338,15 +334,14 @@ These results were reused in the RL curriculum to make the policy robust to the 
 400\,Hz & 2.504\,ms & 0.193\,ms & 3.24\,ms & 5.13\,ms & 73\,\% \\
 \bottomrule
 \end{tabular}
-\caption{Measured closed-loop timing on the robot's Raspberry Pi 3B, with the web interface
-competing for CPU. One tick drains both CAN buses, runs the inference of the policy and writes all the motor commands.}
+\caption{Measured closed-loop timing on the robot's Raspberry Pi 3B, with the web interface competing for CPU.
+One tick drains both CAN buses, runs a dummy inference of the policy and writes all the motor commands.}
 \label{tab:loop-timing}
 \end{table}
 
-At 50\,Hz the mean period overshoots its 20\,ms target and the jitter is an order of magnitude
-above the faster rates. The likely cause is the non-real-time scheduler, which wakes the loop late
-after the longer sleeps.
-
+At 50\,Hz the mean period overshoots its 20\,ms target and the jitter is an order of magnitude above the faster rates.
+The likely cause is the non-real-time scheduler, which wakes the loop late after the longer sleeps.
+The dummy inferences was later found to be too optimistic as the real policy inference was later shown to require to lower the frequency to 100\,Hz to run reliably on the Pi 3B.
 \subsubsection{Actuator thermal characterisation}
 
 The actuator thermal response was not measured due to lack of time. The thermal lumped model parameters were estimated roughly from the mass of the actuator but not used in the simulation.
@@ -516,10 +511,10 @@ feeds the flight-phase impulse bound.}
 \label{sec:speed-sensitivity}
 
 The rail model also gives the sensitivity of the bound to the design.
-Four parameters were each scaled by $\pm50\,\%$ with everything else nominal: leg mass, rotor
+Four parameters were each scaled by $+50\,\%$ with everything else nominal: leg mass, rotor
 inertia, deliverable peak torque and bus voltage (through the no-load speed).
-Peak torque is the strongest lever: 50\,\% more raises the bound by about 1\,m/s.
-Leg mass is second: 50\,\% less raises the bound by about 0.7\,m/s.
+Peak torque is the strongest lever: 50\,\% more raises the bound by about 1\,m/s in the worst case and 4 m\,m/s in the best one.
+Leg mass is second: 50\,\% more lower the bound by about 2\,m/s.
 Rotor inertia is nearly flat, and 50\,\% more bus voltage gains nothing, because the bound does not
 sit on the no-load-speed ceiling at this operating point.
 Leg length was not simulated due to lack of time as it implies updating the URDF, but it is assumed that a longer leg would help increase the stride length.
