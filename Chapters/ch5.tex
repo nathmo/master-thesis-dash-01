@@ -1,18 +1,16 @@
 \section{Results}
 \label{sec:results}
 
-This section is a recap of what this thesis achieved along with the result to characterise the deliverable.
+This section is a recap of what this thesis achieved along with the results that characterise the deliverable.
 
 \subsection{Hardware delivered}
 
-Firstly, this thesis was quite involved in term of hardware and altough the mechanical design was aldready done and provided, a lot of work was required to bring it from a state of expensive paper weight to a robot that could be controlled.
-The platform is a biped weighed at 15\,kg.
+Firstly, this thesis was quite involved in terms of hardware and although the mechanical design was already done and provided, a lot of work was required to bring it from a state of expensive paperweight to a robot that could be controlled.
+The platform is a biped weighing 15\,kg.
 It carries four AKE90-8 QDD actuators (\cref{tab:motors}) and two AK60-39 for the hip roll.
 Its 13S2P pack holds 468\,Wh and is rated 100\,A continuous and 360\,A for 2\,s (\cref{sec:hw-battery}).
-A Raspberry Pi 3B run the control loop at 200\,Hz on a stock Linux.
-The platform can be backdriven and playback a recorded gait along with running the inference for a given policy.
 Low-level and policy control are executed on a Raspberry Pi 3B.
-On the stock Linux installation, the control stack sustains a 200,Hz control loop.
+On the stock Linux installation, the control stack sustains a 200\,Hz control loop.
 The completed system supports actuator calibration, backdriving, recording and playback of joint trajectories, and execution of learned policies.
 A safety layer and black-box recorder were integrated into the control stack, and the principal operational functions are exposed through a web interface.
 Consequently, a new user can calibrate, enable, backdrive, replay trajectories, and run a policy without modifying or directly interacting with the control code.
@@ -22,7 +20,7 @@ The identification campaign established the quantities subsequently used to defi
 These measurements also form part of the thesis results.
 \subsection{Running speed ceiling estimation}
 The physical running-speed ceiling of the platform was estimated independently of reinforcement learning in \cref{sec:speed-ceiling}.
-The analysis places the maximum attainable speed at approximately 6,m/s.
+The analysis places the maximum attainable speed at approximately 6\,m/s.
 
 This bound was obtained through two independent arguments.
 The first combines the available leg workspace with actuator torque and system latency to determine the achievable stance dynamics.
@@ -32,24 +30,24 @@ Despite approaching the problem from different directions, the two estimates con
 The estimated ceiling depends primarily on the usable leg workspace, the impulse that the actuators can deliver, and the distribution of mass within the leg.
 The associated sensitivity analysis further shows that actuator torque capability and distal leg mass are the dominant design levers, whereas increasing the supply voltage alone provides comparatively little improvement.
 
-The 6,m/s estimate provides the reference and very optimistic upper ceiling against which the learned controller can be evaluated.
+The 6\,m/s estimate provides the reference and very optimistic upper ceiling against which the learned controller can be evaluated.
 
 \subsection{The runner}
 
-Using the measured plant model with MIT-mode actuation, a single cold training run with the sprint objective produced a controller that successfully completed the simulated 100,m dash in all 16 greedy evaluation episodes.
-The mean completion time was 32.5,s, corresponding to an average forward speed of 3.07,m/s.
+Using the measured plant model with MIT-mode actuation, a single cold training run with the sprint objective produced a controller that successfully completed the simulated 100\,m dash in all 16 greedy evaluation episodes.
+The mean completion time was 32.5\,s, corresponding to an average forward speed of 3.07\,m/s.
 
 \subsection{Legality of the gait against the measured envelope}
 
 The learned runner was subsequently audited against the experimentally measured hardware limits established in \cref{sec:robot}.
 This test replays greedy evaluation trajectories and checks the commanded motion at each control step against the measured actuator constraints, including torque, torque--speed capability, joint velocity, and thermal loading.
-The commanded torque remains within the permitted torque and torque--speed envelope for approximately 99.9,\% of the evaluated control steps.
+The commanded torque remains within the permitted torque and torque--speed envelope for approximately 99.9\,\% of the evaluated control steps.
 In this respect, the learned policy operates almost entirely inside the measured instantaneous actuation capability of the robot.
-The commanded current stay at the limit of the allowered thermal limits.
+The commanded current stays at the allowed thermal limit.
 
-The audit nevertheless exposes one important violations.
+The audit nevertheless exposes one important violation.
 First, the swing-leg joint velocity reaches approximately twice the measured no-load actuator speed.
-Such motion is physically unattainable and therefore identifies a bug in the form of a missing velocity constraint in the simulation model that need to be patched.
+Such motion is physically unattainable and therefore identifies a bug in the form of a missing velocity constraint in the simulation model that needs to be patched.
 
 \subsection{Robustness margins}
 
@@ -58,20 +56,20 @@ The tested perturbations included changes in robot mass, additional actuation de
 
 The mass-scaling experiments indicate that the learned runner possesses appreciable control authority only when the effective plant mass is at or below the nominal training value.
 Performance degrades rapidly as the mass is increased above nominal, indicating limited force margin in the learned solution.
-Similarly, the policy was very sensitive to additional actuation delay than what is what trained against.
-This can likely be explained by the fact that error compound rapidly and while at a given time, the control action might have been stable, at t+1, the control action might alodready be much bigger. Since the policy was tasked with maximizing speed, it's using all its control authority for this task and have not more than what was needed in simulation to recover from disturbance.
+Similarly, the policy was very sensitive to actuation delay larger than what it was trained against.
+This can likely be explained by the fact that errors compound rapidly: while the control action might have been stable at a given time, at t+1 the control action might already be much bigger. Since the policy was tasked with maximising speed, it uses all its control authority for this task and has no more than what was needed in simulation to recover from disturbances.
 
-This is the expected behavious since the policy robustennes is set at training by changing the noise distribution in the parameters it need to be robust against.
+This is the expected behaviour since the policy robustness is set at training by changing the noise distribution in the parameters it needs to be robust against.
 
 \subsection{Deployment readiness}
 
 Several components required for hardware deployment were verified end-to-end.
-The trained neural-network policy can be exported to run on the raspberry pi CPU in less than 10ms.
+The trained neural-network policy can be exported to run on the Raspberry Pi CPU in less than 10\,ms.
 The deployment stack also includes the hardware safety governor and black-box logging system described above.
-At the platform level, the Raspberry Pi 3B sustains the 200,Hz low-level control tick with the measured control workload.
-The complete learned runner was, however, not demonstrated as a 100,m hardware sprint within the scope of the thesis.
+At the platform level, the Raspberry Pi 3B sustains the 200\,Hz low-level control tick with the measured control workload.
+The complete learned runner was, however, not demonstrated as a 100\,m hardware sprint within the scope of the thesis.
 The principal computational limitation is policy inference on the Raspberry Pi 3B, whose execution time is slightly above the available per-step budget when combined with the remainder of the control stack.
-Two practical routes remain: upgrading the onboard computer, or retraining and validating the controller for a lower control frequency, such as 100,Hz.
+Two practical routes remain: upgrading the onboard computer, or retraining and validating the controller for a lower control frequency, such as 100\,Hz.
 Neither could be completed and experimentally validated before submission.
 
-Accordingly, the final deliverable is an operational and experimentally characterised bipedal platform, together with a complete learning and deployment pipeline and a simulated running controller that reaches 3.07,m/s.
+Accordingly, the final deliverable is an operational and experimentally characterised bipedal platform, together with a complete learning and deployment pipeline and a simulated running controller that reaches 3.07\,m/s.

@@ -16,10 +16,10 @@
     \huge{\textbf{Master thesis}}
 
     \HRule \\[0.4cm]
-    {\huge \bfseries DASH-01 :\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
+    {\huge \bfseries DASH-01:\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
     \HRule \\[0.5cm]
     \includegraphics[trim=80 441 78 443, clip, width=5cm]{Figures/LABlogo.png}\\[0.3cm]
-    \LARGE{\text{13.04.2025 - 04.09.2025}}\\[0.5cm]
+    \LARGE{\text{13.04.2026 - 04.09.2026}}\\[0.5cm]
 
     \vspace{5mm}
     %\includegraphics[scale=0.6]{images/pageDeGarde.png}\\
@@ -32,21 +32,21 @@
     \end{minipage}
     \hfill
     \begin{minipage}{2.1in} \Large
-    \textbf{Supervisors:}\\
-    Dr. Mohamed \textsc{Bouri} \\
+    \textbf{Supervisor:}\\
+    Dr. Mohamed \textsc{Bouri}
     \end{minipage}
 \end{center}
 %%%
 
 %%% ABSTRACT, PROJECT ASSIGNMENT
 { % create local environment
-\fancyhead[R]{\textsc{PROJECT ASSIGNMENT, ABSTRACT}}
+\fancyhead[R]{\textsc{ABSTRACT}}
 
 \newpage
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This thesis investigates the use of reinforcement learning to develop a high-speed running controller for DASH-01, a 15\,kg bipedal robot designed for high-speed locomotion. The objective was to determine how far reinforcement learning could push the running speed of a small, lightweight biped while accounting for the limitations of the physical platform.
+This thesis investigates the use of reinforcement learning to develop a high-speed running controller for DASH-01, a 15\,kg bipedal robot designed for fast locomotion. The objective was to determine how far reinforcement learning could push the running speed of a small, lightweight biped while accounting for the limitations of the physical platform.
 
 The work follows the complete path from the robot model to a deployable controller. The robot was reconstructed in MuJoCo from the mechanical design, and the actuator, sensing and communication interfaces were characterised experimentally. These measurements were used to correct the simulation and to establish a first-principles upper bound on the achievable running speed. Under the measured kinematic, inertial and actuator constraints, this bound was estimated at approximately 6\,m/s.
 
@@ -55,6 +55,11 @@ Several reinforcement-learning formulations were then investigated. Direct torqu
 The experiments show that the formulation of the learning problem was at least as important as the choice of learning algorithm. In particular, reward maximisation could produce apparently successful policies that exploited the simulation rather than running, while external balance assistance could produce policies dependent on the assistance. The final curriculum reached sustained running in simulation, with the best policies reaching approximately 3\,m/s. The main remaining limitation was the transition to a fully free pitch and roll plant, where the learned controllers encountered a stability wall associated with both the policy and the physical geometry of the leg.
 
 The resulting framework provides a measured and deployable RL pipeline for high-speed bipedal locomotion, together with an experimentally grounded estimate of the remaining gap between the current robot and its physical speed limit. The results indicate that further progress is likely to require changes to the mechanical plant and actuator capability rather than simply increasing the reinforcement-learning budget.
+
+\vspace{1.5em}
+\paragraph*{Use of artificial intelligence.}
+Generative AI tools were used during the preparation of this thesis, to revise and improve the wording of the document and to assist with the development of the supporting code.
+All technical content, measurements, analyses and conclusions were produced and verified by the author, who takes full responsibility for the content of this thesis.
 
 \newpage
 }

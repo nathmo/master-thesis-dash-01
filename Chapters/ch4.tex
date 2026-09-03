@@ -24,11 +24,11 @@ Since the objective of this thesis is maximum running speed rather than general 
 
 The learning algorithm was held fixed at PPO~\cite{schulman2017ppo} from Stable-Baselines3, with an actor--critic MLP running on CPU-parallel MuJoCo environments.
 Episodes are capped at 60\,s. The control rate is 200\,Hz, which \Cref{sec:plant-id-timing} establishes as both the sensing ceiling and the maximum deployable rate.
-Later experiments showed it to be borderline for the final controller and the frequency need to be brought back down to 100Hz as the final policy inference via the web interface with the safety layer proved a bit too slow for the 200Hz control loop on the Raspberry Pi 3B. The final policy therefore needs to be retrained to run at 100Hz.
-The computational budget was large but finite and whithin what can be seen in the litterature.
+Later experiments showed it to be borderline for the final controller and the frequency needs to be brought back down to 100\,Hz as the final policy inference via the web interface with the safety layer proved a bit too slow for the 200\,Hz control loop on the Raspberry Pi 3B. The final policy therefore needs to be retrained to run at 100\,Hz.
+The computational budget was large but finite and within what can be seen in the literature.
 A milestone corresponds to approximately 600\,M environment steps and a multi-day cluster job.
-The thesis as a whole used approximately 15\,G environment steps, with an estimated 75 Kg of CO2eq emissions from the cluster usage.
-To help put that into perspective, the author exhaled 150 kg of CO2eq during the period of this thesis from respiration or a simple way airplane trip from Geneva to Barcelona.
+The thesis as a whole used approximately 15\,G environment steps, with an estimated 75\,kg of CO2eq emissions from the cluster usage.
+To help put that into perspective, the author exhaled 150\,kg of CO2eq during the period of this thesis from respiration, or a one-way airplane trip from Geneva to Barcelona.
 
 \subsection{The toy problem}
 
@@ -43,11 +43,11 @@ It contains the motor position in turns, velocity in turns per second and torque
 The observation normalisation statistics used during training are exported as part of the ONNX graph rather than being reconstructed separately on the embedded system.
 The resulting policy runs on a beaglebone black using \texttt{onnxruntime}.
 The control loop closes over CAN at 50\,Hz.
-This experiment therefore tested the software and it's author to help prepare for the full robot before committing the computational and experimental budget.
+This experiment therefore tested the software and its author to help prepare for the full robot before committing the computational and experimental budget.
 
 \subsection{Observation space}
 
-The policy can sees only measurements that can be produced by the hardware.
+The policy can see only measurements that can be produced by the hardware.
 The observation contains the joint position, joint velocity and joint torque, the IMU gravity direction and angular velocity, the commanded motion and the previous N actions and state.
 
 The observations are expressed in physical units and passed through fixed normalisers.
@@ -63,7 +63,7 @@ These privileged quantities are therefore used to improve value estimation but a
 
 The reward was built around forward progress rather than an alive bonus.
 A dense forward-progress term rewards the robot for moving towards the end of the track, while a per-step time cost makes standing still increasingly expensive.
-This distinction became important during training because an alive bonus rewards the robot for remaining upright even when it has stopped, which the policy learned to game when a joystick driven attempt was made.
+This distinction became important during training because an alive bonus rewards the robot for remaining upright even when it has stopped, which the policy learned to game when a joystick-driven attempt was made.
 For a sprint task this is undesirable: a controller that stands indefinitely can obtain a positive reward without solving the actual task.
 The time cost instead makes a stationary solution progressively less attractive.
 
@@ -77,7 +77,7 @@ The fall penalty was changed when the robot learned to exploit belly-flopping, t
 
 This was preferable to repeatedly changing the relative weight of all reward terms.
 Each additional term was intended to prevent a specific mechanism that had been observed on the robot or in simulation.
-Action-rate penalties where introduced to limit rapid changes in the command sent to the actuator.
+Action-rate penalties were introduced to limit rapid changes in the command sent to the actuator.
 Gait-specification-rate penalties limit rapid changes in the parameters of the gait generator.
 Torque and energy terms discourage solutions that use unnecessarily large actuator effort.
 These terms therefore do not only regularise the policy numerically; they also constrain behaviours that would be undesirable on the physical robot.
@@ -87,7 +87,7 @@ These terms therefore do not only regularise the policy numerically; they also c
 Training-time episode length is not used directly as the final performance metric.
 During exploration, the policy contains a non-zero action distribution, and a long episode can therefore result partly from the injected exploration noise.
 The results are obtained from greedy evaluations, in which the exploration noise is disabled and the policy deterministically executes its preferred action at each timestep.
-This measures the behaviour that the learned policy will produces once deployed, rather than its behaviour under exploration noise.
+This measures the behaviour that the learned policy will produce once deployed, rather than its behaviour under exploration noise.
 
 The experiments also showed that performance is not well described by a single mean over a small number of seeds.
 Runs were frequently bimodal: a seed either discovered a useful gait or remained in a non-locomotive behaviour for a large part of the available budget.
@@ -105,20 +105,19 @@ Each one was tried to solve a problem and introduced a different limitation.
 
 \label{sec:rl-torque}
 
-ADD ARCHITECTURE SCREENSHOT
+% TODO: add architecture figure for this action space
 
 The first framework commanded joint torque directly on a simplified biped, because the robot was still being designed. It was abandoned for two different reasons: the training did not converge, and the assumed hardware interface was not considered deployable at the required rate.
 
-As written earlier, the training did not converge after many attempt at shaping the reward function.
+As written earlier, the training did not converge after many attempts at shaping the reward function.
 The fall penalty rose because the robot learned to belly-flop.
 The alive bonus changed because it learned to dawdle.
 The feet-air-time thresholds were retuned because it learned to vibrate in place.
 
-The underlying difficulty is that a raw torque action space requires the policy to synthesise two separate behaviours simultaneously ;
-It has to generate the gravity compensation required to keep the robot upright, while also discovering the periodic structure required for locomotion.
+The underlying difficulty is that a raw torque action space requires the policy to synthesise two separate behaviours simultaneously: it has to generate the gravity compensation required to keep the robot upright, while also discovering the periodic structure required for locomotion.
 Between these behaviours, the reward landscape contains many ways of falling over that can nevertheless produce a temporarily favourable reward.
 
-The second problem was the assumed deployment path ;
+The second problem was the assumed deployment path.
 Direct torque control bypasses the drive's internal position or impedance loop and requires current or torque commands to be streamed over CAN.
 A simple PID loop was tested over the CAN bus as a practical check.
 As expected, the leg could track slow points, but became increasingly jittery when the desired trajectory was played faster.
@@ -126,31 +125,31 @@ As expected, the leg could track slow points, but became increasingly jittery wh
 \subsubsection{Joint position targets}
 \label{sec:rl-position}
 
-ADD ARCHITECTURE SCREENSHOT
+% TODO: add architecture figure for this action space
 
-The policy was now expected to ouput six position targets for it's action vector, one for each actuated joint.
+The policy was now expected to output six position targets for its action vector, one for each actuated joint.
 In simulation these commands drive MuJoCo position actuators with gains and force ranges derived from the actuator specifications.
 On the physical robot the action maps directly to the position targets accepted by the drives.
 Two hardware implementations were considered.
 A smart-servo type interface provides its own internal position loop, while the MIT interface exposes position, stiffness and damping parameters.
 Measurements in \Cref{sec:plant-id} showed a large bandwidth difference between these interfaces.
-And the PID loop that are cascaded in the motor driver are not known which make this approach a liability when it come to sim2real gap.
+The PID loops that are cascaded in the drive are not known, which makes this approach a liability when it comes to the sim2real gap.
 The MIT mode consequently became the relevant interface for the final experiments.
 Furthermore, in one experiment the robot learned to skate while the reward curve continued to improve.
-This taught the author that that episode reward alone was insufficient to infer the success of a policy for locomotion.
-More reward shapping was attempted to penalize this behaviour with limited success.
+This taught the author that the episode reward alone was insufficient to infer the success of a policy for locomotion.
+More reward shaping was attempted to penalise this behaviour with limited success.
 
 \subsubsection{Impedance with static gains}
 
 \label{sec:rl-impedance}
 
-ADD ARCHITECTURE SCREENSHOT
+% TODO: add architecture figure for this action space
 
-After a significant ammount of time spent to understand how to send command to the CubeMars drives in impedance mode to avoid the actuator bandwith issue in servo mode, the action space was extended to include stiffness and damping.
+After a significant amount of time spent to understand how to send commands to the CubeMars drives in impedance mode to avoid the actuator bandwidth issue in servo mode, the action space was extended to include stiffness and damping.
 
 The MIT command frame exposes $k_p$ and $k_d$, so the position target becomes an impedance command.
 With fixed values, the policy can move the target position while the actuator controller provides the corresponding compliance.
-This raised the actuator bandwith by an order of magniture but it would not solve the previous issue where the policy was not having a still reward farming and not running.
+This raised the actuator bandwidth by an order of magnitude but it would not solve the previous issue where the policy was still reward farming and not running.
 The limitation is that fixed gains impose the same compliance during all phases of the gait.
 A stiffness that is useful during stance is not necessarily appropriate during swing or at foot impact.
 The next step was therefore to make compliance part of the gait specification rather than treating it as a constant actuator setting.
@@ -160,14 +159,14 @@ This approach was therefore not attempted further and no policy was trained for 
 
 \label{sec:rl-cpg}
 
-ADD ARCHITECTURE SCREENSHOT
+% TODO: add architecture figure for this action space
 
 The main motivation for introducing a Fourier-based gait generator was to address a limitation observed with direct position control.
 In the latter approach, the policy was free to specify the position of each joint independently at every control step.
 This provided a large space in which the policy could exploit unintended behaviours, including repeated reward-gaming strategies observed during training.
 Rather than requiring the policy to discover the periodic structure of locomotion from scratch, the gait generator was therefore introduced to explicitly impose this structure while retaining enough freedom to adapt the gait.
 The policy no longer specifies every joint position independently, but instead controls a lower-dimensional Fourier representation of the gait.
-Once the compliance mode was unlocked, it was also natural to extend this parameterization to the stiffness and damping.
+Once the compliance mode was unlocked, it was also natural to extend this parameterisation to the stiffness and damping.
 Since the required compliance can reasonably be expected to depend on the phase of the gait, these parameters were represented using the same principle as the joint trajectories.
 The resulting generator therefore describes not only where the joints should move, but also how strongly they should track the generated trajectory throughout the gait cycle.
 This allows, for example, different compliance characteristics during impact and push-off.
@@ -181,9 +180,9 @@ This behaviour suggests that the two legs could not be adequately described by a
 
 Despite this behaviour, the Fourier generator produced a working policy.
 Although the Fourier coefficients were updated continuously at each policy step, the resulting gait remained approximately periodic, with the generated trajectories varying by only a few percent over successive cycles.
-With all degrees of freedom released, the policy achieved stable running at speeds of up to approximately $3,\mathrm{m/s}$.
+With all degrees of freedom released, the policy achieved stable running at speeds of up to approximately $3\,\mathrm{m/s}$.
 This observation motivated a further experiment to determine whether the learned gait itself was stable, independently of the policy's continuous corrections.
-Static Fourier coefficients found to emulate the gait cycle that the policy was commanding.
+Static Fourier coefficients were found to emulate the gait cycle that the policy was commanding.
 The robot was then commanded using only this fixed Fourier gait, without allowing the policy to modify the coefficients during execution.
 The robot was able to reach approximately the same running speed, but lost balance after only a few steps.
 The resulting behaviour demonstrates that the learned Fourier trajectory does not constitute a dynamically stable open-loop gait.
@@ -204,7 +203,7 @@ Building the oscillator arm required a foot-space formulation and a measured inv
 Constructing this table exposed several properties of the mechanism that were not obvious from the CAD model.
 From the stance pose, both the cam and the thigh move the toe predominantly in the fore--aft direction.
 In addition, either sign of the cam motion shortens the nearly straight leg.
-The four-bar also contains a folded solution branch that must be filtered from the inverse-kinematics lookup table.
+The 4-bar also contains a folded solution branch that must be filtered from the inverse-kinematics lookup table.
 The inversion has to preserve continuity between neighbouring cells; otherwise it can switch branches during the swing.
 Finally, the reachable vertical foot displacement at mid-stride is only approximately 8\,cm because the leg is close to its straight configuration.
 The comparison is an overall tie.
@@ -219,8 +218,8 @@ The limitation appeared at m5, when roll was released.
 The oscillator reached an episode length of 337 control steps, compared with 3213 for the Fourier ladder at the matched budget.
 The plateau was confirmed after increasing the budget by a factor of 2.5.
 Both generators use the same three-parameter roll reflex, so the difference is attributed to the gait-generator part of the controller rather than the lateral reflex.
-The Fourier generator was nevertheless kept as it more toroughly tested and better understood by the author.
-The result suggests that the structured action-space family is appropriate and thus the fourier formulation is not the only optimal one.
+The Fourier generator was nevertheless kept as it was more thoroughly tested and better understood by the author.
+The result suggests that the structured action-space family is appropriate and thus the Fourier formulation is not the only optimal one.
 
 \subsection{Curriculum design}
 
@@ -233,7 +232,7 @@ The second major design variable was therefore the difficulty of the simulated p
 
 The curriculum consists of six milestones, m1--m6.
 The base degrees of freedom are progressively released using equality constraints.
-The first milestone constrains the robot to a forward/backward rail, the following free the vertical dimmension to let the policy learn to support the weight of the robot.
+The first milestone constrains the robot to a forward/backward rail, the following milestones free the vertical dimension to let the policy learn to support the weight of the robot.
 Subsequent milestones release pitch and yaw before reaching the fully free plant.
 
 The purpose is to postpone the hardest balance problem until a basic locomotion pattern has already been learned.
@@ -263,11 +262,11 @@ Exploration is allowed to remain high while the policy is improving, but it cann
 
 This change also closed the difference between stochastic and greedy evaluation observed in the earlier experiments.
 
-\subsubsection{Domain randomization from the measured plant}
+\subsubsection{Domain randomisation from the measured plant}
 
 The domain randomisation ranges are inherited from the measurements in \Cref{sec:robot}, including the mass-equivalent inertia uncertainty, timing jitter and actuation delay.
 
-The purpose of domain randomization here is therefore robustness over a distribution of measured plants.
+The purpose of domain randomisation here is therefore robustness over a distribution of measured plants.
 
 \subsection{The pitch wall}
 
@@ -294,7 +293,7 @@ A pitch-reflex prior also helped.
 An angular-momentum reward term produced another improvement, and rejuvenating the warm-started policy avoided some previously converged but unproductive states.
 None of these modifications produced sustained running.
 
-The final resolution came by reverting the policy from a joystick controller to a "run as fast as possible" one.
+The final resolution came by reverting the policy from a joystick controller to a ``run as fast as possible'' one.
 The earlier command-tracking objectives rewarded the policy for satisfying a motion target while remaining upright.
 Such an objective can be satisfied by standing or creeping when the commanded motion becomes difficult.
 The sprint objective instead makes standing unprofitable because progress is continuously rewarded and time is penalised.

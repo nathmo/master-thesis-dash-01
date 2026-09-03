@@ -20,13 +20,13 @@ In the context of this thesis, \textbf{failure} refers to the termination of an 
 
 \textbf{Stability margin}, in the context of Reinforcement Learning, is not necessarily expressed as a classical analytical stability margin. In this thesis, robustness is instead assessed through quantities such as the number of surviving episodes and the variance across random seeds.
 
-\textbf{Plant}, borrowed from control theory, refers to the physical system to be controlled, in this case the robot.
+\textbf{Plant}, borrowed from control theory, refers to the model of the system to be controlled, in this case the model of the robot used for training and analysis. The word robot is reserved for the physical platform.
 
 \subsection{Abbreviations}
 
-\textbf{RL} : Reinforcement Learning
+\textbf{RL}: Reinforcement Learning
 
-\textbf{CoM} : Centre of Mass
+\textbf{CoM}: Centre of Mass
 
 \subsection{Bipedal locomotion approach}
 
@@ -113,9 +113,9 @@ In simulation, the policy can directly command joint torques at a high frequency
 
 On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimator to operate with sufficiently low latency.
 
-In the present hardware architecture, this approach was not practical through the CAN communication bus at the required frequency.
+In the present hardware architecture, this approach was assumed not to be practical through the CAN communication bus at the required frequency.
 
-\textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the motor controller.
+\textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the drive.
 
 Position targets passed to the joint controller are used by several learned locomotion approaches \cite{tan2018sim2real,rudin2021}.
 
@@ -223,4 +223,4 @@ The learned-locomotion results above share a hardware assumption: the platform o
 
 How much of this methodology survives on a low-cost plant, commanded through a position-servo interface of limited bandwidth, is not documented.
 
-This thesis explores that gap on DASH-01. \Cref{sec:robot} therefore starts by finishing and measuring the plant, so that the training and its results are judged against the machine as built rather than as designed.
+This thesis explores that gap on DASH-01. \Cref{sec:robot} therefore starts by finishing and measuring the plant, so that the training and its results are judged against the robot as built rather than as designed.

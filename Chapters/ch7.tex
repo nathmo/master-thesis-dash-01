@@ -14,7 +14,7 @@ Three principal outcomes were obtained.
 
 First, DASH-01 was brought from a partially completed mechanical platform to an operational robot.
 The resulting system supports actuator and IMU calibration, backdriving, trajectory recording and playback, policy execution, workspace enforcement, emergency stopping and black-box logging.
-The robot can be operated through a web interface without requiring the user to modify the control software to run new policy. :contentReference[oaicite:1]{index=1}
+The robot can be operated through a web interface without requiring the user to modify the control software to run a new policy.
 
 Second, the robot was experimentally characterised to obtain a measured plant and to verify the CAD data.
 The identification established the joint workspace, actuator torque constants and bandwidth, control-loop latency and jitter, IMU noise characteristics and segment masses.
@@ -32,7 +32,7 @@ Deployment therefore requires either more capable onboard compute or retraining 
 
 The simulated running result must also be interpreted with care.
 The gait audit showed that the torque commands remain almost entirely inside the measured torque--speed envelope, but the swing-leg velocity reaches approximately twice the measured actuator no-load speed.
-This motion is physically unattainable and reveals a missing velocity constraint in the training plant that need to be patched.
+This motion is physically unattainable and reveals a missing velocity constraint in the training plant that needs to be patched.
 In addition, the commanded current operates close to the assumed continuous thermal limit, while the actuator thermal model was not experimentally identified.
 
 More generally, the experiments showed that optimisation results cannot be interpreted from reward alone.
@@ -44,7 +44,7 @@ A central methodological conclusion is therefore that reinforcement learning is 
 \subsection{Future work}
 
 The next iteration of the project should begin with a morphology search informed by the measurements obtained in this thesis.
-The first priority is to redesign the four-bar linkage and leg dimensions jointly, with the objective of increasing the usable fore--aft workspace while reducing the strong force anisotropy of the current mechanism.
+The first priority is to redesign the 4-bar linkage and leg dimensions jointly, with the objective of increasing the usable fore--aft workspace while reducing the strong force anisotropy of the current mechanism.
 This offers the possibility of obtaining more propulsive capability from the actuators already installed before increasing actuator size.
 
 The second priority is to reduce distal leg mass where meaningful reductions remain possible.

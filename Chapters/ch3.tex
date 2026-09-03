@@ -94,7 +94,7 @@ through a spring (not rendered). The spring was later measured to be roughly an 
 \label{sec:hw-motor}
 
 A database to select the actuator was assembled.
-Major robotic actuator manufacturers website was scraped for datasheet and a large language model was used to parse each datasheet.
+Major robotic actuator manufacturers' websites were scraped for datasheets and a large language model was used to parse each datasheet.
 The resulting database holds 140 entries across 11 suppliers, listed in \cref{tab:manufacturers}.
 
 \begin{figure}[htbp]
@@ -133,7 +133,7 @@ Total         & 140 \\
 
 The database was compiled into an interactive dashboard, \emph{motormap} \cite{morand2026motormap}, built from the \texttt{actuatorReview} code \cite{morand2026actuatorreview}.
 The choice of the actuator itself is detailed in the master's thesis of M. Aebi \cite{aebi2025dash01}.
-The final motor choice was the CubeMars AK60-39 for the hip roll and the AKE90-8 for the cam and thigh.
+The final drive choice was the CubeMars AK60-39 for the hip roll and the AKE90-8 for the cam and thigh.
 The AKE90-8 is rated for up to 72\,A peak, while the AK60-39 is rated for 17\,A peak.
 
 \subsubsection{Battery choice}
@@ -150,7 +150,7 @@ A CAN interface is also available but was not used, due to lack of time.
 The manufacturer states the internal resistance below 10\,m$\Omega$ per cell, which gives about 65\,m$\Omega$ for the 13S2P pack.
 At the rated 360\,A peak, the voltage drop would reach 23\,V.
 At the 160\,A working peak of the motor budget, the drop is about 10\,V, which the BMS low-voltage protection tolerates on a full charge.
-Due to the lack of voltage feedback on the motor drivers, this figure has not been verified on the real robot.
+Due to the lack of voltage feedback on the drives, this figure has not been verified on the real robot.
 \begin{figure}[H]
 \centering
 \begin{minipage}[c]{0.45\textwidth}
@@ -218,7 +218,7 @@ bus.}
 
 
 \label{sec:compute-choice} The board is a \textbf{Raspberry Pi 3
-Model B}, running stock non-realtime Linux. It was chosen over the laboratory's usual BeagleBone
+Model B}, running stock non-real-time Linux. It was chosen over the laboratory's usual BeagleBone
 Black for its faster SSH sessions and its four cores, which let the control loop and the data
 processing run side by side.
 An \texttt{mcp251xfd} controller over SPI provides CAN as two independent 1\,Mbit buses, one per leg.
@@ -234,18 +234,18 @@ The IMU unit is an \textbf{ICM-20948} on a Waveshare Sense HAT\,(B), read over I
 \subsection{The digital twin}
 \label{sec:twin}
 A simulation ready model was derived from the CAD data. The model is exported in two formats, URDF and MJCF.
-The detail procedure to export the model is described in the appendix \cref{sec:app-pipeline}.
+The detailed procedure to export the model is described in the appendix (\cref{sec:app-pipeline}).
 This took a lot of time and effort due to lack of experience and the poor documentation of the plugin used to export the model.
-The final recipes consisted into exporting each segment of the robot as a STEP file with the origin at the joint (except for the base which was in its center).
-Care was taken to ensure the references axis where aligned in a consistent manner across the segments.
-The robot model was reassembled in autodesk Fusion 360 and exported to URDF using the ACDC4Robot plugin\cite{qiu2024describing}.
-The kinematic loop where broken in the URDF and closed in the MJCF using an equality constraint between two sites, one on the pushrod and one on the shin.
+The final recipe consisted of exporting each segment of the robot as a STEP file with the origin at the joint (except for the base which was in its centre).
+Care was taken to ensure the reference axes were aligned in a consistent manner across the segments.
+The robot model was reassembled in Autodesk Fusion 360 and exported to URDF using the ACDC4Robot plugin~\cite{qiu2024describing}.
+The kinematic loop was broken in the URDF and closed in the MJCF using an equality constraint between two sites, one on the pushrod and one on the shin.
 This was necessary because URDF is a tree format and cannot express kinematic loops.
 
 \subsection{Digital twin validation and plant identification}
 \label{sec:plant-id}
 The digital twin is validated against the real robot for the kinematic and dynamic properties.
-The model is also refined with measured parameters that cant be accurately estimated from the CAD model, to reduce the sim2real gap.
+The model is also refined with measured parameters that cannot be accurately estimated from the CAD model, to reduce the sim2real gap.
 
 \subsubsection{Joint Limits validation}
 \label{sec:sim-hygiene}
@@ -338,7 +338,7 @@ These results were reused in the RL curriculum to make the policy robust to the 
 \bottomrule
 \end{tabular}
 \caption{Measured closed-loop timing on the robot's Raspberry Pi 3B, with the web interface
-competing for CPU. One tick drains both CAN buses, runs the inference of the policy and writes all the motors commands.}
+competing for CPU. One tick drains both CAN buses, runs the inference of the policy and writes all the motor commands.}
 \label{tab:loop-timing}
 \end{table}
 
@@ -348,12 +348,12 @@ after the longer sleeps.
 
 \subsubsection{Actuator thermal characterisation}
 
-Not measured due to lack of time. The thermal lumped model parameters were estimated roughly from the mass of the actuator but not used in the simulation.
+The actuator thermal response was not measured due to lack of time. The thermal lumped model parameters were estimated roughly from the mass of the actuator but not used in the simulation.
 
 \subsubsection{Battery characterisation}
 
-Not done due to lack of time, estimated from the data sheet internal resistance of the cell.
-This is further complicated by the lack of voltage feedback on the motor drivers, which prevents measuring the voltage drop under load.
+The battery was not characterised due to lack of time; its behaviour was estimated from the datasheet internal resistance of the cell.
+This is further complicated by the lack of voltage feedback on the drives, which prevents measuring the voltage drop under load.
 In practice, this is not expected to be a problem: the drives are not used in torque control, so they can be expected to regulate the voltage drop without taking the RL policy out of its distribution.
 
 \subsubsection{Actuator bandwidth characterisation}
@@ -367,7 +367,7 @@ depending on $k_p$ and $k_d$.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\linewidth]{Figures/actuator_bode.png}
-\caption{Measured closed-loop tracking a sine chirp and its response as the frequency increases in term of tracking error of the AKE90-8 drive: servo mode's position loop
+\caption{Measured closed-loop tracking a sine chirp and its response as the frequency increases in terms of tracking error of the AKE90-8 drive: servo mode's position loop
 (free rotor) against MIT mode's position loop (free rotor).}
 \label{fig:actuator-bode}
 \end{figure}
@@ -376,20 +376,20 @@ depending on $k_p$ and $k_d$.
 \label{sec:deploy}
 
 The policies of \cref{sec:rl} have to run somewhere. To streamline the process and simplify the measurement of the plant parameters, a web interface was built on the robot.
-A systemd entry starts the web interface at boot. The Raspberry Pi acts as a WiFi access point (SSID "runningmachine", password "runningmachine").
+A systemd entry starts the web interface at boot. The Raspberry Pi acts as a WiFi access point (SSID \texttt{runningmachine}, password \texttt{runningmachine}).
 Once connected to the network, the web interface is reachable at \texttt{http://192.168.4.1:8080/}.
 
 \subsubsection{Calibration sequence}
 \label{sec:calibration}
-The actuator dont hold their position when powered off, so a calibration sequence is needed to zero the joints.
-The user need to hold the robot in a known configuration and run the calibration sequence which register the current joint position as zero.
-The user then need to move each joint in a specific direction and record that the angle in increase (otherwise, the joint direction need to be inverted by clicking a button in the web interface).
+The actuators do not hold their position when powered off, so a calibration sequence is needed to zero the joints.
+The user needs to hold the robot in a known configuration and run the calibration sequence which registers the current joint position as zero.
+The user then needs to move each joint in a specific direction and check that the angle increases (otherwise, the joint direction needs to be inverted by clicking a button in the web interface).
 Once the robot is zeroed, the workspace can be registered by backdriving the robot and recording the joint position at the limit of the workspace.
-The web UI then clean the measurement to show the boudany and the user can draw / fill the safe workspace in the web interface.
+The web UI then cleans the measurement to show the boundary and the user can draw / fill the safe workspace in the web interface.
 This is used to limit the joint position in the safety layer.
 
-the IMU is also calibrated in the web interface by holding the robot still and recording the bias of the accelerometer and gyroscope.
-To ensure the axis are aligned, the user need to move the robot around an given axis of the base and check that the correct axis is increasing.
+The IMU is also calibrated in the web interface by holding the robot still and recording the bias of the accelerometer and gyroscope.
+To ensure the axes are aligned, the user needs to move the robot around a given axis of the base and check that the correct axis is increasing.
 
 \begin{figure}[H]
 \centering
@@ -412,15 +412,15 @@ To ensure the axis are aligned, the user need to move the robot around an given 
 \label{sec:safety}
 
 A safety layer was implemented to prevent the robot from exiting the safe operating envelope.
-It limits the joint position, the joint speed, the joint torque. If a tracking error greater than a threshold is detected, the robot is stopped.
+It limits the joint position, the joint speed and the joint torque. If a tracking error greater than a threshold is detected, the robot is stopped.
 The user can also at any time stop the robot by clicking the E-STOP button in the web interface.
-This safety layer was toroughly tested in simulation and on the real robot by trying to make the robot exit the safe operating envelope and was proven useful in a few occasion to prevent user error.
-The safety layer also implement a black box recorder that record the joint position, speed, torque and the IMU data at 200 Hz if a new failure mode is triggerd, it will be possible to investigate it.
+This safety layer was thoroughly tested in simulation and on the real robot by trying to make the robot exit the safe operating envelope and proved useful on a few occasions to prevent user error.
+The safety layer also implements a black-box recorder that records the joint position, speed, torque and the IMU data at 200\,Hz. If a new failure mode is triggered, it will be possible to investigate it.
 
 \subsubsection{Running widget}
 \label{sec:hw-experiments}
 
-From the web interface it is possible to both record a gain by backdrivign the foot of the robot and then to play it back at a wanted frequency.
+From the web interface it is possible to both record a gait by backdriving the foot of the robot and then to play it back at a wanted frequency.
 This is also where a policy can be selected and run on the robot.
 
 
@@ -467,7 +467,7 @@ Kinematic (no-load speed only)        & 14.5\,m/s  & --      & joint speed throu
 Flight-phase closure (any gait)       & \textbf{6.2\,m/s} & -- & vertical-impulse starvation \\
 \bottomrule
 \end{tabular}
-\caption{The speed-ceiling with refined modeling incorporating more realistic physical constraints.}
+\caption{The speed ceiling with refined modelling incorporating more realistic physical constraints.}
 \label{tab:speed-ceiling}
 \end{table}
 
@@ -519,8 +519,8 @@ Peak torque is the strongest lever: 30\,\% more raises the bound by about 1\,m/s
 Leg mass is second: 30\,\% less raises the bound by about 0.7\,m/s.
 Rotor inertia is nearly flat, and 30\,\% more bus voltage gains nothing, because the bound does not
 sit on the no-load-speed ceiling at this operating point.
-Leg lenght was not simulated due to lack of time as it imply to update the URDF but it is assumed that longer leg would help increase the stride lenght.
-The levers for a faster machine are therefore deliverable torque and leg mass.
-Leg lenght is also likely a significant level but its impact and direction is unknown.
+Leg length was not simulated due to lack of time as it implies updating the URDF, but it is assumed that a longer leg would help increase the stride length.
+The levers for a faster robot are therefore deliverable torque and leg mass.
+Leg length is also likely a significant lever but its impact and direction are unknown.
 \Cref{sec:discussion} ranks the mechanical changes that follow from them, and \cref{sec:rl} trains
 its policies against the plant measured in this chapter.

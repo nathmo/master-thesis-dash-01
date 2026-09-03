@@ -13,7 +13,7 @@ The policy repeatedly found behaviours that maximised the numerical objective wi
 Examples included skating, penetrating the floor, and exploiting high-frequency contact dynamics.
 
 This behaviour is an instance of Goodhart's law.
-The limitation of encoding human intents in a cost function have been studied and this is an expected result~\cite{maier2025goodhart}.
+The limitations of encoding human intent in a cost function have been studied and this is an expected result~\cite{maier2025goodhart}.
 
 \paragraph{The simulator must enforce the physical envelope.}
 The final runner provides a second example of the same principle.
@@ -35,21 +35,21 @@ If robustness to mass uncertainty, latency, impacts, or other plant variations i
 \subsection{Mechanical limits and performance levers}
 
 The approximately 6\,m/s physical ceiling derived in \cref{sec:speed-ceiling} provides a useful reference for deciding where further development effort should be spent.
-From the result of the sensitivity analysis, the following point can be made.
+From the results of the sensitivity analysis, the following points can be made.
 
 \subsubsection{Increase the usable leg workspace}
 
 The first design objective should be to increase the usable fore--aft workspace of the foot.
 The available stroke directly enters the speed-ceiling calculation: for a given stride frequency, a larger usable foot sweep allows a larger stride and therefore a higher forward speed.
 
-The four-bar geometry and segment dimensions should be optimised together to maximise the portion of the workspace that is useful during running along with the level of force anysotropy required.
+The 4-bar geometry and segment dimensions should be optimised together to maximise the portion of the workspace that is useful during running along with the level of force anisotropy required.
 
 \subsubsection{Reduce the force anisotropy}
 
-A second and potentially inexpensive lever is to redesign the four-bar linkage so that more of the available actuator torque can be converted into fore--aft ground force.
+A second and potentially inexpensive lever is to redesign the 4-bar linkage so that more of the available actuator torque can be converted into fore--aft ground force.
 
 At the current standing pose, the approximately 19:1 force anisotropy indicates that the mechanism is mechanically well suited to supporting vertical load but poorly suited to producing horizontal propulsion.
-Increasing motor torque would increase both capabilities, but would not address this missplacement of control authority that stem from the 4bar linkage anysotropy.
+Increasing motor torque would increase both capabilities, but would not address this misplacement of control authority that stems from the 4-bar linkage anisotropy.
 
 A redesigned linkage could therefore improve effective propulsive force without requiring a proportionally larger actuator.
 For this reason, linkage geometry should be explored before actuator scaling.
@@ -68,10 +68,10 @@ Mass located near the foot contributes strongly to the inertia that must be acce
 
 \subsubsection{Increase actuator torque density}
 
-If linkage optimisation and mass reduction are insufficient, increasing actuator capability is the next direct lever altough a much pricier one.
+If linkage optimisation and mass reduction are insufficient, increasing actuator capability is the next direct lever although a much pricier one.
 
 For a future platform, actuator selection should consequently favour torque density and continuous thermal capability rather than simply the largest available peak-torque rating.
-Contemporary record-oriented humanoids appear to use substantially higher torque capability than DASH-01. The author guesstimate them to be around 400 Nm peak but no credible source could be found to confirm nor deny this value.
+Contemporary record-oriented humanoids appear to use substantially higher torque capability than DASH-01. The author guesstimates them to be around 400\,Nm peak but no credible source could be found to confirm or deny this value.
 
 \subsubsection{Bus voltage is not presently a priority}
 
