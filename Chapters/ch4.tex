@@ -71,7 +71,7 @@ Termination is also part of the reward structure.
 Body contact and leaving the valid workspace terminate the episode.
 Consequently, the fall penalty is mainly the future reward that is lost when an episode terminates rather than a single large numerical penalty.
 
-Reward design was repeatedly modified in response to exploitation by the policy and new term where gradually added.
+Reward design was repeatedly modified in response to exploitation by the policy, and new terms were gradually added.
 The robot learned to belly-flop, to move very slowly, to vibrate in place and to skate.
 The fall penalty was changed when the robot learned to exploit belly-flopping, the alive-related terms were changed when it learned to dawdle, and foot air-time and action-rate terms were introduced to suppress vibration and other non-locomotive solutions.
 
@@ -87,7 +87,7 @@ These terms therefore do not only regularise the policy numerically; they also c
 Training-time episode length is not used directly as the final performance metric.
 During exploration, the policy contains a non-zero action distribution, and a long episode can therefore result partly from the injected exploration noise.
 The results are obtained from greedy evaluations, in which the exploration noise is disabled and the policy deterministically executes its preferred action at each timestep.
-This measures the behaviour that the learned policy will produce once deployed withouth the exploration noise.
+This measures the behaviour that the learned policy will produce once deployed, without the exploration noise.
 
 The experiments also showed that performance is not well described by a single mean over a small number of seeds.
 Runs were frequently bimodal: a seed either discovered a useful gait or remained in a non-locomotive behaviour for a large part of the available budget.
