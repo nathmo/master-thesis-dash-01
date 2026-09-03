@@ -22,7 +22,7 @@ The first formulation only required the robot to run forward, without requiring 
 Later formulations attempted to add velocity command for a joystick input. These formulations were more general, but also substantially harder to train.
 Since the objective of this thesis is maximum running speed rather than general locomotion, the final experiments used only the simpler dash formulation.
 
-The learning algorithm was held fixed at PPO~\cite{schulman2017ppo} from Stable-Baselines3, with an actor--critic MLP running on CPU-parallel MuJoCo environments.
+The learning algorithm was held fixed at PPO~\cite{schulman2017ppo} from Stable-Baselines3~\cite{raffin2021stablebaselines3}, with an actor--critic MLP running on CPU-parallel MuJoCo~\cite{todorov2012mujoco} environments.
 Episodes are capped at 60\,s. The control rate is 200\,Hz, which \Cref{sec:plant-id-timing} establishes as both the sensing ceiling and the maximum deployable rate.
 Later experiments showed it to be borderline for the final controller and the frequency needs to be brought back down to 100\,Hz as the final policy inference via the web interface with the safety layer proved a bit too slow for the 200\,Hz control loop on the Raspberry Pi 3B. The final policy therefore needs to be retrained to run at 100\,Hz.
 The computational budget was large but finite and within what can be seen in the literature.
