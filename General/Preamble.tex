@@ -15,12 +15,18 @@
 
 \usepackage{graphicx} % Allows the use of \begin{figure} and \includegraphics
 \usepackage{float} % Useful for specifying the location of a figure ([H] for ex.)
+\usepackage[section]{placeins} % keeps a float inside the section that introduces it
 \usepackage{caption} % Adds additional customization for (figure) captions
 \usepackage{subcaption} % Needed to create sub-figures
 
 \usepackage{tabularx} % Adds additional customization for tables
 \usepackage{tabu} % Adds additional customization for tables
 \usepackage{booktabs} % For generally nicer looking tables
+
+% Left-aligned fixed-width column. Narrow p{} columns justify badly: the
+% interword stretch produces large ragged gaps. L{<width>} sets them ragged
+% right instead, which is the convention for narrow table cells.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 \usepackage{siunitx}
 \usepackage{adjustbox}

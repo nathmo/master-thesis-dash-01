@@ -12,3 +12,5 @@
 *.synctex.gz
 *.toc
 *.xdv
+# Machine-specific VS Code settings (absolute TeX Live path); CI does not need them.
+.vscode/

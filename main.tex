@@ -1,5 +1,5 @@
 \documentclass[a4paper, 11 pt]{article}
-\input{General/Preamble} % Loads in the preamble 
+\input{General/Preamble} % Loads in the preamble
 \input{General/Settings} % Loads in user defined settings
 \input{General/MathCommands} % Loads in user defined math commands
 
@@ -9,22 +9,21 @@
 \thispagestyle{empty}
 \begin{center}
     \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
-    
+
     \textsc{\LARGE École Polytechnique Fédérale de Lausanne}\\[0.5cm]
-    \includegraphics[width=5cm]{Figures/epfl_red.png}\\[0.5cm]
-    \LARGE{\textsc{Robotique, 2025-26}}\\[0.5cm]
-    \huge{\textbf{Master thesis}}
-    
+    \includegraphics[width=5cm]{Figures/epfl_red.png}\hfill\includegraphics[trim=80 441 78 443, clip, width=9cm]{Figures/LABlogo.png}\\[0.5cm]
+    \LARGE{\textsc{Robotic Section, 2025-26}}\\[0.5cm]
+    \huge{\textbf{Master's thesis}}
+
     \HRule \\[0.4cm]
-    {\huge \bfseries DASH-01 :\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
+    {\huge \bfseries DASH-01:\\ RL Framework to Develop a Bipedal Humanoid Robot Aimed at Breaking the Speed Record}\\[0.1cm]
     \HRule \\[0.5cm]
-    \LARGE{\textsc{REHAssist} \\
-    \text{13.04.2025 - 04.09.2025}}\\[0.5cm]
-    
+    \LARGE{\text{13.04.2026 - 04.09.2026}}\\[0.5cm]
+
     \vspace{5mm}
     %\includegraphics[scale=0.6]{images/pageDeGarde.png}\\
     \vspace{15mm}
-    
+
     \begin{minipage}{2in} \Large
     \textbf{Author:}\\
     Nathann \textsc{Morand}\\
@@ -32,37 +31,65 @@
     \end{minipage}
     \hfill
     \begin{minipage}{2.1in} \Large
-    \textbf{Supervisors:}\\
-    Dr. Mohamed \textsc{Bouri} \\
+    \textbf{Supervisor:}\\
+    Dr. Mohamed \textsc{Bouri}
     \end{minipage}
 \end{center}
 %%%
 
 %%% ABSTRACT, PROJECT ASSIGNMENT
 { % create local environment
-\fancyhead[R]{\textsc{PROJECT ASSIGNMENT, ABSTRACT}}
+\fancyhead[R]{\textsc{ABSTRACT}}
 
 \newpage
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This thesis documents the development of DASH-01, a custom biped with a parallel-linkage leg.
-The goal is twofold : how fast a small, low-cost legged robot can run and secondly what is required for reinforcement-learning methods to work.
+This thesis investigates the use of reinforcement learning to develop a high-speed running controller for DASH-01, a 15\,kg bipedal robot designed for fast locomotion. The objective was to determine how far reinforcement learning could push the running speed of a small, lightweight biped while accounting for the limitations of the physical platform.
 
-The work covers the full chain. It models a leg that closes a kinematic loop, simulates that
-model in MuJoCo, and runs a measurement campaign that replaces assumed plant parameter with a measured one. It develops three successive action spaces for the learned controller:
-direct torque, per-step position targets, and a central pattern generator tuned by the policy.
-It adds a curriculum that releases the base degrees of freedom one at a time. It ends with the
-deployment stack on the robot itself: a 200\,Hz control daemon on a non-realtime Raspberry Pi, a web-based bring-up instrument, and an always-on flight recorder.
+The work follows the complete path from the robot model to a deployable controller. The robot was reconstructed in MuJoCo from the mechanical design, and the actuator, sensing and communication interfaces were characterised experimentally. These measurements were used to correct the simulation and to establish a first-principles upper bound on the achievable running speed. Under the measured kinematic, inertial and actuator constraints, this bound was estimated at approximately 6\,m/s.
 
-This thesis takes the robot from a mechanical design to a measured, simulated, trained and instrumented platform.
+Several reinforcement-learning formulations were then investigated. Direct torque control did not converge within the available training budget and was initially rejected because of an assumed communication-bandwidth limitation. Per-step position control converged to several non-locomotive solutions, including skating. The action space was consequently structured around a periodic gait generator. Fourier-series and explicit oscillator representations were compared, together with impedance parameters and fast balance reflexes. A curriculum progressively released the robot's base degrees of freedom, allowing locomotion to be learned before full-body balance was required.
+
+The experiments show that the formulation of the learning problem was at least as important as the choice of learning algorithm. In particular, reward maximisation could produce apparently successful policies that exploited the simulation rather than running, while external balance assistance could produce policies dependent on the assistance. The final curriculum reached sustained running in simulation, with the best policies reaching approximately 3\,m/s.
+The resulting framework provides a measured and deployable RL pipeline for high-speed bipedal locomotion, together with an experimentally grounded estimate of the remaining gap between the current robot and its physical speed limit. The results indicate that further progress is likely to require changes to the mechanical plant and actuator capability rather than simply increasing the reinforcement-learning budget.
+
+\vspace{1.5em}
+\paragraph*{Use of LLM.}
+Generative AI tools were used during the preparation of this thesis, to revise and improve the wording of the document, provide feedback, proofread and to assist with the development of the supporting code.
+All technical content, measurements, analyses and conclusions were produced and verified by the author.
+
+\newpage
+}
+%%%
+%%% ACKNOWLEDGEMENTS
+{ % create local environment
+\fancyhead[R]{\textsc{ACKNOWLEDGEMENTS}}
+
+\newpage
+\section*{Acknowledgements}
+\addcontentsline{toc}{section}{Acknowledgements}
+
+I thank Dr. Mohamed Bouri for entrusting me with this project, and for convincing me to take on DASH-01 rather than a quieter subject. It was the more demanding option on the table.
+
+I thank my office mates, who brought some life to the white room that was my office for the last four months. I thank especially Max, who did beautiful work on the first iteration of the robot, and whose work I inherited.
+
+I thank Prof. Francesco Mondada and his Festival de robotique, which are in no small part the reason I pursued this line of study in the first place.
+
+I thank Ana, who after eight years by my side is far more a life companion than a girlfriend. Thank you for putting up with me, and giving me a reason to come home rather than letting myself drown in work.
+
+I thank my cats, Mercredi, Jeudi, and Vendredi, for reminding me every day that food must be served on time, and for ensuring I maintained at least a hint of routine and structure as my sleep schedule drifted.
+
+Finally, I thank my family, who did their best for me.
+
 
 \newpage
 }
 %%%
 %%% TABLE OF CONTENTS
 \newpage
-\renewcommand{\contentsname}{Table of Contents} 
+\setcounter{tocdepth}{2}
+\renewcommand{\contentsname}{Table of Contents}
 {
   \hypersetup{linkcolor=black}
   \tableofcontents
@@ -71,18 +98,21 @@ This thesis takes the robot from a mechanical design to a measured, simulated, t
 %%%
 
 % Creates the introduction, starting page numbering
-\include{Chapters/ch1} 
+\include{Chapters/ch1}
 \include{Chapters/ch2}
 \include{Chapters/ch3}
 \include{Chapters/ch4}
 \include{Chapters/ch5}
 \include{Chapters/ch6}
+\include{Chapters/ch7}
 \include{Chapters/append}
 
 % Add appendices here, if there are any
 
 \newpage
-\bibliographystyle{plain} 
+{\small
+\bibliographystyle{plain}
 \bibliography{References}
+}
 
 \end{document}

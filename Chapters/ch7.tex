@@ -1,0 +1,62 @@
+\section{Conclusion and future work}
+\label{sec:conclusion}
+
+
+This thesis investigated how far reinforcement learning could push the running performance of DASH-01, a custom 15\,kg biped, while grounding the controller in the measured limitations of the physical platform.
+
+The initial ambition was to approach the bipedal 100\,m speed record.
+The characterisation performed during this work showed that the current mechanism does not admit such performance: an independent first-principles analysis places its optimistic physical running-speed ceiling at approximately 6\,m/s.
+The objective therefore evolved toward producing a demonstrator and, more importantly, a reusable methodology linking the mechanical design, plant identification, simulation, reinforcement learning and deployment.
+
+\subsection{Achievements}
+
+Three principal outcomes were obtained.
+
+First, DASH-01 was brought from a partially completed mechanical platform to an operational robot.
+The resulting system supports actuator and IMU calibration, backdriving, trajectory recording and playback, policy execution, workspace enforcement, emergency stopping and black-box logging.
+The robot can be operated through a web interface without requiring the user to modify the control software to run a new policy.
+
+Second, the robot was experimentally characterised to obtain a measured plant and to verify the CAD data.
+The identification established the joint workspace, actuator torque constants and bandwidth, control-loop latency and jitter, IMU noise characteristics and segment masses.
+These measurements were subsequently incorporated into the simulation and used to constrain both the learning problem and the analysis of the achievable running speed.
+
+Third, a reinforcement-learning pipeline was developed from the measured plant to a deployable policy representation.
+Several action-space formulations and curricula were investigated.
+The final formulation combines a structured gait generator with impedance parameters, and produced a simulated runner completing the 100\,m dash in 32.5\,s, corresponding to an average speed of 3.07\,m/s.
+
+\subsection{Limitations}
+
+The principal limitation is that the final running policy was not demonstrated on the physical robot.
+Although the deployment stack was completed and the Raspberry Pi 3B can sustain the low-level control workload, inference of the final policy together with the remainder of the software stack is slightly too slow for reliable operation at 200\,Hz.
+Deployment therefore requires either more capable onboard compute or retraining and validation at a lower control frequency, such as 100\,Hz.
+
+The simulated running result must also be interpreted with care.
+The gait audit showed that the torque commands remain almost entirely inside the measured torque--speed envelope, but the swing-leg velocity reaches approximately twice the measured actuator no-load speed.
+This motion is physically unattainable and reveals a missing velocity constraint in the training plant that needs to be patched.
+In addition, the commanded current operates close to the assumed continuous thermal limit, while the actuator thermal model was not experimentally identified.
+
+More generally, the experiments showed that optimisation results cannot be interpreted from reward alone.
+Several policies exploited mismatches between the objective and the intended behaviour, including skating and non-physical contact behaviour.
+The final runner similarly exploits a missing actuator-velocity constraint.
+A central methodological conclusion is therefore that reinforcement learning is only as physically meaningful as the plant model and objective against which it is optimised.
+
+
+\subsection{Future work}
+
+The next iteration of the project should begin with a morphology search informed by the measurements obtained in this thesis.
+The first priority is to redesign the 4-bar linkage and leg dimensions jointly, with the objective of increasing the usable fore--aft workspace while reducing the strong force anisotropy of the current mechanism.
+This offers the possibility of obtaining more propulsive capability from the actuators already installed before increasing actuator size.
+
+The second priority is to reduce distal leg mass where meaningful reductions remain possible.
+This should be considered together with linkage redesign, because changing segment lengths and transmission geometry also changes the distribution of moving mass and the resulting swing inertia.
+
+If additional performance is still required after these changes, the actuator selection should then be revisited with an emphasis on greater torque density and continuous torque capability while staying in QDD territory.
+The measured sensitivity suggests that additional torque is the strongest remaining direct lever, but its benefit must be evaluated together with the mass and inertia penalty introduced by a larger drive.
+
+Several changes are also required independently of maximum speed.
+The current point foot provides no direct contact moment and limits the available interaction with the ground.
+A carbon blade foot should therefore be evaluated.
+An impact or force sensor at the foot would additionally provide direct information about touchdown and ground reaction, rather than requiring the controller to infer contact indirectly from base motion.
+
+Finally, the simulation should be updated before the next high-speed training campaign.
+Explicit actuator velocity limits and a validated thermal model should be incorporated so that future policies cannot exploit behaviours unavailable to the physical plant.

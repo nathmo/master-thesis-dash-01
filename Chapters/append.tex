@@ -1,61 +1,128 @@
+\newpage
 \section{Appendix}
+\label{sec:appendix}
 
-\subsection{logbook}
+\subsection{From CAD to a simulable model}
+\label{sec:app-pipeline}
 
-\begin{itemize}[leftmargin=1.5cm,label={}]
-    \item[\textbf{2025-02-20}] Creation of this report, rough layout of the idea in chapter
-    
-    \item[\textbf{2025-02-25}] Longitudinal kinematic model, research about markov modelling and cycle
-    
-    \item[\textbf{2025-02-26}] dynamic simulation creation, implemented a basic simulation in pybullet with keybaord navigation and parametric surface + wheel rolling down
-    
-    \item[\textbf{2025-02-27}] refining efficiency to take into account whole cycle, reading paper
-    
-    \item[\textbf{2025-02-28}] Writing Idea about improving efficiency trough identified parameters
+The procedure below is the one that worked, after the detours recorded in \cref{sec:twin}. The
+repository holds the scripts and the exported files.\footnote{\url{https://github.com/nathmo/running_robot}}
 
-    \item[\textbf{2025-03-04}] Adding graph about car occupancy and real world driving needs + reading paper
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Re-assemble in one CAD system.} Each limb is exported as STEP with its origin
+        centred on its joint, then assembled and exported to URDF with a plugin. Inertia tensors
+        supplied from a second CAD system are validated against their reference frame explicitly
+        rather than trusted, because that export arrived rotated.
+  \item \textbf{Accept that the URDF is an approximation.} URDF is a tree format, so the pushrod
+        floats and the 4-bar is open. The exported URDF is kept for tooling that needs it, and it
+        is never simulated.
+  \item \textbf{Close the loop in MJCF.} Two sites, one at the pushrod tip and one on the shin,
+        are tied by \texttt{<equality><connect>}. The residual at the measured workspace poses is
+        $10^{-14}$.
+  \item \textbf{Replace CAD masses with weighed masses}, and rescale each body's inertia tensor by
+        its own mass ratio. This removes the segment masses from the identification problem
+        entirely.
+  \item \textbf{Re-settle the stance keyframe under gravity} after any plant change. A keyframe is
+        an equilibrium of one particular ankle law, and re-settling is not idempotent: re-settling
+        from an already crouched keyframe lands on the 4-bar's fold branch.
 
-    \item[\textbf{2025-03-06}] Brainstorming kinematic, reading PHd thesis on narrow track
+\end{enumerate}
 
-    \item[\textbf{2025-03-09}] URDF is a PAIN to implement to due lack of tool, trying to define a kinematic model in python
+\subsection{Component databases}
+\label{sec:app-db}
 
-    \item[\textbf{2025-03-11}] reworking part of chapter 2
+Both databases are published as standalone tools.
 
-    \item[\textbf{2025-03-17}] reading paper about cars and bike and limiting factor to adoption
+\textbf{Actuator review.}\footnote{\url{https://github.com/nathmo/actuatorReview}} It holds 140
+commercial integrated actuators, 121 motors, 121 gearboxes and 9 standalone drives, as four joined
+tables. A candidate can therefore be composed rather than only looked up. Modelling follows Lee et
+al., \emph{How to Model Brushless Electric Motors for the Design of Lightweight Robotic Systems}
+(arXiv:2310.00080).
 
-    \item[\textbf{2025-03-18}] keep reading paper, also about narrow track vehicle
+\textbf{Battery review.}\footnote{\url{https://github.com/nathmo/batteryReview}} It holds roughly
+430 cell models, 54 BMS modules and 110 commercial packs, each row carrying a source URL. A
+synthesiser builds a pack from cell, BMS and series--parallel count. A synthesisable pack
+therefore plots on the same axes as a commercial one. Every current rating carries a duration
+stamp, and falls into a continuous, pulse-at-$t$ or fault tier. The pulse tier interpolates as
+$I(t) = \sqrt{I_{\text{cont}}^2 + (I_{\text{pulse}}^2 - I_{\text{cont}}^2)\,t_{\text{pulse}}/t}$.
+Fields inferred rather than read off a datasheet are written as ESTIMATED, so that they
+still parse and can be filtered out.
 
-    \item[\textbf{2025-03-20}] trying to structure what I learned from the papers
+\newpage
 
-    \item[\textbf{2025-03-21}] defining the know unknown about car adoption factor (human side)
+\subsection{Logbook}
+\label{sec:app-logbook}
+Timeline reconstructed from the repository's commit history, with the exception of the measurement campaign
+(\cref{sec:plant-id}) which was performed in parallel to the training. The logbook is a record of
+the work, not a tutorial. It is therefore selective and omits the many dead ends, the many failed experiments, and the many commits that were only a few lines of hyper-parameter tuning.
 
-    \item[\textbf{2025-03-24}] Clarifying the project goal 
-
-    \item[\textbf{2025-03-27}] draw figure, added citation
-
-    \item[\textbf{2025-03-28}] Manual definition is an epic failure... Two way (createMultiBody -> Works but hard to read), Create body and add constraint don't work (rotation constraint crash the simulation.)
-
-    \item[\textbf{2025-04-09}] Realized that createMultibody is more stable but has a "ghost" friction problem, Might as well use URDF then.
-
-    \item[\textbf{2025-04-10}] learning URDF and how the origin is defined, 
-
-    \item[\textbf{2025-05-25}] redefined most variant as URDF and how to simulate them. Need spend time to implement basic controller like PID to show steady state stability and control margin
-
-    \item[\textbf{2025-05-28}] Meeting, dry run presentation  and shown current status.
-
-    \item[\textbf{2025-05-31}] Report restructuring, writing
-
-    \item[\textbf{2025-06-02}] Chapter 4, 5, 6 writing
-
-    \item[\textbf{2025-06-04}] Getting simulation result, finishing first draft of report.
-
-    \item[\textbf{2025-06-08}] Proof reading
+\begin{itemize}[leftmargin=1.2cm,label={}]
+  \item[\textbf{2026-04-13}] Repository created. First framework: MuJoCo plus Stable-Baselines3 PPO
+        on a generic legged environment.
+  \item[\textbf{2026-04-20}] A dozen reward and hyper-parameter commits in one day. The robot
+        learns to belly-flop, and the fall penalty, forward-speed weight, alive bonus and
+        feet-air-time thresholds are each chased in turn.
+  \item[\textbf{2026-04-21}] Tuning starts going backwards. Decision to attack sim-to-real
+        separately on a toy problem.
+  \item[\textbf{2026-04-30}] Pendulum environment, PPO, ONNX export and a BBB runtime:
+        the project's first complete simulation-to-hardware transfer (\cref{sec:toy-problem}).
+  \item[\textbf{2026-05-21}] The generic-robot approach is abandoned. The DASH-01 URDF is exported
+        from CAD and the simulator rewritten around it.
+  \item[\textbf{2026-05-22}] Manual URDF repair: the closed loop of the parallel leg cannot be
+        expressed in URDF, and the export angles are wrong.
+  \item[\textbf{2026-06-22}] First training on the real geometry: a standing policy, converged two
+        days later.
+  \item[\textbf{2026-07-06}] \textbf{Anti-skating rebuild.} An instrumented rollout measures what
+        the policy is doing: both feet grounded 57--66\,\% of steps, median swing one control step,
+        $-0.09$\,m/s of travel under a $+0.5$\,m/s command. Three causes fixed at once: contact
+        \texttt{condim} 3$\to$6, the six motor masses welded onto their stator bodies
+        (5.73$\to$12.83\,kg), and a standing keyframe settled under gravity.
+  \item[\textbf{2026-07-06}] Hardware bring-up begins in parallel: motor test scripts, slow sine
+        sweeps, torque-control safety limits.
+  \item[\textbf{2026-07-09}] Workspace and joint-limit calibration on the real leg.
+  \item[\textbf{2026-07-10}] Web interface to drive the robot: per-motor sliders, live leg
+        visualisation, gait recording and playback.
+  \item[\textbf{2026-07-14}] Naming settled to DASH-01. Two structural changes: the base-DOF
+        locking curriculum and the Fourier gait controller.
+  \item[\textbf{2026-07-21}] m3 falls in 1.5\,s. Pitch reflex, angular-momentum reward and
+        normalisation rejuvenation added.
+  \item[\textbf{2026-07-22}] The real m3 failure is an entropy-gate deadlock: the action standard
+        deviation sat pinned at maximum for a whole 150\,M-step run.
+  \item[\textbf{2026-07-23}] The decaying pitch assist turns into a crutch. The control rate moves
+        from 50 to 200\,Hz, with the reward made rate-invariant and every curriculum count
+        rescaled.
+  \item[\textbf{2026-07-24}] A diagnostic proves the m3 policy plants its feet 8\,cm behind the
+        centre of mass while falling forward: it never learned the capture step. An evaluator bug
+        that evaluated at 100\,m rather than the curriculum distance is found and fixed.
+  \item[\textbf{2026-07-28}] \textbf{Gait-frequency bug.} The 200\,Hz rescale had widened the
+        learnable range to (0.5, 50)\,Hz, so a neutral action meant a 25\,Hz gait clock. Remapped
+        to (0.5, 4.0).
+  \item[\textbf{2026-07-29}] The fix produces the best m3 controller so far. The residual 6\,Hz
+        footfall is traced, wrongly at first, to ankle-spring resonance.
+  \item[\textbf{2026-07-30}] Generator A/B result: no clear winner. The full ladder is relaunched
+        twice, once with the cadence fixes and once on the oscillator generator.
+  \item[\textbf{2026-08-04}] \textbf{The measurement campaign opens.} Weighed masses replace the
+        CAD placeholders, 12.83$\to$15.14\,kg. The toe's static force capability is mapped over the
+        workspace: 96\,\% of reach, 19:1 anisotropy, the passive ankle 8$\times$ short.
+  \item[\textbf{2026-08-05}] System identification debugged: two sign errors, per-joint refitting,
+        reduced Jacobian damping. Peak joint torque corrected to what the gearbox delivers.
+  \item[\textbf{2026-08-06}] \textbf{The ankle question closes by statics.} The real spring
+        deflects $26.6^{\circ}$ and drives the heel 11.9\,mm through the floor at half body weight.
+        The CAN feedback protocol is measured, and a warm-start bug is found: seed replicates had
+        been silent duplicates.
+  \item[\textbf{2026-08-09}] Commanded speeds are bounded by what the plant can reach. The walker
+        gets the base-DOF ladder it never had.
+  \item[\textbf{2026-08-10}] \textbf{The plant becomes the robot as rebuilt.} Per-joint motor
+        velocity caps are enforced for the first time. The ankle becomes a rigid carbon tube and
+        the drive bandwidth is bracketed. On the hardware side, a failure that cost a joint prompts
+        the three-tier flight recorder and the pre-move guard.
+  \item[\textbf{2026-08-11}] First full ladder on the rebuilt plant: twelve jobs, about 23\,h wall
+        clock. m2 walks out the full 60\,s cap; m5 is a hard wall. A scripted, no-learning walk
+        controller is written as a baseline.
+  \item[\textbf{2026-08-19}] \textbf{Foot-shape study: sixteen runs, negative result.} Reaching the
+        answer took three wrong readings of the same data, and the harness's own rule, that a
+        per-arm difference smaller than the within-rung spread is not a result, killed all of them.
+  \item[\textbf{2026-08-25}] \textbf{Foot arc geometry measured.} Forward reach 31\,cm, backward
+        reach 2.7\,cm. Re-solving the balanced keyframe takes the scripted controller at m3 from
+        0.91\,s to 24.7\,s.
 \end{itemize}
-
-\subsection{URDF from CAD: step by step}
-
-% TODO(nathann): write this section. It must cover four things.
-%   1. The limitation of URDF on a parallel robot (see \cref{sec:simulation}).
-%   2. The closed-loop workaround, and the MJCF equality constraint that replaces it.
-%   3. The formats better suited to the job, and why none of them exported cleanly.
-%   4. Screenshots of the procedure, applied to the full robot.

@@ -1,94 +1,98 @@
-\section{Discussion}
+\section{Results}
+\label{sec:results}
 
-\subsection{Successes}
+This section presents the main outcomes of the thesis and characterises the final deliverable in terms of the completed hardware platform, the measured physical performance envelope, the learned running controller, its robustness, and its readiness for deployment.
+\subsection{Robotic platform}
 
-The pipeline exists end to end, and every stage has been validated at least once. CAD exports to a
-loop-closed MJCF that matches the measured workspace at 100\,\% of poses. A capability analysis
-independently reproduces both the high-cadence optimum and the ankle-stiffness threshold that RL
-discovered. An action-space design turned a non-converging problem into a reliably trainable one,
-and an independent generator A/B confirmed that twice. A curriculum mechanism — base-DOF release,
-with rigid rails and a constant observation and action shape — carries warm starts across plants. A
-measurement campaign corrected the plant, using instruments built on the robot itself. And a
-deployment stack proved the value of its flight recorder within an hour of installation. The
-standing policy on the fully free plant — 60 seconds, zero falls, 2.6\,m/s — is a real result on a
-hard plant. The drivable lineage's survival of the descent to the measured 0.8\,Hz drive is the
-strongest sim-to-real evidence in the record.
+Firstly, this thesis was quite involved in terms of hardware and although the mechanical design was already done and provided, a lot of work was required to bring it from a state of expensive paperweight to a robot that could be controlled.
+The platform is a biped weighing 15\,kg.
+It carries four AKE90-8 QDD actuators (\cref{tab:motors}) and two AK60-39 for the hip roll.
+Its 13S2P pack holds 468\,Wh and is rated 100\,A continuous and 360\,A for 2\,s (\cref{sec:hw-battery}).
+Low-level and policy control are executed on a Raspberry Pi 3B.
+On the stock Linux installation, the control stack sustains a 200\,Hz control loop.
+The completed system supports actuator calibration, backdriving, recording and playback of joint trajectories, and execution of learned policies.
+A safety layer and black-box recorder were integrated into the control stack, and the principal operational functions are exposed through a web interface.
+Consequently, a new user can calibrate, enable, backdrive, replay trajectories, and run a policy without modifying or directly interacting with the control code.
 
-\subsection{Failures}
+Another important result of the hardware work is the experimental characterisation of the platform itself.
+The identification campaign established the quantities subsequently used to define and constrain the training plant, including actuator bandwidth under the tested control modes, control-loop timing and jitter, IMU noise, joint workspace, and actuator torque constants.
+These measurements also form part of the thesis results.
+\subsection{Running speed ceiling estimation}
+The physical running-speed ceiling of the platform was estimated independently of reinforcement learning in \cref{sec:speed-ceiling}.
+The analysis places the maximum attainable speed at approximately 6\,m/s.
 
-Direct torque control failed twice over, on convergence and on assumed deployability. Abandoning it
-was itself partly wrong, because the measured premises now point back toward current-mode control
-with the PD closed on the Pi. Fully autonomous untethered running was not reached. The sprint
-policies observe privileged state, the drivable lineage is not yet robust, and no policy has run on
-the robot. The record ambition is dead on this chassis by measurement, at about 1.3\,m/s sustained
-against a 4\,m/s record pace. Three further failures stand out. The roll milestone remains the RL
-ladder's weak link. The 6\,Hz footfall chatter survives every post-hoc lever, and awaits a
-from-scratch retrain with cadence pressure applied from step zero. And the physical robot's left
-leg was lost to a calibration failure before any policy reached it, which is the clearest possible
-demonstration that deployment infrastructure is not overhead.
+This bound was obtained through two independent arguments.
+The first combines the available leg workspace with actuator torque and system latency to determine the achievable stance dynamics.
+The second considers the impulse required during stance to sustain the corresponding flight phase.
+Despite approaching the problem from different directions, the two estimates converge to a similar limiting speed, providing a useful consistency check on the result.
 
-\subsection{Lessons learned}
+The estimated ceiling depends primarily on the usable leg workspace, the impulse that the actuators can deliver, and the distribution of mass within the leg.
+The associated sensitivity analysis further shows that actuator torque capability and distal leg mass are the dominant design levers, whereas increasing the supply voltage alone provides comparatively little improvement.
 
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{Optimisers exploit objectives, and neural networks are not the culprit.} PPO gamed
-        the reward by skating, penetrating the floor, shuttling and committing suicide by penalty.
-        The scripted baseline's coordinate-descent tuner gamed its own objective identically.
-        Every objective needs adversarial review before its optimiser gets it.
-  \item \textbf{The stability-margin advantage of learning is conditional, and the conditions are
-        measurable.} The theoretical case for RL on an unstable plant is that the hand-designed
-        controller lies inside the policy class, so the learned optimum can only match or exceed
-        it (\cref{sec:bg-margin}). Three premises carry that argument, and this project paid none
-        of them in full. The plant was not exact enough, because every parameter moved
-        (\cref{tab:plant-id}). The reward did not price distance from the failure boundary; it
-        priced survival and distance, so the optimiser parked on the boundary. And the training
-        budget did not reach the asymptote, because 600\,M steps per milestone is large rather
-        than asymptotic. Hence the m2 result, where a margin existed and the learning did not find
-        it. The generalisable diagnostic is that \textbf{seed variance is the margin measurement}.
-        A figure of 20.3\,$\pm$\,21.6\,s against 5 of 5 at the episode cap is not a worse mean. It
-        is bimodality, and a learning curve plotting the mean will not show it. At m3 the
-        comparison is vacuous rather than adverse. With an empty feasible set, every controller
-        drawn from it performs identically, and RL optimises over controllers, not over physics
-        (\cref{sec:margin-analysis}).
-  \item \textbf{The useful question about a gait prior is which kind, not how much.} A shape prior
-        fixes the trajectory and exposes its timing. Tuning it does not enlarge the reachable set,
-        so it is safe only when the morphology has a natural template to copy. A structural prior
-        constrains the class and leaves the member free, and its reachable set grows with the
-        parameterisation. DASH-01 is the case that separates the two, because its cam turned out
-        to be a full crank with no biological analogue. The cadence agreement between the learned
-        optimum and the independent physics sweep is the evidence that the wider space was
-        genuinely used (\cref{sec:bg-prior}). The prior never vanished. It moved into the action
-        space, and stayed hand-wired at the one channel where feedback must not be blind.
-  \item \textbf{Every assumed plant parameter measured later moved pessimistically}: mass by
-        $+18\%$, torque by $-15\%$, drive bandwidth by $-16\times$, plus friction and the ankle.
-        Measure before training, not after. And when a measurement lands, apply it as \emph{the}
-        plant rather than as an optional variant, or the wrong default gets trained on.
-  \item \textbf{Simulation results need the same scepticism as rewards.} Soft joint limits,
-        constraints inactive at settle, frame-relative safety checks, stale keyframes, a
-        solver-version split, and an actuator-velocity cap that was simply never present each
-        produced a clean, converged, wrong result. The last of those let a prized policy
-        ``balance'' at 23\,rad/s on a 22\,rad/s motor. Self-tests, smoke gates or measurement
-        caught each one.
-  \item \textbf{Evaluation hygiene is a first-class deliverable.} Six rules earned their place:
-        evaluate with training aids forced off, after three separate deceptions by curves with a
-        crutch; evaluate on a fixed task across curricula; use at least 20 seeded episodes; use
-        paired seeds and survivor counts under bimodality; report peak rather than final under
-        one-way curricula; and treat \texttt{curriculum.json} as ground truth on restore. Four
-        separate evaluation bugs each nearly discarded or crowned the wrong policy.
-  \item \textbf{Curricula need three rules.} Gate the advance, not just the opening. Never gate a
-        rescue ramp on the competence it is meant to rescue. And diff configurations against the
-        last working run before theorising.
-  \item \textbf{A parameter range widened ``to be non-binding'' can become the operating point.} A
-        neutral network output decodes to the middle of the range, which is what produced the
-        25\,Hz gait-clock bug. A comment asserting an unexercised assumption also stays wrong for
-        months.
-  \item \textbf{Hardware integration dominates, and instrumentation pays for itself.} The
-        measurement instrument found the drive ceiling. The flight recorder found a daemon-killing
-        crash and a dead bus within its first hour. And the trap of the measurement disturbing the
-        measured was walked into twice: once with the IMU on a swaying rig, once with the loop
-        rate under SSH load. The second time produced a committed wrong conclusion that only an
-        A/B retracted.
-  \item \textbf{Progressive validation works.} The base-DOF ladder localised failures to single
-        degrees of freedom. The toy problem debugged the deploy chain at one degree of freedom.
-        Telemetry cross-checks and the workspace-as-safety-net made hardware sessions survivable,
-        and the one incident occurred precisely in the gap the guard now closes.
-\end{enumerate}
+The 6\,m/s estimate provides the reference and very optimistic upper ceiling against which the learned controller can be evaluated.
+
+
+\newpage 
+
+\subsection{RL Policy for dash running}
+
+Using the measured plant model with MIT-mode actuation, a single cold training run with the sprint objective produced a controller that successfully completed the simulated 100\,m dash in all 16 greedy evaluation episodes.
+The mean completion time was 32.5\,s, corresponding to an average forward speed of 3.07\,m/s.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{Figures/sprint_dash_stats.png}
+\caption{One of the greedy evaluation of the sprint policy: forward speed over the dash (left) and cumulative distance against the 100\,m target (right).}
+\label{fig:sprint-dash-stats}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{Figures/training_plots.png}
+\caption{Training diagnostics for the sprint policy: episode reward and length, forward-speed reward income, gait and other reward terms, curriculum schedules, losses, PPO clip statistics, and policy standard deviation with explained variance, all against timesteps.}
+\label{fig:training-plots}
+\end{figure}
+
+\subsection{Legality of the gait against the measured envelope}
+
+The learned runner was subsequently audited against the experimentally measured hardware limits established in \cref{sec:robot}.
+This test replays greedy evaluation trajectories and checks the commanded motion at each control step against the measured actuator constraints, including torque, torque--speed capability, joint velocity, and thermal loading.
+The commanded torque remains within the permitted torque and torque--speed envelope for approximately 99.9\,\% of the evaluated control steps.
+In this respect, the learned policy operates almost entirely inside the measured instantaneous actuation capability of the robot.
+The commanded current stays at the allowed thermal limit.
+
+The audit nevertheless exposes an important violation.
+The swing-leg joint velocity reaches approximately twice the measured no-load actuator speed.
+Such motion is physically unattainable and therefore identifies a bug in the form of a missing velocity constraint in the simulation model that needs to be patched.
+
+\subsection{Robustness margins}
+
+Robustness was assessed empirically using perturbed greedy evaluations.
+The tested perturbations included changes in robot mass, additional actuation delay, and external pushes.
+
+The mass-scaling experiments indicate that the learned runner possesses appreciable control authority only when the effective plant mass is at or below the nominal training value.
+Performance degrades rapidly as the mass is increased above nominal, indicating limited force margin in the learned solution.
+Similarly, the policy was very sensitive to actuation delay larger than what it was trained against.
+This can likely be explained by the fact that errors compound rapidly: while the control action might have been stable at a given time, at t+1 the control action might already be much bigger. Since the policy was tasked with maximising speed, it uses all its control authority for this task and has no more than what was needed in simulation to recover from disturbances.
+The policy was not sensitive to external pushes, but it was only tested on the fore-aft axis.
+This is the expected behaviour since the policy robustness is set at training by changing the noise distribution in the parameters it needs to be robust against.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{Figures/sprint_margins.png}
+\caption{Robustness margins of the sprint policy under greedy evaluation: survival rate and mean speed against total mass scaling (left), action delay (centre), and push impulse along the fore-aft axis (right). The dashed line marks the nominal training value.}
+\label{fig:sprint-margins}
+\end{figure}
+
+\subsection{Deployment readiness}
+
+Several components required for hardware deployment were verified end-to-end.
+The trained neural-network policy can be exported to run on the Raspberry Pi CPU in less than 10\,ms.
+The deployment stack also includes the hardware safety governor and black-box logging system described above.
+At the platform level, the Raspberry Pi 3B sustains the 200\,Hz low-level control tick with the measured control workload.
+The complete learned runner was, however, not demonstrated as a 100\,m hardware sprint within the scope of the thesis.
+The principal computational limitation is policy inference on the Raspberry Pi 3B, whose execution time is slightly above the available per-step budget when combined with the remainder of the control stack.
+Two practical routes remain: upgrading the onboard computer, or retraining and validating the controller for a lower control frequency, such as 100\,Hz.
+Neither could be completed and experimentally validated before submission.
+
+Accordingly, the final deliverable is an operational and experimentally characterised bipedal platform, together with a complete learning and deployment pipeline and a simulated running controller that reaches 3.07\,m/s.

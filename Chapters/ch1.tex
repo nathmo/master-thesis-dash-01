@@ -1,80 +1,76 @@
-\section{Introduction}
+\section{Introduction and context}
+\label{sec:intro}
 
-\subsection{Problem statement}
+This chapter states the objective, the platform, and the scope. It closes with the contributions and a reading map.
 
-Reinforcement learning has produced striking legged-locomotion results on a small set of
-well-instrumented research platforms. Reproducing those results on a new, custom, imperfectly
-known robot is a different problem, and it is the problem most robot builders actually face.
-On such a robot the plant parameters are uncertain, the actuators hide internal
-control loops, the sensors are commodity parts, and the computer is a single board. The gap
-between ``RL walks in simulation'' and ``RL walks on this robot'' is dominated by modelling
-fidelity, actuation bandwidth, calibration and instrumentation, not by learning algorithms.
+\subsection{The platform and the objective}
+\label{sec:intro-objective}
 
-DASH-01 is a two-legged, six-motor robot with a parallel-linkage knee and a passive ankle,
-designed around the ambition of high running speed. This thesis takes the robot from a partially
-finished mechanical design to a measured, simulated, trained and instrumented platform.
+DASH-01 is a bipedal robot built at REHAssist. It carries two legs, six quasi-direct-drive
+actuators, a parallel 4-bar knee, a passive ankle spring and a single-board computer. The hardware
+budget was roughly CHF\,5000. \Cref{fig:robot} shows the robot as modelled.
 
-\subsection{Objectives of the Project}
+The objective at kickoff was maximum running speed, with the bipedal 100\,m record as the ambition. 
+That record has moved several times during the project. It now stands at 8.86\,s, set by Tiangong Ultra in Beijing on 25 August 2026~\cite{apnews2026chinese}. That is an average of about 40.6\,km/h, faster than Usain Bolt's 9.58\,s pace.
+Before this thesis started, the record was Cassie's 24.73\,s over the same distance, set in 2022~\cite{crowley2024cassie}.
 
-\begin{enumerate}[leftmargin=*]
-  \item Model the robot faithfully enough to train against: kinematics, including the closed
-        4-bar loop, plus masses, actuators and sensors.
-  \item Establish the robot's physical performance envelope independently of any controller, so
-        that learned results can be judged against a ceiling rather than against hope.
-  \item Train locomotion policies with reinforcement learning. Iterate on the action-space design
-        until one design converges reliably, then quantify what still separates those policies
-        from hardware deployment.
-  \item Build the deployment stack on the real robot — control loop, calibration, safety and
-        telemetry — and validate as much of the chain as the hardware state allows.
-  \item Record the methodology honestly enough to be reproducible, including the failures.
-\end{enumerate}
+The project inherited a partially finished robot. The work reported here therefore
+starts at modelling, and at the selection of the non-mechanical subsystems. It then runs through
+characterisation and the training of a policy. 
 
-\subsection{Methodology Overview}
 
-The project starts halfway. The mechanical design existed in part, so the work reported here
-begins at modelling and at hardware selection for the non-mechanical subsystems. The development
-order was as follows. First, CAD re-assembly and export to a simulable model. Second, validation
-of that model against the physical robot, by workspace calibration, then statics, then full
-dynamic identification. Third, a first-principles capability analysis on the validated model.
-Fourth, a toy problem — a single-joint inverted pendulum — to exercise the complete
-train--export--deploy chain at minimum stakes. Fifth, three generations of RL policy design,
-trained on an HPC cluster. Last, the deployment stack on the robot, driven by a measurement
-campaign that fed corrections back into the simulation. \Cref{sec:overall-method} details the
-sequence.
+\subsection{The objective moved from record pace to a measured demonstrator}
+\label{sec:intro-reframe}
+
+\textbf{The record moved faster than the thesis.} New bipedal speed records are now being set by
+teams with substantially greater resources and increasingly specialised platforms. Matching the
+record therefore ceased to be a realistic objective for the hardware and time available to this thesis.
+
+\textbf{The measured plant imposes a lower speed ceiling.} \Cref{sec:speed-ceiling} estimates a
+maximum running speed of about $6\,\mathrm{m/s}$ for DASH-01. The estimate is derived from the
+measured mechanism, its actuator limits, and the available leg workspace.
+This establishes the physical capability of the platform independently of any learned controller.
+
+The objective of this thesis was therefore reframed as a measured running demonstrator and a
+reusable methodology for transferring reinforcement learning to a custom biped. The deliverable is
+the complete chain from the mechanical model and plant characterisation to a trained and deployed
+policy.
+
+The central engineering challenge is that the robot is not a known control platform. Its relevant
+parameters must be identified experimentally, while the actuators contain internal control loops
+whose dynamics are only partially documented. Sensor characteristics, communication latency and
+execution timing further affect the behaviour seen by the policy. Consequently, obtaining
+locomotion in simulation is only one part of the problem: the simulated plant must reproduce the
+properties that determine whether the learned controller can operate on the physical robot.
+
+\newpage
 
 \subsection{Contributions}
+\label{sec:intro-contrib}
 
 \begin{itemize}[leftmargin=*]
-  \item A complete CAD-to-MJCF modelling pipeline for a biped whose linkage closes a loop. It
-        includes the loop-closure treatment that URDF cannot express, and validation tooling:
-        analytic Jacobians checked against finite differences, and loop closure checked against
-        the measured backdriven workspace at 100\,\% of 2789 poses.
-  \item A measured plant. It comprises weighed segment masses, torque constants identified by a
-        known-mass method that breaks the degeneracy between $K_t$ and gravity, the Bode response
-        of the drive's internal position loop (0.8\,Hz plus 25\,ms), IMU noise with provenance
-        labels, loop timing and the CAN protocol. It states explicitly what the identification
-        could \emph{not} resolve.
-  \item A first-principles capability analysis of running speed, validated against MuJoCo. Its
-        sensitivity result — distal mass costs roughly nine times what torso mass costs — was
-        confirmed repeatedly by later measurement as the binding design axis.
-  \item A policy architecture and the curriculum that trains it. The architecture is a learned
-        Fourier gait generator, re-parameterised every step and mirrored across legs, with
-        hard-wired reflexes, learned reflexes and a per-step residual channel. The curriculum
-        releases the base degrees of freedom one at a time. An A/B against an explicit-oscillator
-        generator ran on identical plants and rewards.
-  \item A catalogue of failure modes with measured diagnoses. It covers reward exploits (skating,
-        floor penetration, shuttling and suicide by penalty), curriculum deadlocks, evaluation
-        restore bugs, a warm-start bug that silently duplicated every seed replicate, and the
-        pitch-balance wall traced to plant statics rather than to learning.
-  \item A scripted classical baseline: a capture point and a clocked gait, 21 gains, no learning.
-        It outperforms RL on the constrained plant and fails identically on the free plant, which
-        is evidence that the wall is physical.
-  \item Deployment infrastructure on the robot: a 200\,Hz daemon on stock Linux, a web bring-up
-        instrument that carried most of the measurement campaign, and a flight recorder. 
-  \item Two published, reusable component databases, each with figure-of-merit tooling. The
-        actuator explorer holds 140 commercial actuators, 121 motors, 121 gearboxes and 9 drives
-        across eight vendors, and is built on the winding-invariant motor constant
-        $K_m = K_t/\sqrt{R}$ with explicit electrical reference frames. The cell and pack explorer
-        holds roughly 430 cells, 54 BMS modules and 110 packs, and is built on duration-stamped
-        current tiers and a pack synthesiser.
+  \item \textbf{A CAD-to-MJCF pipeline}, with the loop-closure treatment URDF cannot express. The model was then validated against the
+        backdriven workspace (\cref{sec:twin}).
+  \item \textbf{A characterised demonstrator robot} (\cref{sec:plant-id}). It covers weighed segment masses, a torque
+        constant identified by a known-mass method that breaks the degeneracy between $K_t$ and
+        gravity, the Bode response of the drive's internal position loop, inertial-sensor noise
+        characteristics, loop timing and the CAN protocol.
+  \item \textbf{A first-principles capability analysis} of running speed on that plant, validated
+        against MuJoCo (\cref{sec:speed-ceiling}).
+  \item \textbf{An action-space and curriculum design} for the learned controller. 
+        Multiple action spaces were tested, and a curriculum was built to converge to a running policy on the measured plant (\cref{sec:rl-cpg,sec:rl-curriculum}).
+  \item \textbf{A deployment stack on the robot.} It is a 200\,Hz daemon on stock Linux, a web
+        bring-up instrument that was used to perform the measurement of the robot characteristics.
+        The deployment stack also includes safety mechanisms to prevent the robot from exiting the safe operating envelope (\cref{sec:deploy}).
+  \item \textbf{Two component databases}, covering 140 commercial actuators and roughly 430 battery cells.
+        They were used to validate the choice of the actuators and the battery pack (\cref{sec:hw-selection}, \cref{sec:app-db}).
 \end{itemize}
+
+\subsection{Reading map}
+\label{sec:intro-map}
+
+\Cref{sec:bg} places the control approach among the published families and names the gap this work sits in.
+\Cref{sec:robot} finishes the robot, builds its digital twin, and replaces the assumed plant parameters with measurements. It closes with the running speed the measured plant admits.
+\Cref{sec:rl} develops the learned controller on that plant, one action space at a time.
+\Cref{sec:results} reports what the robot and the policies deliver.
+\Cref{sec:discussion} ranks the changes that would close the remaining gap, and \cref{sec:conclusion} concludes.

@@ -1,581 +1,118 @@
-\section{Background and State of the Art}
+\section{Background and literature review}
 
-\subsection{What makes bipedal locomotion hard}
+\label{sec:bg}
+
+This chapter provides a brief context for bipedal locomotion and, more specifically, for the Reinforcement Learning framework used in the literature to address this problem.
+
+\subsection{Definitions}
+
+\label{sec:bg-defs}
+
+First, a few definitions are provided, as the following terms will recur throughout this thesis.
+
+\textbf{Underactuation} is the presence of more degrees of freedom than independently actuated degrees of freedom.
+
+\textbf{Unilateral contact} means that a foot can push against the ground but cannot pull it, and that the resulting contact force must lie within the \textbf{friction cone}.
+
+The \textbf{sim-to-real gap} is the performance mismatch observed when transferring a policy from a simulated plant to the physical robot. This mismatch generally arises because the real plant lies outside the distribution of plants and disturbances encountered during training.
+
+In the context of this thesis, \textbf{failure} refers to the termination of an episode following body contact with the ground or leaving the measured workspace.
+
+\textbf{Stability margin}, in the context of Reinforcement Learning, is not necessarily expressed as a classical analytical stability margin. In this thesis, robustness is instead assessed through quantities such as the number of surviving episodes and the variance across random seeds.
+
+\textbf{Plant}, borrowed from control theory, refers to the model of the system to be controlled, in this case the model of the robot used for training and analysis. The word robot is reserved for the physical platform.
+
+\subsection{Abbreviations}
+
+\textbf{RL}: Reinforcement Learning
+
+\textbf{CoM}: Centre of Mass
+
+\subsection{Bipedal locomotion approach}
+
 \label{sec:bg-hard}
 
-A legged robot is not a robot arm with feet. An arm is bolted to the world, so the floor reacts
-every joint torque the arm produces through its base. A legged robot touches the world only
-through intermittent, unilateral contacts. Three consequences follow, and they organise this
-chapter.
+Bipedal locomotion can be approached in different ways, depending in particular on the speed of motion and on the assumptions made about contact and dynamics. The simplest case is a robot with flat feet walking on flat terrain at sufficiently low speed that inertial effects can be neglected; this was the approach used for WABOT-1 in 1973 \cite{waseda2026wabot1}. Maintaining stability can then be reduced to keeping the projection of the CoM inside the support polygon formed by the feet. As the robot moves faster, inertial effects can no longer be neglected. The relevant quantity is then not simply the projection of the CoM, but the Zero Moment Point (ZMP), which must remain within the support polygon; this approach was used, for example, in ASIMO \cite{whatimakethis2020asimo}.
 
-\textbf{It is underactuated.} A biped with six leg motors has twelve degrees of freedom. The extra
-six belong to the body, which translates along three axes and rotates about three more with no
-motor attached to any of them. Those six \emph{base} degrees of freedom can be influenced only
-indirectly, through the ground. A flight phase has no ground, so the centre of mass follows a
-ballistic arc that no actuation can alter. The robot can only choose the posture it will land in.
-This thesis makes the point structurally. It releases the base degrees of freedom one at a time as
-a training curriculum (\cref{sec:rl-cpg}), and the milestone at which the robot fails names the
-degree of freedom it cannot control.
+Running introduces a flight phase, which is incompatible with the previous approaches that require at least one foot to remain in contact with the ground at all times. To enable running, Raibert \cite{raibert1986} proposed a foot-placement method based on the following relation:
 
-\textbf{The control inputs are unilateral and saturating.} A foot can push on the ground but not
-pull. It can push only within a friction cone, or it slips. The point where that push applies is
-the \emph{centre of pressure}, and it can move only within the contact patch. For a point foot the
-patch is a point, so the centre of pressure cannot move at all. The most powerful input available
-is \emph{where to put the next foot}, and that input is not continuous. It is chosen once per
-step, and the leg's reachable workspace bounds it. A controller therefore holds a small number of
-discrete, bounded opportunities to act rather than continuous authority.
-
-\textbf{The timescales are short.} An inverted pendulum of leg length $h$ diverges with time
-constant $\sqrt{h/g}$, which is about 310\,ms for this robot. Ground contacts in running last tens
-of milliseconds. Any correction must therefore be planned, commanded and \emph{mechanically
-executed} inside a window of a few tenths of a second. Actuator bandwidth is consequently a
-first-class constraint, not an implementation detail. This project measured that constraint the
-hard way: the drive's position loop is a 0.8\,Hz pole with $\tau = 199$\,ms, against the 310\,ms
-divergence (\cref{sec:plant-id-drive}).
-
-Running adds one thing to walking. In walking the centre of mass \emph{vaults} over a stiff
-support leg and rises at mid-stance. In running the centre of mass \emph{bounces}: it falls at
-mid-stance as the leg compresses, rises again as the leg rebounds, and passes through an aerial
-phase with both feet off the ground. The distinction is not cosmetic. It changes which reduced
-model applies, which is the subject of \cref{sec:bg-slip}. It is also why frameworks built for
-walking do not extend to running when the commanded speed is simply raised.
-
-The full dynamics are intractable to reason about directly, so the field works with \emph{reduced
-models}: the smallest system that reproduces the behaviour of interest. Three such models appear
-repeatedly in this thesis. The \textbf{inverted pendulum}, a point mass on a rigid massless leg,
-models walking and gives the divergence time above. The \textbf{spring-loaded inverted pendulum}
-(SLIP), a point mass on a springy leg, models running. The \textbf{capture
-point}~\cite{pratt2006capture} is the location at which a foot must land to bring the inverted
-pendulum exactly to rest, and is therefore the natural target for a foot-placement controller. It
-underlies both the hand-wired pitch reflex of \cref{sec:rl-reflexes} and the scripted baseline of
-\cref{sec:scripted-baseline}. These toy models stay load-bearing on a real robot, and not as a
-convenient simplification: the free-topple time of the plain inverted pendulum turns out to
-\emph{be} the failure signature this thesis spends a chapter diagnosing (\cref{tab:freefall}).
-
-\subsection{A short history: six answers to one question}
-\label{sec:bg-history}
-
-The history of walking robots is more legible when it is read as a sequence of answers to a single
-question: \textbf{where does the stability come from?} Every family below answers that question
-differently, and every answer buys something and costs something. The six families are not a
-progression from worse to better. All six are in active use, and the choice among them is governed
-less by fashion than by what the hardware can physically do, which is the subject of
-\cref{sec:bg-actuation}.
-
-\subsubsection{Stability from geometry: static walking and the zero-moment point}
-\label{sec:bg-zmp}
-
-The first walking robots avoided the dynamics rather than solving them. WABOT-1 was built at Waseda
-University in 1973 and is generally credited as the first full-scale anthropomorphic walker. It
-moved slowly enough that its own momentum could be neglected~\cite{lim2007waseda}. It was, in
-effect, a statue that occasionally shifted its weight. Stability meant keeping the vertical
-projection of the centre of mass inside the \emph{support polygon}, the convex hull of the points
-touching the ground. A robot that satisfies that condition at every instant cannot tip, by a purely
-geometric argument that needs no model of the dynamics.
-
-The dynamic generalisation is the \textbf{zero-moment point} (ZMP). Vukobratovi\'c and Juricic
-introduced it in 1969~\cite{vukobratovic1969} and later surveyed it
-themselves~\cite{vukobratovic2004}. The ZMP is the point on the ground about which the horizontal
-components of the ground reaction moment vanish. Equivalently, it is the point at which gravity and
-all inertial forces can be replaced by a single vertical force. While the ZMP stays strictly inside
-the support polygon, the foot does not rotate about its edge and the contact behaves as though the
-robot were bolted to the floor. One scalar condition thus converts the balance problem into a
-geometric constraint that a planner can check.
-
-The framework carried the field for three decades. Honda's P2 and its descendant
-ASIMO~\cite{hirai1998honda} made it famous. Kajita's 3D linear inverted pendulum
-model~\cite{kajita2001lipm} and ZMP preview control~\cite{kajita2003preview} made it cheap. Both
-reduce the robot to a point mass constrained to a plane of constant height, then solve for a
-centre-of-mass trajectory whose ZMP tracks a planned footstep sequence. That problem is small
-enough to solve online on 1990s computers.
-
-\emph{What it buys.} Transparency and a checkable guarantee. The condition is a single inequality
-and needs no contact model beyond the geometry of the foot. The foot is never permitted to rotate,
-so the approach tolerates a fairly inaccurate dynamic model. It is safe, and for a long time it was
-the only approach that worked.
-
-\emph{What it costs.} The guarantee is bought by never leaving the regime in which it holds. The
-support polygon \emph{is} the foot, so the robot needs large flat feet and flat ground. Holding the
-centre of mass at constant height demands a permanently bent-knee posture, which is why ASIMO-class
-walkers show a cost of transport near 1.6 against roughly 0.2 for a walking human. Toe-off and
-heel-strike are the foot rotations that make human walking efficient, and the framework forbids
-both by construction, because both place the ZMP on the boundary. Most decisively for this thesis,
-ZMP is a \emph{walking} framework. Running contains an interval with no support polygon at all, so
-the central condition is not merely violated but undefined.
-
-\subsubsection{Stability from the mechanism: passive dynamics}
-\label{sec:bg-passive}
-
-The opposite extreme arrived with McGeer's passive dynamic walkers~\cite{mcgeer1990}. These are a
-pair of legs with no motors, no sensors and no computer, and they walk stably down a shallow ramp
-on gravity alone. The gait is a \emph{limit cycle}: a closed orbit in state space that the robot
-returns to on its own after a small disturbance. That orbit is a property of the linkage's geometry
-and mass distribution, not of any controller. Collins, Ruina, Tedrake and Wisse~\cite{collins2005}
-later added the minimum actuation needed to walk on the level, an ankle push-off replacing the
-slope. They measured a cost of transport of about 0.20, comparable to a human and an order of
-magnitude better than the ZMP walkers of the same era.
-
-\emph{What it buys.} Efficiency that no other approach has matched, and a conceptual result that
-outlives the hardware: \textbf{morphology is control}. A well-proportioned leg performs most of the
-stabilisation for free. The actuators then fight nothing, because the commanded motion is the
-motion the mechanism already wanted.
-
-\emph{What it costs.} Authority. The basin of attraction is tiny, and a centimetre of unexpected
-terrain ends the gait. Speed and heading are essentially not commandable, and each walker is tuned
-to a single operating point. The result is stability without controllability.
-
-The lesson that transfers is the one this thesis re-derives from the opposite direction. A
-mechanism that carries the gait needs only a weak controller. A mechanism that fights the gait
-cannot be rescued by any controller. \Cref{sec:hw-force-map} and \cref{sec:speed-ceiling} make that
-statement quantitative for DASH-01.
-
-\subsubsection{Stability from elasticity: spring-mass templates}
-\label{sec:bg-slip}
-
-Biomechanics supplied the model that walking frameworks lack. Blickhan~\cite{blickhan1989} showed
-that one model describes running, hopping and trotting across animals spanning orders of magnitude
-in body mass. That model is the \emph{spring-loaded inverted pendulum}: a point mass on a massless
-linear spring. The leg compresses on touchdown, stores the impact energy elastically, and returns
-it at push-off. Full and Koditschek~\cite{full1999templates} named such a model a \emph{template},
-meaning the simplest system that exhibits the behaviour, with the physical animal or robot as its
-\emph{anchor}. They argued that good legged design consists of building an anchor that behaves like
-its template.
-
-The engineering consequence is direct. A running robot wants a real spring in its leg. A large part
-of the controller's job is then to hold the mechanism near a spring-mass limit cycle, rather than to
-compute a trajectory from scratch. Hurst's ATRIAS~\cite{hubicki2016atrias} is the most literal
-instantiation: a biped built to \emph{be} a SLIP, with fibreglass leaf springs in series with its
-drives. Cassie and Digit are its commercial descendants.
-
-\emph{What it buys.} Correct physics for running, rather than a walking framework pushed past its
-validity. The spring recovers impact energy that the gearbox would otherwise dissipate as heat. The
-spring also rejects high-frequency disturbances at the speed of sound in steel, which is faster
-than any feedback loop can react. That second property is often missed.
-
-\emph{What it costs.} The spring rate is a \emph{design commitment}, chosen once, in hardware. It
-sets the leg's natural frequency and therefore the narrow band of speeds at which the robot is
-efficient, and software cannot retune it. Series elasticity also inserts a low-pass filter between
-motor and ground, which caps force-control bandwidth. Both costs appear in this thesis in their
-sharpest form. DASH-01's passive ankle spring is exactly such a commitment, and getting its
-stiffness wrong is the central mechanical finding of the work
-(\cref{sec:ankle-build,sec:hw-force-map}).
-
-\subsubsection{Stability from foot placement: the hopping lineage}
-\label{sec:bg-hopping}
-
-Raibert's hopping robots~\cite{raibert1986} answered the question with the insight that reframed the
-field. A running robot does not have to be balanced \emph{continuously}. It has to be balanced
-\emph{once per step}, at the instant it commits to where the next foot will go. Control then
-decomposes into three nearly independent loops. Thrust energy injected at bottom of stance sets the
-hopping height. Foot placement relative to a neutral point sets the forward speed,
 \begin{equation}
-  x_f \;=\; \tfrac{1}{2}\,\dot x\,T_s \;+\; k\,(\dot x - \dot x_d),
+  x_f = \tfrac{1}{2} \cdot \dot{x} \cdot T_s + k \cdot (\dot{x} - \dot{x}_d)
   \label{eq:neutral-point}
 \end{equation}
-and hip torque applied \emph{during stance only} corrects body attitude. Stance is when friction
-pins the foot, so the leg can serve as a reaction strut. The lineage runs from the 1984 one-legged hopper
-through BigDog~\cite{raibert2008bigdog} to the Boston Dynamics Atlas. It remains the skeleton of
-most classical running controllers, including the scripted baseline of
-\cref{sec:scripted-baseline}, in which \cref{eq:neutral-point} appears directly.
 
-\emph{What it buys.} Running, which is what ZMP cannot do. It needs no support polygon, so point
-feet are permissible. It needs no accurate dynamic model, because the placement law carries
-essentially one empirical gain. The three-loop decomposition is also simple enough to implement on
-1980s hardware.
+where $x_f$ is the fore-aft foot placement, measured from the hip at touchdown, in metres; $\dot{x}$ is the current forward speed in metres per second; $\dot{x}_d$ is the commanded forward speed, in metres per second; $T_s$ is the stance duration, in seconds; and $k$ is a velocity feedback gain, also expressed in seconds.
 
-\emph{What it costs.} Three assumptions, examined in \cref{sec:bg-raibert} because DASH-01 violates
-all three. And no proof: the hoppers demonstrably worked, but the approach offers no certificate
-that they will.
+The first term corresponds to the neutral point, which produces no net fore-aft impulse. The second term provides velocity feedback: when the robot is moving faster than commanded, the foot is placed further forward, producing a decelerating effect during stance. This lineage runs through systems such as BigDog \cite{raibert2008bigdog} and later Atlas.
 
-\subsubsection{Stability from a provable limit cycle: hybrid zero dynamics}
-\label{sec:bg-hzd}
+The underlying idea is that the gait can be stabilised, to a significant extent, by placing the feet at the appropriate location and time. This also makes it possible to build running robots with point-contact feet, rather than requiring the large flat feet used by earlier approaches. The approach was subsequently refined by solving the foot-placement and whole-body motion problem online, leading to what is commonly formulated as a Model Predictive Control approach \cite{kuindersma2016atlas}. This approach was central to the development of the early dynamic legged robots developed by Boston Dynamics.
 
-Passive dynamics gives a limit cycle that cannot be commanded. Raibert gives commandable behaviour
-that cannot be proved. Hybrid zero dynamics (HZD) is the synthesis. The controller does not track a
-trajectory indexed by \emph{time}. It enforces \emph{virtual constraints} instead: relations among
-the joint angles parameterised by the robot's own progress through the step. Enforcing those
-constraints collapses the closed-loop dynamics onto a low-dimensional surface, the \emph{zero
-dynamics}, whose remaining motion has a single degree of freedom. A Poincar\'e map can then certify
-the orbital stability of the resulting gait. Westervelt, Grizzle and
-Koditschek~\cite{westervelt2003hzd} established the framework, the accompanying
-monograph~\cite{westervelt2007book} systematised it, and RABBIT~\cite{chevallereau2003rabbit}
-demonstrated it on a physical underactuated biped with point feet.
+These approaches rely on a sufficiently accurate model of the plant. In practice, however, the plant parameters are only partially known and may vary with configuration, load, contact conditions, and hardware. Classical model-based controllers are therefore designed around a particular model and possess a finite robustness margin with respect to modelling errors and disturbances. Beyond this margin, the controller may no longer be able to stabilise the system.
 
-\emph{What it buys.} The only genuine stability proof in this chapter, for an underactuated robot
-with point feet, which is precisely the case ZMP cannot address. It also buys an idea that has
-outlived its framework: indexing a gait by \emph{phase} rather than by time. That idea reappears in
-essentially every modern learned locomotion architecture, including the gait phase $\varphi$ of
-this thesis's own generator (\cref{sec:rl-cpg}).
+Reinforcement Learning provides an alternative way of obtaining this robustness. Rather than explicitly deriving a controller from a single plant model, RL trains a policy over a distribution of simulated plants. The policy can therefore be exposed to variations in plant parameters during training, for example through domain randomisation, with the objective of improving its robustness to model mismatch.
 
-\emph{What it costs.} The proof is a proof about the \emph{model}. The gait itself comes from an
-offline trajectory optimisation over that model, so the accuracy requirements are severe and the
-guarantee degrades silently when the plant is wrong. This thesis met that failure mode in a
-different guise (\cref{tab:plant-id}). Each gait is a separate optimisation, so speed changes,
-turning and terrain must be handled by scheduling among precomputed cycles rather than emerging
-from the controller.
+The problem is further complicated by the unilateral and saturating nature of ground contact. A foot can only push against the ground, not pull it, and the tangential component of the contact force is bounded by the friction cone. Exceeding this bound results in slipping. A second complication is the timescale of the dynamics. A legged robot can, to a first approximation, be considered as an inverted pendulum with characteristic length $h$.
 
-\subsubsection{Stability from re-solving the problem: optimisation-based control}
-\label{sec:bg-mpc}
+In the absence of corrective input, the characteristic timescale of the inverted pendulum is on the order of
 
-By the late 2000s computers were fast enough to solve the control problem online, repeatedly.
-Wieber~\cite{wieber2006mpc} recast ZMP walking as \emph{model-predictive control}. At each cycle
-the controller solves a constrained optimisation over a short future horizon, applies only the
-first input, discards the rest, and re-solves at the next cycle. The constraint set is written down
-explicitly, so friction cones, torque bounds and kinematic limits become constraints rather than
-hoped-for margins. Kuindersma et al.~\cite{kuindersma2016atlas} built the whole-body version that
-ran Atlas at the DARPA Robotics Challenge. Di Carlo et al.~\cite{dicarlo2018mpc} produced the
-convex formulation on MIT Cheetah 3 that now underlies most classical legged stacks.
+\begin{equation}
+\tau \sim \sqrt{\frac{h}{g}},
+\end{equation}
 
-\emph{What it buys.} Constraints as first-class objects. Genuine feedback at the level of the
-trajectory rather than only at the joints. And the commandability that passive dynamics and HZD
-lack: one controller walks at different speeds, turns, and recovers from pushes.
+which corresponds to approximately $300\,\mathrm{ms}$ for a characteristic length of $1\,\mathrm{m}$.
 
-\emph{What it costs.} Three things. An accurate model, because the optimiser trusts it over the
-whole horizon and the errors compound. A solver fast enough to close a loop, which constrains the
-formulation to be convex or nearly so. And, the requirement that decides this thesis,
-\textbf{high-bandwidth torque control}, because the output is a force command that must reach the
-ground essentially unfiltered. Which foot contacts when is usually still prescribed by hand,
-because optimising the contact schedule turns a continuous problem into a combinatorial one.
+During running, however, contact with the ground may last only a few tens of milliseconds.
+Within this timescale, the robot must measure the state of the system, estimate the relevant dynamics, compute a corrective command, communicate it to the actuator, and physically produce the required motion.
+This places significant requirements on sensing, computation, communication latency, and actuator bandwidth.
+The robot considered in this thesis has a measured actuator bandwidth corresponding to a $2\,\mathrm{Hz}$ pole in servo mode, and up to $20\,\mathrm{Hz}$ in MIT mode depending on the position-loop gains.
+This limitation will become relevant again when discussing the control architecture and the sim-to-real problem later in this thesis.
 
-\subsubsection{Stability from experience: learned control}
-\label{sec:bg-rl}
+\subsection{Reinforcement learning for locomotion}
 
-The most recent answer replaces the analytic chain with a function fitted in simulation. A policy,
-typically a small neural network, is optimised by reinforcement learning to maximise a reward over
-millions of simulated episodes. Planner, whole-body controller and joint tracker collapse into a
-single evaluation. Heess et al.~\cite{heess2017emergence} showed that rich terrain and a simple
-reward produce recognisable running gaits with no gait prior at all.
-PPO~\cite{schulman2017ppo} became the workhorse algorithm, and fast simulators such as
-MuJoCo~\cite{todorov2012mujoco} made the sample cost affordable.
-
-Transfer to hardware is the hard part. The toolkit that solved it is worth naming, because this
-thesis uses all of it. \emph{Domain randomisation}~\cite{tobin2017dr,tan2018sim2real} varies the
-plant parameters every episode, so the policy is optimised over a \emph{set} of robots and cannot
-overfit any single wrong one. \emph{Learned actuator models}~\cite{hwangbo2019anymal} replace the
-idealised motor with a network identified from hardware data, and that step first carried RL onto a
-real quadruped convincingly. \emph{Teacher--student
-distillation}~\cite{lee2020terrain,miki2022perceptive} trains with privileged simulator state, then
-distils into a policy that observes only what the robot can actually sense. On bipeds, Siekmann et
-al.~\cite{siekmann2021} demonstrated the full range of gaits on Cassie through periodic reward
-composition. Radosavovic et al.~\cite{radosavovic2024humanoid} carried the approach to a full
-humanoid. Crowley et al.~\cite{crowley2024cassie} produced the current bipedal 100\,m record:
-24.73\,s, or about 4.1\,m/s average. Motion priors from reference data are a parallel
-strand~\cite{peng2018deepmimic}, relevant here as the archetype of a \emph{shape} prior
-(\cref{sec:bg-prior}).
-
-\emph{What it buys.} No analytic contact model is required. That matters, because contact is
-exactly where analytic models are weakest and simulators are adequate. The policy is optimised over
-a distribution of states and plants rather than around one operating point, which is the source of
-its robustness claim (\cref{sec:bg-margin}). Inference takes microseconds on cheap hardware, so the
-entire stack fits on a single-board computer.
-
-\emph{What it costs.} No stability proof, and no diagnosis when it fails. The reward function
-becomes the specification, and an optimiser satisfies the specification rather than the intent.
-\Cref{sec:rl-position} and \cref{tab:negative} catalogue what that looks like in practice. The
-sample cost is $10^8$ to $10^9$ environment steps, so each result is a multi-day cluster job. And
-the whole result rests on the simulator, because every modelling error is silently baked into the
-policy. \Cref{sec:plant-id} is this document's demonstration of that last point.
-
-\subsubsection{Summary}
-
-\begin{table}[H]
-\centering
-\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{2.1cm}p{2.5cm}p{4.2cm}p{4.4cm}}
-\toprule
-\textbf{Approach} & \textbf{Stability from} & \textbf{What it buys} & \textbf{What it costs, and what it demands of the hardware} \\
-\midrule
-Static / ZMP
-& Geometry: CoP inside the support polygon
-& Transparent, checkable, tolerant of model error, safe
-& Walking only --- no flight phase; large flat feet and flat ground; poor efficiency (CoT $\approx$1.6). Position-controlled joints suffice. \\
-\addlinespace
-Passive dynamics
-& The mechanism itself
-& Best-in-class efficiency (CoT $\approx$0.2); proves morphology is control
-& Almost no authority: tiny basin, fixed speed. Demands a carefully proportioned, low-inertia leg. \\
-\addlinespace
-SLIP / series elasticity
-& Elastic energy storage
-& Correct model for running; recovers impact energy; sub-millisecond passive disturbance rejection
-& Spring rate is fixed in hardware, fixing the efficient speed band; caps force bandwidth. Demands a physical spring, sized correctly. \\
-\addlinespace
-Foot placement (Raibert)
-& One decision per step
-& Running with point feet; near model-free; simple enough to hand-build
-& Three assumptions (\cref{sec:bg-raibert}); no proof. Demands actuators that execute a placement within one swing. \\
-\addlinespace
-Hybrid zero dynamics
-& A certified limit cycle
-& Genuine stability proof under underactuation and point feet; phase-indexed gaits
-& Proof is against the model; one offline optimisation per gait. Demands an accurate model and good torque tracking. \\
-\addlinespace
-MPC / whole-body
-& Re-solving online
-& Constraints first-class; commandable; unified planning and control
-& Model accuracy over the horizon; fast solver; contact schedule still prescribed. \textbf{Demands high-bandwidth torque control.} \\
-\addlinespace
-Deep RL
-& Experience over a distribution
-& No contact model needed; robust by construction; runs on cheap compute
-& No proof; reward becomes the specification and is gamed; $10^8$--$10^9$ samples; inherits every simulator error. Demands a faithful plant model --- in software. \\
-\bottomrule
-\end{tabular}
-\caption{The six families, read as answers to ``where does the stability come from?''. The last
-column governs the choice in practice: an approach is available only if the actuation can meet its
-demand, which is the subject of \cref{sec:bg-actuation}.}
-\label{tab:bg-approaches}
-\end{table}
-
-Two observations close the survey. First, the families are complementary rather than competing, and
-most modern systems combine them. A typical modern system is a learned policy over a phase variable
-borrowed from HZD, with a spring borrowed from SLIP, on hardware descended from Raibert's. This
-thesis is no exception (\cref{sec:bg-prior}). Second, the trend across fifty years is a steady
-\emph{transfer of the stability burden from the controller to the robot and to the model}. The
-burden moves first from a geometric condition checked at runtime to a mechanism that is stable on
-its own. It then moves to a simulator faithful enough that a policy trained in it survives reality. That
-trend is what makes measurement, rather than control design, the critical path of a project like
-this one.
-
-\subsection{The hopping lineage's assumptions, and why DASH-01 breaks all three}
-\label{sec:bg-raibert}
-
-The three-loop decomposition of \cref{sec:bg-hopping} is not free. It embeds three assumptions, and
-each is worth naming individually. DASH-01 violates all three, and the manner of each violation is
-a result of this thesis rather than a caveat to it.
-
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{A point foot is sufficient, because attitude authority comes from the hip and not
-        from the foot.} This assumption is the one most often quoted as a virtue of the approach,
-        and it holds only while the hip route is open. Hip torque against a pinned foot is a
-        reaction torque, so three conditions must hold. The leg needs a usable moment arm, the
-        stance must last long enough to apply the torque, and the friction cone must hold. When
-        any of those conditions fails, a point foot
-        has \emph{no} remaining attitude authority, because a point contact permits zero
-        centre-of-pressure travel by definition. \Cref{sec:scripted-baseline} measures exactly that
-        state on DASH-01: at milestone m3 the single toe sphere yields zero centre-of-pressure
-        authority at \emph{any} ankle stiffness, so the ankle there is not weak but disconnected.
-        \Cref{sec:hw-force-map} shows that the passive ankle which should have supplied the missing
-        authority delivers 0.42 body weights against a 3.5\,BW requirement, and clears that
-        requirement over 0.0\,\% of the running-stance region. Two practical conclusions follow. A
-        point foot is an acceptable simplification only for a robot whose hip-and-stance route is
-        strong. And a foot with real fore--aft extent is a load-bearing design choice, not a
-        refinement.
-  \item \textbf{The commanded foot placement is reachable.} \Cref{eq:neutral-point} returns a
-        position, not a feasible one. On this robot the usable fore--aft workspace is
-        $\pm 0.30$\,m of a 1.06\,m geometric span (\cref{sec:speed-ceiling}). The toe hangs about
-        0.92\,m below the centre of mass, so a pitch rate $\dot\theta$ sweeps the contact point
-        forward at $L\dot\theta$. That sweep was measured to outrun the controller's corrective
-        foot motion \textbf{2:1}, until the workspace saturates in under a second
-        (\cref{sec:scripted-baseline}). The placement law does not fail because it is wrong. It
-        fails because the plant diverges faster than the foot can travel, which is a statement
-        about linkage proportions rather than about control.
-  \item \textbf{The actuator executes what the placement law commands, within one stance.}
-        Raibert's hydraulics did. DASH-01's drive is a 0.8\,Hz position loop with
-        $\tau = 199$\,ms (\cref{sec:plant-id-drive}), against an inverted-pendulum divergence
-        constant $\sqrt{h/g} = 311$\,ms. The scripted baseline therefore latches the target once
-        per swing rather than tracking it continuously, a structural choice
-        \cref{sec:scripted-baseline} defends at length. Even so, the drive recovers only about
-        83\,\% of the commanded placement by touchdown.
-\end{enumerate}
-
-Replacing the classical controller with a learned one repairs none of the three. That is the
-substance of \cref{sec:scripted-baseline}, and the reason this thesis reaches a mechanical
-conclusion from a control experiment.
-
-\subsection{The actuation axis, which decides which approach is available}
-\label{sec:bg-actuation}
-
-\Cref{tab:bg-approaches} ends each row with a hardware demand, and that column is not incidental. A
-control approach is available only to a robot whose actuators can meet its requirement. The
-actuation choice is therefore made \emph{before} the control choice, whether or not the designer
-notices. Three families dominate.
-
-\textbf{Hydraulic.} Raibert's hoppers, BigDog~\cite{raibert2008bigdog} and the Boston Dynamics
-Atlas are hydraulic. The family offers enormous force density, very high bandwidth, and a commanded
-force that arrives essentially instantaneously. The cost is a pump, a reservoir, noise, leaks and a
-floor on system size and budget that puts the family out of reach for most laboratories and all
-students.
-
-\textbf{Series elastic (SEA).} Pratt and Williamson~\cite{pratt1995sea} proposed inserting a spring
-between gearbox and load deliberately. Force then becomes a \emph{position} measurement, namely the
-spring's deflection, which is cheap and accurate to sense. The spring also protects the gear teeth
-from impact and stores running energy in the SLIP sense of \cref{sec:bg-slip}. ATRIAS, Cassie and
-Digit are the canonical bipeds~\cite{hubicki2016atrias}. The cost is that the spring is a low-pass
-filter. The spring--load resonance caps force bandwidth, and the compliance adds states that must
-themselves be controlled.
-
-\textbf{Quasi-direct drive (QDD), or proprioceptive actuation.} The MIT Cheetah
-lineage~\cite{seok2015design,wensing2017proprioceptive,katz2019minicheetah} took the opposite
-route: a large-diameter, low-$K_v$ motor behind a \emph{small} gear ratio, typically 4:1 to 10:1,
-so that the transmission is nearly transparent in both directions. Three properties follow. Torque
-can be inferred from motor current with no torque sensor, which is why the family is called
-proprioceptive. Reflected inertia is low, so an impact backdrives the motor instead of shattering a
-gear train. And the current loop sets force bandwidth, which puts it in the kilohertz range. The
-costs are honest ones. Torque density is lower than a high-ratio gearbox gives, so the robot is
-heavier for a given torque. And torque is current, current is heat, so the binding limit becomes
-thermal rather than mechanical. This thesis meets that limit directly
-(\cref{sec:speed-ceiling-corrected}).
-
-The consequence for DASH-01 belongs in the background chapter rather than in the results. The
-robot's actuators are QDD-class, chosen for exactly the reasons above, and
-\cref{sec:hw-motor-critique} vindicates them as the Pareto-optimal choice in their class. They are
-nevertheless commanded through the vendor's \emph{position} loop, which \cref{sec:plant-id-drive}
-measures at 0.8\,Hz. A position loop of that bandwidth wrapped around a transparent transmission
-discards the single property the transmission was chosen for. It also removes two entire rows of
-\cref{tab:bg-approaches} from the menu. MPC and torque-mode RL both require that a commanded force
-reach the ground, and a 0.8\,Hz position servo delivers neither. That is the mechanism behind the
-recommendation in \cref{sec:future}: treat torque-mode control as a day-one architectural
-requirement rather than as an optimisation.
-
-\subsection{Control approaches: where this thesis sits}
-\label{sec:bg-control}
-
-Classical stacks decompose the problem into a gait or footstep planner, a whole-body or centroidal
-controller, and joint-level tracking. They are transparent and analysable, but they demand accurate
-models and high-bandwidth torque control. Learned controllers collapse the same stack into a policy
-trained in simulation. They trade analysability for robustness to the messiness of contact, and
-they pay for it with a sim-to-real gap that modelling fidelity and domain randomisation must close.
-This thesis uses both. RL supplies the gait, and classical structure — reflexes, a clocked
-generator, capture-point priors — sits exactly where feedback must not be blind
-(\cref{sec:rl-reflexes}). The scripted baseline of \cref{sec:scripted-baseline} is the classical
-counterfactual, built on the same plant to answer one question: was the learning ever the
-bottleneck?
-
-\subsubsection{Two kinds of gait prior}
-\label{sec:bg-prior}
-
-``Learned controllers need no gait prior'' is a common and unhelpful summary, and this thesis is a
-poor advertisement for it. The architecture that finally worked here (\cref{sec:rl-cpg}) is a
-Fourier-series central pattern generator with hand-wired reflexes, which is a great deal of prior.
-The useful distinction is not \emph{how much} prior but \emph{which kind}. That distinction
-concerns the reachable set of gaits, not the amount of engineering involved.
-
-A \textbf{shape prior} fixes the trajectory and exposes its timing. Raibert's
-leg~\cite{raibert1986}, a fixed limit cycle in the classical CPG tradition~\cite{ijspeert2008}, a
-reference motion clip tracked by imitation~\cite{peng2018deepmimic} and any clocked foot-path
-generator all belong here. The controller chooses phase, frequency, amplitude and the reset on
-contact, but the \emph{shape} of the motion is authored in advance. The decisive property of a
-shape prior is that tuning does not enlarge what the robot can do. However carefully the gains are
-set, the reachable set of gaits stays a low-dimensional family around the authored gait. If the
-authored gait is wrong for the morphology, no amount of tuning reaches a better one.
-
-A \textbf{structural prior} constrains the \emph{class} of trajectories and leaves the member
-unspecified. The Fourier action space of \cref{sec:rl-cpg} asserts only that the gait is periodic,
-smooth, bounded and mirrored left to right. Which periodic function it is remains a free parameter,
-and the reachable set grows monotonically with the harmonic count $N$, approaching every periodic
-gait the workspace admits. PMTG~\cite{pmtg2018} and CPG-RL~\cite{cpgrl2022} sit here too. The prior
-does real work: it is the reason the problem is trainable at all, where the prior-free torque
-parameterisation of \cref{sec:rl-torque} never converged. But it works on the \emph{search} rather
-than on the \emph{answer}.
-
-The distinction earns this much space because DASH-01 is precisely the case that separates the two.
-A shape prior is safe when the morphology has a natural template to copy. An animal with roughly
-these proportions can be filmed, and the observed gait is a defensible starting shape. This robot
-has no such template. Hardware calibration established that \textbf{the cam is a full crank}: it
-sweeps about $245^\circ$ against a CAD-guessed $\pm 86^\circ$, and the 4-bar assembles at every
-angle (\cref{sec:hw-experiments}). The transmission ratio the 4-bar produces varies strongly with
-posture (\cref{sec:hw-force-map}), and no animal offers a gait for that. The cadence result is the
-evidence that the wider search space was genuinely used rather than merely available.
-Reinforcement learning repeatedly converged on a high-cadence solution, and the independent
-first-principles feasibility sweep of \cref{sec:speed-ceiling} located the unconstrained optimum at
-the same 12.4\,steps/s from physics alone, with no learning in it. A learned gait found the plant's
-own optimum on a morphology for which no template exists, and an independent analysis confirmed the
-location.
-
-Two qualifications keep this honest. First, \textbf{periodicity alone is demonstrably not
-sufficient} on this plant. \Cref{sec:bg-rl-loco} reports the literature constraint that no
-published system runs on per-cycle-only gait updates, and an experiment reproduced it here. An
-ablation removed the per-step residual channel, leaving a pure oscillator, and produced stability
-without locomotion: 15\,m of a 72\,m course at 0.25\,m/s (\cref{sec:cpg-ab}). The working policy
-class is periodic \emph{plus} an aperiodic intra-cycle correction. The structural prior is an
-exploration scaffold, not the policy. Second, \textbf{the prior did not disappear, it moved}, and
-where it moved is informative. The sagittal pitch reflex is hand-tuned rather than learned
-(\cref{sec:rl-reflexes}), and it sits deliberately at the one channel where feedback must not be
-blind. The design axis is therefore a dial, not a binary between prior and no prior. It runs from
-``which trajectory'' to ``which class of trajectories, plus explicit structure only where the plant
-demands it''.
-
-\subsubsection{What learning should buy in stability margin}
-\label{sec:bg-margin}
-
-The theoretical case for a learned controller on an unstable plant is a case about margin. A
-hand-designed controller is a local object. Its gains are tuned around an operating point, its
-structure encodes an assumed regime, and its region of attraction is whatever that construction
-happens to yield. A policy trained over a distribution of states and plants approximates, in the
-limit, a globally optimal feedback law over that distribution. Crucially, the hand-designed
-controller lies \emph{inside} the policy class. With an exact plant and unbounded training, the
-learned optimum can therefore only match or exceed it.
-
-The argument is correct, and its premises are load-bearing. That is why
-\cref{sec:scripted-baseline} finds the opposite on real numbers: a 21-gain scripted controller
-beats the learned reference on the constrained plant, and fails identically to it on the free one.
-Three premises fail. The plant is not exact. The training is not unbounded. And, least obviously
-and most importantly, a margin does not always exist to be won. \Cref{sec:margin-analysis} gives
-the measured breakdown. The conclusion it supports is that the margin advantage of learning scales
-with how much margin the plant has to give. That is a statement about robots rather than about
-methods, and it is the reason this thesis ends in a mechanical recommendation.
-
-\subsection{RL for locomotion: the lineage of this architecture}
 \label{sec:bg-rl-loco}
 
-Within the learned-control family of \cref{sec:bg-rl}, the lineage relevant to this work is
-narrower. It is the family of \emph{periodically parameterised} action spaces, in which the policy
-does not emit joint targets directly but shapes a periodic generator that does. Policies Modulating
-Trajectory Generators (PMTG)~\cite{pmtg2018} established the pattern. Oscillator-based
-CPG-RL~\cite{cpgrl2022} instantiated it with coupled phase oscillators in the tradition
-of~\cite{ijspeert2008}. The clock and phase-reward methods of Siekmann et al.~\cite{siekmann2021}
-carried Cassie to the 100\,m Guinness record~\cite{crowley2024cassie}. The appeal is exactly the
-structural prior of \cref{sec:bg-prior}: the network no longer has to discover that locomotion is
-periodic, only which periodic signal it wants.
+\subsubsection{Actuator control architecture}
 
-A literature review conducted mid-project (\cref{sec:rl-cpg}) returned one unambiguous constraint,
-and that constraint reshaped the architecture here. \textbf{No published system achieves running
-with per-cycle-only gait-parameter updates and no intra-cycle feedback channel.} Every successful
-system keeps a per-step path from observation to action. The same review supplied the phase-gated
-contact rewards and the efficiency terms adopted in \cref{sec:rl-cpg}. On the sim-to-real side,
-\cref{sec:sim2real-lineage} exercises the standard toolkit surveyed in \cref{sec:bg-rl}: domain
-randomisation with curricula, observation history in place of privileged state, and explicit sensor
-models. An ablation there shows which components actually carried the cost.
+Several actuator-level control architectures have been used in the literature. The main ones considered here are direct torque control, direct position control, and impedance control. Direct torque control allows the policy to command the actuator torque directly, giving it the highest level of control authority. Direct position control allows the policy to command a position target, which is then tracked by a low-level controller. Impedance control allows the policy to command a desired mechanical behaviour through parameters such as position, stiffness, damping, and, depending on the implementation, torque-related terms. The latter provides a compromise between control authority and the requirements imposed on the hardware in terms of latency and bandwidth.
 
-\subsection{Existing platforms, and where DASH-01 sits}
+\textbf{Direct torque control} provides the policy with the highest level of flexibility, but also imposes demanding communication and control-loop timing requirements. In simulation, the policy can directly command joint torques at a high frequency \cite{hwangbo2019anymal}. On the physical robot, however, closing such a fast loop requires the policy, communication bus, actuator controller, and state estimator to operate with sufficiently low latency. In the present hardware architecture, this approach was assumed not to be practical through the CAN communication bus at the required frequency.
+
+\textbf{Direct position control} substantially reduces these requirements by delegating the low-level actuator dynamics to the drive. Position targets passed to the joint controller are used by several learned locomotion approaches \cite{tan2018sim2real,rudin2021}. Two variants were investigated in this thesis: conventional smart-servo position control and the MIT control mode \cite{katz2019minicheetah}. Both allow the RL policy to operate at a lower frequency while the actuator controller handles the faster inner control loop.
+
+\textbf{Impedance control} provides an intermediate level of control authority \cite{bogdanovic2020impedance}. Instead of directly specifying actuator torque, or being restricted to position targets, the policy can influence the desired mechanical behaviour through position, stiffness, damping, and/or torque-related parameters. This avoids the need to close the torque loop at high speed over the communication bus while providing the policy with greater freedom than pure position control. It also exposes more of the actuator dynamics to the policy and can reduce the sim-to-real gap compared with a smart-servo interface when the frequency and parameters of the inner control loop are not fully exposed.
+
+\subsubsection{Gait prior}
+
+The literature can be organised along a second dimension: the amount and location of prior structure imposed on the gait. A strong prior can be introduced through a \textbf{reference trajectory}. In this case, the policy is primarily trained to track an authored motion; this approach was, for example, explored on the Cassie robot \cite{xie2019}. This strongly restricts the reachable set of motions and can substantially simplify learning. However, the quality of the resulting behaviour is bounded by the choice of reference trajectory: there is no guarantee that the selected trajectory is optimal for the particular robot morphology and dynamics.
+
+A less restrictive prior can instead be introduced through a \textbf{trajectory generator} whose parameters are modulated by the policy \cite{pmtg2018}. This preserves the assumption that locomotion should have a structured, periodic form while allowing the learned controller to search for a gait adapted to the plant. Trajectory generators can themselves provide different levels of freedom over the gait parameters.
+
+At the stricter end of this generator-based formulation, the policy only modifies a small number of \textbf{high-level gait parameters}, such as phase, frequency, stride length, or amplitude \cite{cpgrl2022}. This is similar to the reference-trajectory approach in the sense that the policy operates within a predefined family of trajectories; however, instead of learning the low-level joint commands required to reproduce a reference gait, the policy learns the high-level parameters that generate it. This provides a relatively small search space but limits the set of gaits that can be represented.
+
+A more moderate prior allows the policy to modify the \textbf{complete trajectory}. Rather than predicting every trajectory sample independently, the possible trajectories can be represented using a low-dimensional basis, such as Fourier series \cite{shafii2010tfs} or Bézier curves. The policy then modifies the coefficients of this representation. This retains useful structural assumptions such as periodicity and smoothness, while allowing the shape of the gait itself to become a learned variable.
+
+It is also possible to use \textbf{neither a trajectory generator nor an explicit gait-shape prior}. In this case, the policy learns the complete joint trajectory directly \cite{heess2017emergence}. Periodic locomotion can still be encouraged through reward shaping, but periodicity then becomes an emergent property rather than an explicit constraint. Such an approach provides a larger reachable set, but considerably increases the exploration and learning problem; there is also no guarantee that the learned solution will converge to a periodic gait.
+
+Finally, the prior, when present, can be introduced at different levels: through the \textbf{reward} \cite{siekmann2021}, through a \textbf{reference motion} \cite{peng2018deepmimic}, or through an authored \textbf{trajectory generator} \cite{pmtg2018,cpgrl2022}. These choices determine how much of the gait is fixed and how much remains available to the policy at run time, at the expense of increasing or reducing the complexity of the learning problem.
+
+\subsubsection{Curriculum design}
+
+The third major design dimension is the curriculum used to train the policy. To help the policy converge, the training environment can be modified to make the task easier at the beginning and gradually increase its difficulty as the policy improves. The literature has explored a variety of curriculum-design choices, including the order in which different tasks are presented, the rate at which difficulty is increased, and the specific parameters that are modified to create the curriculum.
+
+\textbf{Terrain and command curricula.} A common scheme starts every agent on flat ground with a narrow command range. As its performance exceeds a predefined threshold, the agent is promoted to rougher terrain or a wider velocity range, and can be demoted otherwise \cite{rudin2021}. Difficulty therefore tracks each agent's competence rather than following a fixed schedule. This approach is well suited to massively parallel training, where each agent can be promoted or demoted independently.
+
+\textbf{Automatic domain randomisation.} Rather than fixing the domain-randomisation range before training, the range can be widened automatically once the policy exceeds a performance threshold at its current extremes \cite{akkaya2019rubiks}. The randomisation range itself becomes the curriculum parameter, expanding only as fast as the policy can tolerate. This approach requires a reliable in-training performance signal. A noisy signal can cause the range to grow faster than the policy can adapt, destabilising training.
+
+Whether the curriculum targets terrain, command range, or randomisation range, an adaptive schedule removes the need to manually tune a progression rate. In its place, the design requires a performance threshold and a metric with which to evaluate it. This introduces a problem similar to that encountered in reward design: if the metric does not accurately represent the intended notion of competence, the agent may optimise the metric rather than the desired behaviour.
+
+\subsection{Platforms, and where DASH-01 sits}
 \label{sec:bg-platforms}
 
-The bipeds that produce the results cited above fall into three groups, separated more by actuation
-and budget than by control philosophy.
+The published platforms fall into three families. The first is the series-elastic research biped: Cassie, which held the 100\,m record at the start of this project, is a purpose-built spring-mass machine with an institutional budget~\cite{crowley2024cassie,xie2019}. The second family descends from the MIT Mini Cheetah~\cite{katz2019minicheetah}: a high-torque-density motor behind a small reduction, commanded in torque mode; this quasi-direct-drive pattern now dominates new legged platforms, and the humanoids that took the sprint record from Cassie in 2026 carry the same family of joints~\cite{apnews2026chinese}. The third family is the hobby-class humanoid built from position-controlled smart servos; the servo interface hides the actuator dynamics from the controller, and these machines remain confined to quasi-static walking.
 
-\textbf{Purpose-built research bipeds with series elasticity.} ATRIAS~\cite{hubicki2016atrias} and
-its commercial descendants Cassie and Digit are built to be spring-mass systems. They carry leaf
-springs in series with the drives, a high-voltage bus that supports the joint speeds running
-demands, and a morphology deliberately unlike a human's. They hold the bipedal speed
-record~\cite{crowley2024cassie}. They are also the product of a decade of institutional effort, and
-are priced accordingly.
+DASH-01 stands in the second family by principle and by cost structure: quasi-direct-drive actuators, light legs and a commodity computer. It differs in the command interface, since its drives are commanded through their internal position loop rather than in torque. \Cref{sec:plant-id-drive} measures the cost of that difference.
 
-\textbf{Quasi-direct-drive robots in the MIT Cheetah
-lineage}~\cite{seok2015design,wensing2017proprioceptive,katz2019minicheetah}. These are
-predominantly quadrupeds, but the group is architecturally the most influential of the three.
-Essentially every recent legged platform has adopted the pattern it established, namely QDD
-actuation commanded in torque mode. That includes the current generation of commercial humanoids,
-which are QDD, torque-capable and RL-driven, and which have brought a capable biped within reach of
-a single laboratory's budget for the first time. \Cref{sec:future} concludes that DASH-01 should
-have adopted this architecture end to end.
+\subsection{The gap}
+\label{sec:bg-gap}
 
-\textbf{Hobby-class humanoids}, built from position-controlled smart servos. They are cheap and
-numerous, and they are restricted to the static-walking regime of \cref{sec:bg-zmp} for a reason
-that is now familiar. A servo closing its own position loop cannot deliver a commanded ground
-force, so the dynamic families stay unavailable whatever controller is written above them.
-
-DASH-01 sits deliberately between the second and third groups: QDD-class actuators and a
-running-oriented morphology, on a student budget and a single-board computer. Three design choices
-define it. A parallel 4-bar knee moves the knee actuator's mass proximally. A passive ankle spring
-replaces a seventh and eighth motor. Six motors do the work of ten. Each choice is a bet that mass
-and cost can be traded against capability in the directions that matter for speed. The sensitivity
-analysis of \cref{tab:mass-sensitivity} confirms the first bet as the right instinct, at
-$-0.93$\,(m/s)/kg for distal mass against $-0.11$ for the torso. \Cref{sec:hw-force-map} shows the
-second bet was not. What distinguishes this platform from its neighbours in the literature is not
-any single choice. It is that every choice has been \emph{measured} rather than assumed, which is
-what makes the design recommendations of \cref{sec:future} evidence rather than opinion.
-
-% NOTE(nathann): if Max's platform survey should be credited here, add the entry to References.bib
-% and cite it in the opening sentence of this subsection.
+The learned-locomotion results above share a hardware assumption: the platform offers high-bandwidth torque or impedance control at the joint~\cite{hwangbo2019anymal,katz2019minicheetah,xie2019}. How much of this methodology survives on a low-cost plant, commanded through a position-servo interface of limited bandwidth, is not documented. This thesis explores that gap on DASH-01; \Cref{sec:robot} therefore starts by finishing and measuring the plant, so that the training and its results are judged against the robot as built rather than as designed.
